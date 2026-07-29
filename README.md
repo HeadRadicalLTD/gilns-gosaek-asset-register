@@ -45,7 +45,7 @@ Google Apps Script로 실행하는 모바일 자산등록 웹앱입니다.
 
 ## 배포 주소
 
-- [고색 자산등록 웹앱](https://script.google.com/macros/s/AKfycbxubcW2BW4tKQjFl5PJ0cbtTf7niLVlfr54hcwAx3ozkUQ8bEo3_SU7jlhfyOXV4ZXS/exec)
+- [고색 자산등록 웹앱](https://script.google.com/macros/s/AKfycbwRjRFFFj6FKGDV96Qol59PXvfGvzzFLHmw5eVoBNA8IMIFM2A8TOkHt74dB5yvrH0c/exec)
 
 ## 휴대폰 촬영
 

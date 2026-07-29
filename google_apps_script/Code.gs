@@ -2,7 +2,7 @@ const APP = Object.freeze({
   title: '길앤에스 고색 자산등록',
   publicWebAppUrl:
     'https://script.google.com/macros/s/' +
-    'AKfycbxubcW2BW4tKQjFl5PJ0cbtTf7niLVlfr54hcwAx3ozkUQ8bEo3_SU7jlhfyOXV4ZXS' +
+    'AKfycbwRjRFFFj6FKGDV96Qol59PXvfGvzzFLHmw5eVoBNA8IMIFM2A8TOkHt74dB5yvrH0c' +
     '/exec',
   rootFolderName: '길앤에스_고색_자산관리',
   photoFolderName: '비품 사진',
@@ -299,7 +299,7 @@ function createCaptureSession() {
     const sessionId = Utilities.getUuid()
       .replace(/-/g, '')
       .slice(0, 20);
-    const token = Utilities.getUuid() + Utilities.getUuid();
+    const token = Utilities.getUuid().replace(/-/g, '');
     const holdingRoot = getCaptureHoldingRoot_(
       context.photoRoot
     );
