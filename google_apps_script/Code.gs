@@ -1,5 +1,9 @@
 const APP = Object.freeze({
   title: '길앤에스 고색 자산등록',
+  publicWebAppUrl:
+    'https://script.google.com/macros/s/' +
+    'AKfycbxubcW2BW4tKQjFl5PJ0cbtTf7niLVlfr54hcwAx3ozkUQ8bEo3_SU7jlhfyOXV4ZXS' +
+    '/exec',
   rootFolderName: '길앤에스_고색_자산관리',
   photoFolderName: '비품 사진',
   spreadsheetName: '고색 자산관리 대장',
@@ -282,7 +286,7 @@ function createCaptureSession() {
     hasLock = true;
 
     const context = getContextWithAutoDiscovery_(false);
-    const serviceUrl = ScriptApp.getService().getUrl();
+    const serviceUrl = getPublicWebAppUrl_();
 
     if (!serviceUrl) {
       throw new Error(
@@ -334,6 +338,26 @@ function createCaptureSession() {
       lock.releaseLock();
     }
   }
+}
+
+/**
+ * 다른 사람의 휴대폰에서도 열리는 공개 배포 주소를 반환합니다.
+ *
+ * @return {string} /exec로 끝나는 공개 웹앱 주소
+ */
+function getPublicWebAppUrl_() {
+  const configuredUrl = String(
+    APP.publicWebAppUrl || ''
+  ).trim();
+
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/
+    .test(configuredUrl)) {
+    throw new Error(
+      '공개 웹앱 주소 설정이 올바르지 않습니다.'
+    );
+  }
+
+  return configuredUrl;
 }
 
 function uploadCapturedPhoto(request) {

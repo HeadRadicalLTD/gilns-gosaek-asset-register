@@ -47,6 +47,7 @@ vm.runInContext(
     getFileExtension_,
     getNextAssetPosition_,
     getContextWithAutoDiscovery_,
+    getPublicWebAppUrl_,
     assertTargetRowEmpty_,
     pad2_,
   };`,
@@ -73,6 +74,11 @@ assert.equal(api.estimateBase64Bytes_("aGVsbG8="), 5);
 assert.equal(api.getFileExtension_("photo.jpeg", "image/jpeg"), "jpeg");
 assert.equal(api.getFileExtension_("photo", "image/png"), "png");
 assert.equal(api.pad2_(3), "03");
+assert.match(
+  api.getPublicWebAppUrl_(),
+  /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/,
+);
+assert.doesNotMatch(api.getPublicWebAppUrl_(), /\/dev$/);
 
 const managementValues = [
   ["69"],
