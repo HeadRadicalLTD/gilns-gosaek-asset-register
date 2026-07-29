@@ -75,6 +75,74 @@ function doGet(event) {
 }
 
 /**
+ * 공개 HTML 촬영 화면에서 보낸 사진을 처리합니다.
+ * 응답은 숨은 iframe을 통해 부모 화면으로 전달합니다.
+ *
+ * @param {GoogleAppsScript.Events.DoPost} event POST 요청
+ * @return {GoogleAppsScript.HTML.HtmlOutput} 처리 결과
+ */
+function doPost(event) {
+  const parameters = event && event.parameter
+    ? event.parameter
+    : {};
+  const requestId = String(parameters.requestId || '')
+    .replace(/[^A-Za-z0-9-]/g, '')
+    .slice(0, 80);
+  let result = null;
+
+  try {
+    if (parameters.action !== 'uploadCapturedPhoto') {
+      throw new Error('지원하지 않는 요청입니다.');
+    }
+
+    const payload = JSON.parse(
+      String(parameters.payload || '{}')
+    );
+    result = uploadCapturedPhoto(payload);
+    result.ok = true;
+  } catch (error) {
+    result = {
+      ok: false,
+      message: safeErrorMessage_(error),
+    };
+  }
+
+  return createPostMessageResponse_(
+    requestId,
+    result
+  );
+}
+
+/**
+ * 외부 HTML의 숨은 iframe으로 업로드 결과를 보냅니다.
+ *
+ * @param {string} requestId 요청 식별자
+ * @param {Object} result 처리 결과
+ * @return {GoogleAppsScript.HTML.HtmlOutput} 응답 HTML
+ */
+function createPostMessageResponse_(requestId, result) {
+  const message = JSON.stringify({
+    source: 'gilns-mobile-upload',
+    requestId: requestId,
+    result: result,
+  }).replace(/</g, '\\u003c');
+  const html = [
+    '<!doctype html><html><head>',
+    '<meta charset="utf-8"></head><body>',
+    '<script>',
+    'window.parent.postMessage(',
+    message,
+    ', "*");',
+    '</script></body></html>',
+  ].join('');
+
+  return HtmlService.createHtmlOutput(html)
+    .setXFrameOptionsMode(
+      HtmlService.XFrameOptionsMode.ALLOWALL
+    );
+}
+
+/**
  * Apps Script 편집기에서 한 번 실행합니다.
  *
  * @param {string} photoRootFolderId 비품 사진 폴더 ID

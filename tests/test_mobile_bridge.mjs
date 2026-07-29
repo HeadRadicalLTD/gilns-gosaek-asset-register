@@ -6,9 +6,12 @@ const source = fs.readFileSync(
   "utf8",
 );
 
-assert.match(source, /window\.location\.replace\(target\)/);
 assert.match(source, /window\.location\.hash\.slice\(1\)/);
 assert.match(source, /history\.replaceState/);
+assert.match(source, /form\.method = 'POST'/);
+assert.match(source, /form\.target = 'uploadFrame'/);
+assert.match(source, /gilns-mobile-upload/);
+assert.match(source, /Google 로그인 없이/);
 assert.match(
   source,
   /AKfycbwRjRFFFj6FKGDV96Qol59PXvfGv/,

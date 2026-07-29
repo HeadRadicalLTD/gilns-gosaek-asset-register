@@ -15,6 +15,9 @@ const manifest = JSON.parse(fs.readFileSync(
 ));
 
 assert.match(source, /Drive\.Files\.create/);
+assert.match(source, /function doPost\(event\)/);
+assert.match(source, /gilns-mobile-upload/);
+assert.match(source, /XFrameOptionsMode\.ALLOWALL/);
 assert.equal(
   manifest.dependencies.enabledAdvancedServices[0].serviceId,
   "drive",

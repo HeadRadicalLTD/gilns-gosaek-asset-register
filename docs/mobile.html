@@ -7,113 +7,563 @@
     content="width=device-width, initial-scale=1"
   >
   <meta name="robots" content="noindex, nofollow">
-  <title>길앤에스 휴대폰 촬영 연결</title>
+  <title>길앤에스 휴대폰 촬영</title>
   <style>
     :root {
-      color-scheme: light;
+      --navy: #1d3150;
+      --blue: #316be8;
+      --pale: #eef4ff;
+      --line: #cad7ee;
+      --text: #10213a;
+      --muted: #66758d;
+      --green: #13795b;
+      --red: #b42318;
       font-family:
         Pretendard, "Noto Sans KR", Arial, sans-serif;
     }
 
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      display: grid;
-      min-height: 100vh;
       margin: 0;
-      place-items: center;
-      background: #f3f6fb;
-      color: #172033;
+      background: #f2f5fa;
+      color: var(--text);
     }
 
     main {
-      width: min(88vw, 420px);
-      padding: 32px 24px;
-      border: 1px solid #dce4f0;
-      border-radius: 24px;
-      background: #fff;
-      box-shadow: 0 16px 44px rgb(26 52 92 / 10%);
-      text-align: center;
+      width: min(100%, 560px);
+      margin: 0 auto;
+      padding: 18px 14px 50px;
+    }
+
+    header {
+      padding: 24px 22px;
+      border-radius: 22px;
+      background: var(--navy);
+      color: #fff;
     }
 
     h1 {
-      margin: 0 0 14px;
-      font-size: 24px;
+      margin: 4px 0 8px;
+      font-size: 26px;
     }
 
-    p {
-      margin: 0 0 22px;
-      color: #5b667a;
-      line-height: 1.7;
+    header p,
+    .status,
+    .hint {
+      margin: 0;
+      line-height: 1.55;
     }
 
-    a {
-      display: none;
-      padding: 14px 18px;
+    .status {
+      margin: 14px 0;
+      padding: 13px 16px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: #fff;
+      color: var(--muted);
+    }
+
+    .status.ready {
+      border-color: #9bd7c5;
+      color: var(--green);
+    }
+
+    .status.error {
+      border-color: #f1b5b0;
+      color: var(--red);
+    }
+
+    .capture-card {
+      margin-top: 12px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+    }
+
+    .capture-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .capture-title strong {
+      font-size: 18px;
+    }
+
+    .count {
+      min-width: 34px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: var(--pale);
+      color: var(--blue);
+      text-align: center;
+      font-weight: 800;
+    }
+
+    .hint {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .capture-button {
+      width: 100%;
+      min-height: 52px;
+      margin-top: 14px;
+      border: 0;
       border-radius: 14px;
-      background: #246bfe;
+      background: var(--blue);
       color: #fff;
-      font-weight: 700;
-      text-decoration: none;
+      font: inherit;
+      font-weight: 800;
     }
 
-    a.show {
-      display: inline-block;
+    .capture-button:disabled {
+      opacity: 0.55;
+    }
+
+    input[type="file"] {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      opacity: 0;
+    }
+
+    .uploading {
+      display: none;
+      margin-top: 10px;
+      color: var(--blue);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .uploading.show {
+      display: block;
+    }
+
+    iframe {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      border: 0;
+      opacity: 0;
     }
   </style>
 </head>
 <body>
   <main>
-    <h1>휴대폰 촬영 화면 연결 중</h1>
-    <p id="message">
-      잠시만 기다려 주세요.
-    </p>
-    <a id="continueLink" href="#">
-      촬영 화면 열기
-    </a>
+    <header>
+      <p>GILNS MOBILE CAMERA</p>
+      <h1>휴대폰 사진 촬영</h1>
+      <p>
+        Google 로그인 없이 사진을 촬영하고
+        PC 자산등록 화면으로 전송합니다.
+      </p>
+    </header>
+
+    <div id="status" class="status">
+      PC 연결정보를 확인하고 있습니다.
+    </div>
+
+    <section class="capture-card">
+      <div class="capture-title">
+        <strong>송장</strong>
+        <span id="invoiceCount" class="count">0</span>
+      </div>
+      <p class="hint">송장 또는 거래명세서</p>
+      <button
+        class="capture-button"
+        data-key="invoice"
+        type="button"
+      >
+        카메라로 송장 촬영
+      </button>
+      <input
+        id="invoiceInput"
+        type="file"
+        accept="image/*"
+        capture="environment"
+      >
+      <div id="invoiceBusy" class="uploading">
+        사진을 전송하고 있습니다.
+      </div>
+    </section>
+
+    <section class="capture-card">
+      <div class="capture-title">
+        <strong>발주서</strong>
+        <span
+          id="purchaseOrderCount"
+          class="count"
+        >0</span>
+      </div>
+      <p class="hint">구매 발주서</p>
+      <button
+        class="capture-button"
+        data-key="purchaseOrder"
+        type="button"
+      >
+        카메라로 발주서 촬영
+      </button>
+      <input
+        id="purchaseOrderInput"
+        type="file"
+        accept="image/*"
+        capture="environment"
+      >
+      <div id="purchaseOrderBusy" class="uploading">
+        사진을 전송하고 있습니다.
+      </div>
+    </section>
+
+    <section class="capture-card">
+      <div class="capture-title">
+        <strong>세금계산서</strong>
+        <span id="taxInvoiceCount" class="count">0</span>
+      </div>
+      <p class="hint">세금계산서 또는 영수증</p>
+      <button
+        class="capture-button"
+        data-key="taxInvoice"
+        type="button"
+      >
+        카메라로 세금계산서 촬영
+      </button>
+      <input
+        id="taxInvoiceInput"
+        type="file"
+        accept="image/*"
+        capture="environment"
+      >
+      <div id="taxInvoiceBusy" class="uploading">
+        사진을 전송하고 있습니다.
+      </div>
+    </section>
+
+    <section class="capture-card">
+      <div class="capture-title">
+        <strong>실물 사진</strong>
+        <span id="productCount" class="count">0</span>
+      </div>
+      <p class="hint">정면, 측면, 명판 등 여러 장 가능</p>
+      <button
+        class="capture-button"
+        data-key="product"
+        type="button"
+      >
+        카메라로 실물 촬영
+      </button>
+      <input
+        id="productInput"
+        type="file"
+        accept="image/*"
+        capture="environment"
+      >
+      <div id="productBusy" class="uploading">
+        사진을 전송하고 있습니다.
+      </div>
+    </section>
   </main>
 
+  <iframe
+    id="uploadFrame"
+    name="uploadFrame"
+    title="사진 전송"
+  ></iframe>
+
   <script>
-    (() => {
-      const APP_URL =
-        'https://script.google.com/macros/s/' +
-        'AKfycbwRjRFFFj6FKGDV96Qol59PXvfGvzzFLHmw5eVoBNA8IMIFM2A8TOkHt74dB5yvrH0c' +
-        '/exec';
-      const message = document.getElementById('message');
-      const link = document.getElementById('continueLink');
-      const parameters = new URLSearchParams(
-        window.location.hash.slice(1)
-      );
-      const capture = parameters.get('capture') || '';
-      const token = parameters.get('token') || '';
+    const API_URL =
+      'https://script.google.com/macros/s/' +
+      'AKfycbwRjRFFFj6FKGDV96Qol59PXvfGvzzFLHmw5eVoBNA8IMIFM2A8TOkHt74dB5yvrH0c' +
+      '/exec';
+    const KEYS = [
+      'invoice',
+      'purchaseOrder',
+      'taxInvoice',
+      'product',
+    ];
+    const parameters = new URLSearchParams(
+      window.location.hash.slice(1)
+    );
+    const SESSION_ID = parameters.get('capture') || '';
+    const SESSION_TOKEN = parameters.get('token') || '';
+    let ready = false;
+    let pendingRequest = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      KEYS.forEach((key) => {
+        const button = document.querySelector(
+          '[data-key="' + key + '"]'
+        );
+        const input = document.getElementById(
+          key + 'Input'
+        );
+
+        button.addEventListener('click', () => {
+          if (ready && !pendingRequest) {
+            input.click();
+          }
+        });
+        input.addEventListener('change', () => {
+          const file = input.files && input.files[0];
+
+          if (file) {
+            uploadPhoto(key, file);
+          }
+        });
+      });
 
       if (
-        !/^[A-Za-z0-9]{10,80}$/.test(capture) ||
-        !/^[A-Za-z0-9-]{20,160}$/.test(token)
+        !/^[A-Za-z0-9]{10,80}$/.test(SESSION_ID) ||
+        !/^[A-Za-z0-9-]{20,160}$/.test(SESSION_TOKEN)
       ) {
-        message.textContent =
-          '연결 정보가 올바르지 않습니다. ' +
-          'PC에서 QR을 다시 만들어 주세요.';
+        setStatus(
+          '연결정보가 없습니다. PC에서 QR을 다시 만드세요.',
+          true
+        );
         return;
       }
 
-      const target =
-        APP_URL +
-        '?capture=' + encodeURIComponent(capture) +
-        '&token=' + encodeURIComponent(token);
-
+      ready = true;
       history.replaceState(
         null,
         '',
         window.location.pathname
       );
-      link.href = target;
-      link.classList.add('show');
-      message.textContent =
-        '자동으로 이동하지 않으면 아래 버튼을 누르세요.';
+      setStatus(
+        'PC와 연결되었습니다. 촬영하면 바로 전송됩니다.',
+        false
+      );
+    });
 
-      window.setTimeout(() => {
-        window.location.replace(target);
-      }, 250);
-    })();
+    window.addEventListener('message', (event) => {
+      const data = event.data || {};
+
+      if (
+        !pendingRequest ||
+        data.source !== 'gilns-mobile-upload' ||
+        data.requestId !== pendingRequest.requestId
+      ) {
+        return;
+      }
+
+      window.clearTimeout(pendingRequest.timeoutId);
+      const key = pendingRequest.key;
+      pendingRequest = null;
+      setBusy(key, false);
+      document.getElementById(key + 'Input').value = '';
+
+      if (!data.result || !data.result.ok) {
+        setStatus(
+          data.result && data.result.message
+            ? data.result.message
+            : '사진 전송에 실패했습니다.',
+          true
+        );
+        return;
+      }
+
+      renderStatus(data.result);
+    });
+
+    async function uploadPhoto(key, file) {
+      if (!file.type.startsWith('image/')) {
+        setStatus(
+          '이미지 파일만 촬영할 수 있습니다.',
+          true
+        );
+        return;
+      }
+
+      setBusy(key, true);
+
+      try {
+        let prepared = null;
+
+        try {
+          prepared = await prepareImage(file);
+        } catch (compressionError) {
+          prepared = await readOriginalFile(file);
+        }
+
+        postUpload({
+          sessionId: SESSION_ID,
+          token: SESSION_TOKEN,
+          category: key,
+          file: prepared,
+        }, key);
+      } catch (error) {
+        setBusy(key, false);
+        setStatus(getErrorMessage(error), true);
+      }
+    }
+
+    function postUpload(payload, key) {
+      const requestId =
+        Date.now().toString(36) +
+        Math.random().toString(36).slice(2);
+      const form = document.createElement('form');
+
+      form.method = 'POST';
+      form.action = API_URL;
+      form.target = 'uploadFrame';
+      addField(form, 'action', 'uploadCapturedPhoto');
+      addField(form, 'requestId', requestId);
+      addField(form, 'payload', JSON.stringify(payload));
+      document.body.appendChild(form);
+
+      const timeoutId = window.setTimeout(() => {
+        if (
+          pendingRequest &&
+          pendingRequest.requestId === requestId
+        ) {
+          pendingRequest = null;
+          setBusy(key, false);
+          setStatus(
+            '전송 시간이 초과되었습니다. 다시 촬영하세요.',
+            true
+          );
+        }
+      }, 60000);
+
+      pendingRequest = {
+        requestId: requestId,
+        key: key,
+        timeoutId: timeoutId,
+      };
+      form.submit();
+      form.remove();
+    }
+
+    function addField(form, name, value) {
+      const input = document.createElement('input');
+
+      input.type = 'hidden';
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    }
+
+    function renderStatus(result) {
+      KEYS.forEach((key) => {
+        document.getElementById(
+          key + 'Count'
+        ).textContent = String(
+          result.counts[key] || 0
+        );
+      });
+      setStatus(
+        '전송 완료. PC 화면에 사진이 반영되었습니다.',
+        false
+      );
+    }
+
+    function setStatus(message, isError) {
+      const status = document.getElementById('status');
+
+      status.textContent = message;
+      status.classList.toggle('error', isError);
+      status.classList.toggle('ready', !isError);
+    }
+
+    function setBusy(key, busy) {
+      document.getElementById(
+        key + 'Busy'
+      ).classList.toggle('show', busy);
+      document.querySelector(
+        '[data-key="' + key + '"]'
+      ).disabled = busy;
+    }
+
+    async function prepareImage(file) {
+      if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
+        return readOriginalFile(file);
+      }
+
+      const bitmap = await createImageBitmap(file);
+      const maxDimension = 2200;
+      const scale = Math.min(
+        1,
+        maxDimension /
+          Math.max(bitmap.width, bitmap.height)
+      );
+      const width = Math.max(
+        1,
+        Math.round(bitmap.width * scale)
+      );
+      const height = Math.max(
+        1,
+        Math.round(bitmap.height * scale)
+      );
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+
+      canvas.width = width;
+      canvas.height = height;
+      context.drawImage(bitmap, 0, 0, width, height);
+      bitmap.close();
+
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (result) => {
+            if (result) {
+              resolve(result);
+            } else {
+              reject(new Error('사진 압축 실패'));
+            }
+          },
+          'image/jpeg',
+          0.82
+        );
+      });
+
+      return {
+        name: replaceExtension(file.name, 'jpg'),
+        mimeType: 'image/jpeg',
+        base64: await blobToBase64(blob),
+      };
+    }
+
+    async function readOriginalFile(file) {
+      return {
+        name: file.name,
+        mimeType: file.type || 'image/jpeg',
+        base64: await blobToBase64(file),
+      };
+    }
+
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          resolve(
+            String(reader.result).split(',')[1] || ''
+          );
+        };
+        reader.onerror = () => {
+          reject(new Error('사진을 읽지 못했습니다.'));
+        };
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function replaceExtension(name, extension) {
+      return String(name || 'photo')
+        .replace(/\.[^.]+$/, '') + '.' + extension;
+    }
+
+    function getErrorMessage(error) {
+      return String(
+        error && error.message ? error.message : error
+      ).replace(/^Exception:\s*/i, '');
+    }
   </script>
 </body>
 </html>
