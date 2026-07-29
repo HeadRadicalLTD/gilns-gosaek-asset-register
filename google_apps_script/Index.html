@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
+  <title>길앤에스 고색 자산등록</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --navy: #24324a;
+      --navy-dark: #182235;
+      --blue: #316be8;
+      --blue-soft: #edf3ff;
+      --green: #16845b;
+      --red: #c83a3a;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #dbe2ec;
+      --panel: #ffffff;
+      --canvas: #f4f6fa;
+      --shadow: 0 12px 30px rgba(27, 39, 65, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(
+          circle at top right,
+          rgba(49, 107, 232, 0.09),
+          transparent 34rem
+        ),
+        var(--canvas);
+      color: var(--ink);
+      font-family:
+        "Pretendard",
+        "Noto Sans KR",
+        "Malgun Gothic",
+        sans-serif;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app-shell {
+      width: min(980px, 100%);
+      margin: 0 auto;
+      padding: 28px 18px 80px;
+    }
+
+    .hero {
+      overflow: hidden;
+      position: relative;
+      padding: 28px;
+      border-radius: 24px;
+      background: linear-gradient(
+        135deg,
+        var(--navy-dark),
+        var(--navy)
+      );
+      color: #ffffff;
+      box-shadow: var(--shadow);
+    }
+
+    .hero::after {
+      position: absolute;
+      top: -70px;
+      right: -60px;
+      width: 220px;
+      height: 220px;
+      border: 32px solid rgba(255, 255, 255, 0.08);
+      border-radius: 50%;
+      content: "";
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: #a9c1ff;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 5vw, 42px);
+      line-height: 1.18;
+    }
+
+    .hero p:last-child {
+      max-width: 620px;
+      margin: 14px 0 0;
+      color: #d7deec;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 18px 0;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.88);
+      color: var(--muted);
+      font-size: 14px;
+      box-shadow: 0 4px 16px rgba(27, 39, 65, 0.04);
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      margin-right: 8px;
+      border-radius: 50%;
+      background: #a9b1c2;
+    }
+
+    .status-dot.ready {
+      background: var(--green);
+      box-shadow: 0 0 0 4px rgba(22, 132, 91, 0.12);
+    }
+
+    .status-dot.error {
+      background: var(--red);
+      box-shadow: 0 0 0 4px rgba(200, 58, 58, 0.1);
+    }
+
+    form {
+      display: grid;
+      gap: 18px;
+    }
+
+    .card {
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .card-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .card-heading h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .card-heading p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .step-badge {
+      flex: none;
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 11px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      color: #303b52;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .required {
+      color: var(--red);
+    }
+
+    input[type="text"],
+    input[type="date"],
+    input[type="number"] {
+      width: 100%;
+      min-height: 48px;
+      padding: 11px 13px;
+      border: 1px solid #cfd7e4;
+      border-radius: 12px;
+      outline: none;
+      background: #ffffff;
+      color: var(--ink);
+      transition:
+        border-color 0.18s ease,
+        box-shadow 0.18s ease;
+    }
+
+    input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px rgba(49, 107, 232, 0.11);
+    }
+
+    .hint {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .upload-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .upload-box {
+      position: relative;
+      min-height: 160px;
+      padding: 18px;
+      border: 1px dashed #b8c5d8;
+      border-radius: 16px;
+      background: #fbfcfe;
+      transition:
+        border-color 0.18s ease,
+        background 0.18s ease;
+    }
+
+    .upload-box:hover,
+    .upload-box:focus-within {
+      border-color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .upload-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 7px;
+      font-weight: 900;
+    }
+
+    .upload-icon {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 10px;
+      background: #ffffff;
+      color: var(--blue);
+      box-shadow: 0 3px 10px rgba(27, 39, 65, 0.08);
+    }
+
+    .file-input {
+      width: 100%;
+      margin-top: 13px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .file-input::file-selector-button {
+      margin-right: 10px;
+      padding: 9px 12px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--navy);
+      color: #ffffff;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .file-list {
+      display: grid;
+      gap: 5px;
+      margin: 12px 0 0;
+      padding: 0;
+      color: #42506a;
+      font-size: 12px;
+      list-style: none;
+    }
+
+    .file-list li {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .submit-card {
+      position: sticky;
+      bottom: 12px;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 16px 18px;
+      border: 1px solid rgba(219, 226, 236, 0.92);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 14px 36px rgba(27, 39, 65, 0.14);
+      backdrop-filter: blur(10px);
+    }
+
+    .summary {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .summary strong {
+      color: var(--ink);
+    }
+
+    .submit-button {
+      flex: none;
+      min-width: 180px;
+      min-height: 52px;
+      padding: 12px 20px;
+      border: 0;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #316be8, #234fb4);
+      color: #ffffff;
+      cursor: pointer;
+      font-weight: 900;
+      box-shadow: 0 9px 20px rgba(49, 107, 232, 0.24);
+    }
+
+    .submit-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      box-shadow: none;
+    }
+
+    .message {
+      display: none;
+      padding: 18px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.error {
+      border: 1px solid #efc2c2;
+      background: #fff3f3;
+      color: #9f2424;
+    }
+
+    .message.success {
+      border: 1px solid #b9e4d3;
+      background: #eefaf5;
+      color: #0d6845;
+    }
+
+    .message a {
+      color: inherit;
+      font-weight: 900;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(17, 25, 40, 0.58);
+      backdrop-filter: blur(5px);
+    }
+
+    .overlay.show {
+      display: flex;
+    }
+
+    .phone-connect {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 22px;
+      align-items: center;
+    }
+
+    .phone-connect h2 {
+      margin: 0 0 8px;
+    }
+
+    .phone-connect p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .phone-button {
+      min-height: 48px;
+      margin-top: 16px;
+      padding: 0 18px;
+      border: 0;
+      border-radius: 13px;
+      background: var(--blue);
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .phone-button:disabled {
+      cursor: wait;
+      opacity: 0.55;
+    }
+
+    .qr-panel {
+      display: none;
+      min-width: 220px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: white;
+      text-align: center;
+    }
+
+    .qr-panel.show {
+      display: block;
+    }
+
+    .qr-box {
+      display: flex;
+      min-height: 180px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .qr-box img,
+    .qr-box canvas {
+      max-width: 180px;
+      height: auto;
+    }
+
+    .qr-link {
+      display: inline-block;
+      margin-top: 8px;
+      color: var(--blue);
+      font-size: 13px;
+      word-break: break-all;
+    }
+
+    .phone-count {
+      min-height: 20px;
+      margin: 8px 0 0;
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .loading-panel {
+      width: min(360px, 100%);
+      padding: 26px;
+      border-radius: 20px;
+      background: #ffffff;
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
+    }
+
+    .spinner {
+      width: 42px;
+      height: 42px;
+      margin: 0 auto 16px;
+      border: 4px solid #dfe7f6;
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (max-width: 680px) {
+      .app-shell {
+        padding: 14px 12px 70px;
+      }
+
+      .hero,
+      .card {
+        border-radius: 18px;
+      }
+
+      .hero {
+        padding: 22px 20px;
+      }
+
+      .card {
+        padding: 20px 16px;
+      }
+
+      .field-grid,
+      .upload-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .phone-connect {
+        grid-template-columns: 1fr;
+      }
+
+      .qr-panel {
+        width: 100%;
+      }
+
+      .submit-card {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .submit-button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero">
+      <p class="eyebrow">GILNS ASSET REGISTER</p>
+      <h1>고색 자산등록</h1>
+      <p>
+        자산정보와 증빙 사진을 한 번에 등록합니다.
+        등록이 완료되면 관리번호, 사진 폴더,
+        자산대장이 자동으로 연결됩니다.
+      </p>
+    </header>
+
+    <div class="status-bar" aria-live="polite">
+      <span>
+        <span
+          id="statusDot"
+          class="status-dot"
+          aria-hidden="true"
+        ></span>
+        <span id="systemStatus">시스템 연결 확인 중</span>
+      </span>
+      <strong id="nextNumber">관리번호 확인 중</strong>
+    </div>
+
+    <div id="errorMessage" class="message error"></div>
+    <div id="successMessage" class="message success"></div>
+
+    <form id="assetForm" novalidate>
+      <section class="card">
+        <div class="card-heading">
+          <div>
+            <h2>자산 기본정보</h2>
+            <p>
+              별표가 있는 항목은 반드시 입력하세요.
+            </p>
+          </div>
+          <span class="step-badge">01</span>
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label for="author">
+              작성자 <span class="required">*</span>
+            </label>
+            <input
+              id="author"
+              name="author"
+              type="text"
+              maxlength="40"
+              autocomplete="name"
+              required
+            >
+          </div>
+
+          <div class="field">
+            <label for="itemName">
+              품목 <span class="required">*</span>
+            </label>
+            <input
+              id="itemName"
+              name="itemName"
+              type="text"
+              maxlength="100"
+              required
+            >
+          </div>
+
+          <div class="field full">
+            <label for="modelMaker">
+              모델명·제작사
+            </label>
+            <input
+              id="modelMaker"
+              name="modelMaker"
+              type="text"
+              maxlength="150"
+            >
+          </div>
+
+          <div class="field">
+            <label for="vendor">
+              구입처 <span class="required">*</span>
+            </label>
+            <input
+              id="vendor"
+              name="vendor"
+              type="text"
+              maxlength="100"
+              required
+            >
+          </div>
+
+          <div class="field">
+            <label for="amount">금액</label>
+            <input
+              id="amount"
+              name="amount"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              placeholder="예: 59000"
+            >
+            <p class="hint">원 단위 숫자로 입력합니다.</p>
+          </div>
+
+          <div class="field">
+            <label for="purchaseDate">
+              구입일자 <span class="required">*</span>
+            </label>
+            <input
+              id="purchaseDate"
+              name="purchaseDate"
+              type="date"
+              required
+            >
+          </div>
+
+          <div class="field">
+            <label for="manager">관리자</label>
+            <input
+              id="manager"
+              name="manager"
+              type="text"
+              maxlength="40"
+            >
+          </div>
+
+          <div class="field">
+            <label for="partNumber">P/N</label>
+            <input
+              id="partNumber"
+              name="partNumber"
+              type="text"
+              maxlength="100"
+            >
+          </div>
+
+          <div class="field">
+            <label for="storageLocation">
+              보관 장소 <span class="required">*</span>
+            </label>
+            <input
+              id="storageLocation"
+              name="storageLocation"
+              type="text"
+              maxlength="100"
+              value="고색연구소"
+              required
+            >
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="phone-connect">
+          <div>
+            <h2>휴대폰 카메라 연결</h2>
+            <p>
+              PC 화면에 QR을 띄운 뒤 휴대폰으로 찍으면
+              사진이 아래 항목에 자동으로 붙습니다.
+            </p>
+            <button
+              id="connectPhoneButton"
+              class="phone-button"
+              type="button"
+            >
+              휴대폰 연결 QR 만들기
+            </button>
+          </div>
+          <div id="qrPanel" class="qr-panel">
+            <div id="qrCode" class="qr-box"></div>
+            <strong>휴대폰 카메라로 QR을 찍으세요.</strong>
+            <a
+              id="captureLink"
+              class="qr-link"
+              target="_blank"
+              rel="noopener"
+            >
+              연결 링크 열기
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-heading">
+          <div>
+            <h2>증빙·실물 사진</h2>
+            <p>
+              항목별 최대 5장입니다.
+              선택한 사진은 등록 전에 자동 압축됩니다.
+            </p>
+          </div>
+          <span class="step-badge">02</span>
+        </div>
+
+        <div class="upload-grid">
+          <div class="upload-box">
+            <div class="upload-title">
+              <span class="upload-icon">01</span>
+              송장
+            </div>
+            <p class="hint">송장 또는 거래명세서 사진</p>
+            <input
+              class="file-input"
+              id="invoice"
+              type="file"
+              accept="image/*"
+              multiple
+            >
+            <ul id="invoiceList" class="file-list"></ul>
+            <p id="invoicePhoneCount" class="phone-count"></p>
+          </div>
+
+          <div class="upload-box">
+            <div class="upload-title">
+              <span class="upload-icon">02</span>
+              발주서
+            </div>
+            <p class="hint">구매 발주서 사진</p>
+            <input
+              class="file-input"
+              id="purchaseOrder"
+              type="file"
+              accept="image/*"
+              multiple
+            >
+            <ul
+              id="purchaseOrderList"
+              class="file-list"
+            ></ul>
+            <p
+              id="purchaseOrderPhoneCount"
+              class="phone-count"
+            ></p>
+          </div>
+
+          <div class="upload-box">
+            <div class="upload-title">
+              <span class="upload-icon">03</span>
+              세금계산서
+            </div>
+            <p class="hint">세금계산서 또는 영수증 사진</p>
+            <input
+              class="file-input"
+              id="taxInvoice"
+              type="file"
+              accept="image/*"
+              multiple
+            >
+            <ul id="taxInvoiceList" class="file-list"></ul>
+            <p
+              id="taxInvoicePhoneCount"
+              class="phone-count"
+            ></p>
+          </div>
+
+          <div class="upload-box">
+            <div class="upload-title">
+              <span class="upload-icon">04</span>
+              실물 사진
+            </div>
+            <p class="hint">정면, 측면, 명판 등 여러 장 가능</p>
+            <input
+              class="file-input"
+              id="product"
+              type="file"
+              accept="image/*"
+              multiple
+            >
+            <ul id="productList" class="file-list"></ul>
+            <p id="productPhoneCount" class="phone-count"></p>
+          </div>
+        </div>
+      </section>
+
+      <div class="submit-card">
+        <div class="summary">
+          <strong id="fileCount">선택한 사진 0장</strong><br>
+          등록하면 폴더와 자산대장이 함께 생성됩니다.
+        </div>
+        <button
+          id="submitButton"
+          class="submit-button"
+          type="submit"
+          disabled
+        >
+          자산 등록하기
+        </button>
+      </div>
+    </form>
+  </main>
+
+  <div
+    id="loadingOverlay"
+    class="overlay"
+    role="status"
+    aria-live="assertive"
+  >
+    <div class="loading-panel">
+      <div class="spinner" aria-hidden="true"></div>
+      <strong>자산을 등록하고 있습니다</strong>
+      <p class="hint">
+        사진 저장과 자산대장 입력이 끝날 때까지
+        이 화면을 닫지 마세요.
+      </p>
+    </div>
+  </div>
+
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+  ></script>
+  <script>
+    const FILE_KEYS = [
+      'invoice',
+      'purchaseOrder',
+      'taxInvoice',
+      'product',
+    ];
+    const state = {
+      ready: false,
+      busy: false,
+      config: null,
+      files: {
+        invoice: [],
+        purchaseOrder: [],
+        taxInvoice: [],
+        product: [],
+      },
+      remoteCounts: {
+        invoice: 0,
+        purchaseOrder: 0,
+        taxInvoice: 0,
+        product: 0,
+      },
+      captureSession: null,
+      capturePoll: null,
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      bindEvents();
+
+      if (!hasAppsScriptBridge()) {
+        setSystemError(
+          '이 화면은 Apps Script 웹앱 주소에서 열어야 합니다.'
+        );
+        return;
+      }
+
+      loadConfig();
+    });
+
+    function bindEvents() {
+      const form = document.getElementById('assetForm');
+      const amount = document.getElementById('amount');
+
+      form.addEventListener('submit', handleSubmit);
+      document
+        .getElementById('connectPhoneButton')
+        .addEventListener('click', connectPhone);
+      amount.addEventListener('input', () => {
+        amount.value = amount.value
+          .replace(/[^\d]/g, '')
+          .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      });
+
+      FILE_KEYS.forEach((key) => {
+        document
+          .getElementById(key)
+          .addEventListener('change', (event) => {
+            handleFileSelection(key, event.target.files);
+          });
+      });
+    }
+
+    function loadConfig() {
+      google.script.run
+        .withSuccessHandler((config) => {
+          state.config = config;
+
+          if (!config.ok) {
+            setSystemError(config.message);
+            return;
+          }
+
+          state.ready = true;
+          document.getElementById('purchaseDate').value =
+            config.today;
+          document.getElementById('systemStatus').textContent =
+            config.photoFolderName + ' · ' + config.sheetName;
+          document.getElementById('nextNumber').textContent =
+            '예정 관리번호 ' + config.nextManagementNumber;
+          document.getElementById('statusDot')
+            .classList.add('ready');
+          document.getElementById('submitButton').disabled =
+            false;
+        })
+        .withFailureHandler((error) => {
+          setSystemError(getErrorMessage(error));
+        })
+        .getPublicConfig();
+    }
+
+    function hasAppsScriptBridge() {
+      return typeof google !== 'undefined' &&
+        google.script &&
+        google.script.run;
+    }
+
+    function setSystemError(message) {
+      state.ready = false;
+      document.getElementById('systemStatus').textContent =
+        message;
+      document.getElementById('statusDot')
+        .classList.add('error');
+      document.getElementById('nextNumber').textContent =
+        '연결 필요';
+      document.getElementById('submitButton').disabled = true;
+      showError(message);
+    }
+
+    function connectPhone() {
+      if (state.busy) {
+        return;
+      }
+
+      if (!state.ready) {
+        showError(
+          'Drive와 자산대장 연결을 먼저 확인하세요.'
+        );
+        return;
+      }
+
+      if (state.captureSession) {
+        document.getElementById('qrPanel')
+          .classList.add('show');
+        return;
+      }
+
+      const button = document.getElementById(
+        'connectPhoneButton'
+      );
+      button.disabled = true;
+      button.textContent = 'QR 만드는 중';
+      clearMessages();
+
+      google.script.run
+        .withSuccessHandler((result) => {
+          button.disabled = false;
+          button.textContent = '휴대폰 연결됨';
+          state.captureSession = result;
+          renderQrCode(result.captureUrl);
+          renderRemoteCounts(result.counts);
+          startCapturePolling();
+        })
+        .withFailureHandler((error) => {
+          button.disabled = false;
+          button.textContent = '휴대폰 연결 QR 만들기';
+          showError(getErrorMessage(error));
+        })
+        .createCaptureSession();
+    }
+
+    function renderQrCode(url) {
+      const panel = document.getElementById('qrPanel');
+      const target = document.getElementById('qrCode');
+      const link = document.getElementById('captureLink');
+
+      target.innerHTML = '';
+      link.href = url;
+
+      if (window.QRCode) {
+        new QRCode(target, {
+          text: url,
+          width: 180,
+          height: 180,
+          colorDark: '#172033',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M,
+        });
+      } else {
+        target.textContent =
+          'QR 생성 모듈을 불러오지 못했습니다.';
+      }
+
+      panel.classList.add('show');
+    }
+
+    function startCapturePolling() {
+      if (state.capturePoll) {
+        clearInterval(state.capturePoll);
+      }
+
+      pollCaptureStatus();
+      state.capturePoll = setInterval(
+        pollCaptureStatus,
+        2500
+      );
+    }
+
+    function pollCaptureStatus() {
+      if (!state.captureSession || state.busy) {
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler((result) => {
+          renderRemoteCounts(result.counts);
+        })
+        .withFailureHandler((error) => {
+          if (state.capturePoll) {
+            clearInterval(state.capturePoll);
+            state.capturePoll = null;
+          }
+          showError(getErrorMessage(error));
+        })
+        .getCaptureSessionStatus(
+          state.captureSession.sessionId,
+          state.captureSession.token
+        );
+    }
+
+    function renderRemoteCounts(counts) {
+      FILE_KEYS.forEach((key) => {
+        const count = Number(counts && counts[key] || 0);
+        state.remoteCounts[key] = count;
+        document.getElementById(key + 'PhoneCount')
+          .textContent = count > 0
+            ? '휴대폰 촬영 ' + count + '장 연결됨'
+            : '';
+      });
+      updateFileCount();
+    }
+
+    function handleFileSelection(key, fileList) {
+      const files = Array.from(fileList || []);
+      const max = state.config
+        ? state.config.maxFilesPerCategory
+        : 5;
+
+      if (files.length > max) {
+        document.getElementById(key).value = '';
+        state.files[key] = [];
+        renderFileList(key);
+        showError('항목별 사진은 최대 ' + max + '장입니다.');
+        return;
+      }
+
+      const invalid = files.find(
+        (file) => !file.type.startsWith('image/')
+      );
+
+      if (invalid) {
+        document.getElementById(key).value = '';
+        state.files[key] = [];
+        renderFileList(key);
+        showError('이미지 파일만 선택할 수 있습니다.');
+        return;
+      }
+
+      state.files[key] = files;
+      renderFileList(key);
+      updateFileCount();
+      clearMessages();
+    }
+
+    function renderFileList(key) {
+      const list = document.getElementById(key + 'List');
+      list.innerHTML = '';
+
+      state.files[key].forEach((file) => {
+        const item = document.createElement('li');
+        item.textContent =
+          '• ' + file.name + ' · ' + formatBytes(file.size);
+        list.appendChild(item);
+      });
+    }
+
+    function updateFileCount() {
+      const count = FILE_KEYS.reduce(
+        (total, key) => {
+          return total +
+            state.files[key].length +
+            state.remoteCounts[key];
+        },
+        0
+      );
+      document.getElementById('fileCount').textContent =
+        '선택한 사진 ' + count + '장';
+    }
+
+    async function handleSubmit(event) {
+      event.preventDefault();
+
+      if (state.busy || !state.ready) {
+        return;
+      }
+
+      const form = event.currentTarget;
+
+      if (!form.reportValidity()) {
+        return;
+      }
+
+      if (
+        state.files.product.length +
+        state.remoteCounts.product === 0
+      ) {
+        showError('실물 사진을 한 장 이상 등록하세요.');
+        return;
+      }
+
+      clearMessages();
+      setBusy(true);
+
+      try {
+        const payload = {
+          author: valueOf('author'),
+          itemName: valueOf('itemName'),
+          modelMaker: valueOf('modelMaker'),
+          vendor: valueOf('vendor'),
+          amount: valueOf('amount').replace(/,/g, ''),
+          purchaseDate: valueOf('purchaseDate'),
+          manager: valueOf('manager'),
+          partNumber: valueOf('partNumber'),
+          storageLocation: valueOf('storageLocation'),
+          files: {},
+          captureSession: state.captureSession
+            ? {
+                sessionId: state.captureSession.sessionId,
+                token: state.captureSession.token,
+              }
+            : null,
+        };
+
+        for (const key of FILE_KEYS) {
+          payload.files[key] = [];
+
+          for (const file of state.files[key]) {
+            payload.files[key].push(
+              await prepareImage(file)
+            );
+          }
+        }
+
+        const totalBytes = FILE_KEYS.reduce(
+          (total, key) => {
+            return total + payload.files[key].reduce(
+              (sum, file) => {
+                return sum + estimateBase64Bytes(file.base64);
+              },
+              0
+            );
+          },
+          0
+        );
+
+        if (
+          state.config &&
+          totalBytes > state.config.maxTotalBytes
+        ) {
+          throw new Error(
+            '전체 사진 용량은 25MB를 넘을 수 없습니다.'
+          );
+        }
+
+        google.script.run
+          .withSuccessHandler(handleSuccess)
+          .withFailureHandler((error) => {
+            setBusy(false);
+            showError(getErrorMessage(error));
+          })
+          .registerAsset(payload);
+      } catch (error) {
+        setBusy(false);
+        showError(getErrorMessage(error));
+      }
+    }
+
+    function handleSuccess(result) {
+      setBusy(false);
+
+      const success = document.getElementById(
+        'successMessage'
+      );
+      success.innerHTML =
+        '<strong>관리번호 ' +
+        escapeHtml(String(result.managementNumber)) +
+        '번 등록 완료</strong><br>' +
+        escapeHtml(result.folderName) +
+        '<br><a href="' +
+        encodeURI(result.folderUrl) +
+        '" target="_blank" rel="noopener">사진 폴더 열기</a>';
+      success.classList.add('show');
+
+      document.getElementById('assetForm').reset();
+      document.getElementById('storageLocation').value =
+        '고색연구소';
+      document.getElementById('purchaseDate').value =
+        state.config.today;
+
+      FILE_KEYS.forEach((key) => {
+        state.files[key] = [];
+        renderFileList(key);
+      });
+
+      if (state.capturePoll) {
+        clearInterval(state.capturePoll);
+        state.capturePoll = null;
+      }
+      state.captureSession = null;
+      renderRemoteCounts({
+        invoice: 0,
+        purchaseOrder: 0,
+        taxInvoice: 0,
+        product: 0,
+      });
+      document.getElementById('qrPanel')
+        .classList.remove('show');
+      document.getElementById('qrCode').innerHTML = '';
+      const phoneButton = document.getElementById(
+        'connectPhoneButton'
+      );
+      phoneButton.textContent = '휴대폰 연결 QR 만들기';
+
+      updateFileCount();
+      document.getElementById('nextNumber').textContent =
+        '예정 관리번호 ' +
+        (Number(result.managementNumber) + 1);
+      success.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+
+    async function prepareImage(file) {
+      const maxFileBytes = state.config
+        ? state.config.maxFileBytes
+        : 8 * 1024 * 1024;
+
+      let prepared = null;
+
+      try {
+        prepared = await compressImage(file);
+      } catch (error) {
+        prepared = await readOriginalFile(file);
+      }
+
+      if (
+        estimateBase64Bytes(prepared.base64) >
+        maxFileBytes
+      ) {
+        throw new Error(
+          file.name + ' 파일이 8MB를 초과합니다.'
+        );
+      }
+
+      return prepared;
+    }
+
+    async function compressImage(file) {
+      if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
+        return readOriginalFile(file);
+      }
+
+      const bitmap = await createImageBitmap(file);
+      const maxDimension = 2200;
+      const scale = Math.min(
+        1,
+        maxDimension / Math.max(bitmap.width, bitmap.height)
+      );
+      const width = Math.max(1, Math.round(bitmap.width * scale));
+      const height = Math.max(
+        1,
+        Math.round(bitmap.height * scale)
+      );
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+
+      canvas.width = width;
+      canvas.height = height;
+      context.drawImage(bitmap, 0, 0, width, height);
+      bitmap.close();
+
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (result) => {
+            if (result) {
+              resolve(result);
+            } else {
+              reject(new Error('사진 압축 실패'));
+            }
+          },
+          'image/jpeg',
+          0.82
+        );
+      });
+
+      return {
+        name: replaceExtension(file.name, 'jpg'),
+        mimeType: 'image/jpeg',
+        base64: await blobToBase64(blob),
+      };
+    }
+
+    async function readOriginalFile(file) {
+      return {
+        name: file.name,
+        mimeType: file.type || 'image/jpeg',
+        base64: await blobToBase64(file),
+      };
+    }
+
+    function blobToBase64(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          resolve(String(reader.result).split(',')[1] || '');
+        };
+        reader.onerror = () => {
+          reject(new Error('사진을 읽지 못했습니다.'));
+        };
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    function replaceExtension(name, extension) {
+      const base = String(name || 'photo')
+        .replace(/\.[^.]+$/, '');
+      return base + '.' + extension;
+    }
+
+    function estimateBase64Bytes(base64) {
+      const text = String(base64 || '');
+      const padding = text.endsWith('==')
+        ? 2
+        : text.endsWith('=')
+          ? 1
+          : 0;
+      return Math.max(
+        0,
+        Math.floor(text.length * 3 / 4) - padding
+      );
+    }
+
+    function setBusy(busy) {
+      state.busy = busy;
+      document.getElementById('loadingOverlay')
+        .classList.toggle('show', busy);
+      document.getElementById('submitButton').disabled =
+        busy || !state.ready;
+    }
+
+    function valueOf(id) {
+      return document.getElementById(id).value.trim();
+    }
+
+    function showError(message) {
+      const error = document.getElementById('errorMessage');
+      error.textContent = message;
+      error.classList.add('show');
+      error.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+
+    function clearMessages() {
+      document.getElementById('errorMessage')
+        .classList.remove('show');
+      document.getElementById('successMessage')
+        .classList.remove('show');
+    }
+
+    function getErrorMessage(error) {
+      return String(
+        error && error.message ? error.message : error
+      ).replace(/^Exception:\s*/i, '');
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024 * 1024) {
+        return Math.max(1, Math.round(bytes / 1024)) + 'KB';
+      }
+
+      return (bytes / 1024 / 1024).toFixed(1) + 'MB';
+    }
+
+    function escapeHtml(value) {
+      return value.replace(/[&<>"']/g, (character) => {
+        return {
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;',
+        }[character];
+      });
+    }
+  </script>
+</body>
+</html>
