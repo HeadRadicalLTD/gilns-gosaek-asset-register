@@ -37,11 +37,15 @@ Google Apps Script로 실행하는 모바일 자산등록 웹앱입니다.
 ## 배포 준비
 
 1. 기존 엑셀 원본은 그대로 보관합니다.
-2. 엑셀을 Google Sheets 형식으로 변환합니다.
-3. 변환한 파일에 `고색연구소` 시트가 있는지 확인합니다.
-4. Apps Script 프로젝트에 네 파일을 등록합니다.
-5. `discoverAndConfigureSystem()`을 한 번 실행합니다.
+2. Apps Script 프로젝트에 네 파일을 등록합니다.
+3. `discoverAndConfigureSystem()`을 한 번 실행합니다.
+4. 원본 엑셀이 하나면 Google Sheets 사본이 생성됩니다.
+5. 생성된 사본의 `고색연구소` 시트에 연결됩니다.
 6. 웹앱을 소유자 권한으로 배포합니다.
+
+## 배포 주소
+
+- [고색 자산등록 웹앱](https://script.google.com/macros/s/AKfycbxubcW2BW4tKQjFl5PJ0cbtTf7niLVlfr54hcwAx3ozkUQ8bEo3_SU7jlhfyOXV4ZXS/exec)
 
 ## 휴대폰 촬영
 

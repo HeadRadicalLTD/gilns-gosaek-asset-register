@@ -138,6 +138,33 @@ function discoverAndConfigureSystem() {
     );
   }
 
+  let sheets = collectCompatibleSpreadsheets_(root);
+
+  if (sheets.length === 0) {
+    sheets = [convertSingleExcelWorkbook_(root)];
+  }
+
+  if (sheets.length !== 1) {
+    throw new Error(
+      '고색연구소 탭이 있는 Google Sheets 파일이 ' +
+      '여러 개입니다. 사용할 파일만 남겨 주세요.'
+    );
+  }
+
+  return configureSystem(
+    photoFolders[0].getId(),
+    sheets[0].getId()
+  );
+}
+
+/**
+ * 고색연구소 탭이 있는 Google Sheets를 찾습니다.
+ * 정확한 시스템 파일명이 있으면 그 파일을 우선합니다.
+ *
+ * @param {GoogleAppsScript.Drive.Folder} root 최상위 폴더
+ * @return {GoogleAppsScript.Drive.File[]} 사용 가능한 파일
+ */
+function collectCompatibleSpreadsheets_(root) {
   const exactNameSheets = [];
   const compatibleSheets = [];
   const files = root.getFilesByType(MimeType.GOOGLE_SHEETS);
@@ -155,21 +182,66 @@ function discoverAndConfigureSystem() {
     }
   }
 
-  const sheets = exactNameSheets.length === 1
-    ? exactNameSheets
-    : compatibleSheets;
+  if (exactNameSheets.length === 1) {
+    return exactNameSheets;
+  }
 
-  if (sheets.length !== 1) {
+  return compatibleSheets;
+}
+
+/**
+ * 최상위 폴더의 엑셀 원본 한 개를 Google Sheets로 변환합니다.
+ * 원본 파일은 변경하거나 삭제하지 않습니다.
+ *
+ * @param {GoogleAppsScript.Drive.Folder} root 최상위 폴더
+ * @return {GoogleAppsScript.Drive.File} 변환된 Google Sheets
+ */
+function convertSingleExcelWorkbook_(root) {
+  const excelFiles = [];
+  const files = root.getFiles();
+
+  while (files.hasNext()) {
+    const file = files.next();
+    const name = file.getName();
+    const mimeType = file.getMimeType();
+    const isExcelMime = mimeType === MimeType.MICROSOFT_EXCEL;
+    const isExcelName = /\.(xlsx|xls)$/i.test(name);
+
+    if (isExcelMime || isExcelName) {
+      excelFiles.push(file);
+    }
+  }
+
+  if (excelFiles.length !== 1) {
     throw new Error(
-      '최상위 폴더 안에 고색연구소 탭이 있는 ' +
-      'Google Sheets 파일이 정확히 하나여야 합니다.'
+      'Google Sheets 변환 대상 엑셀 파일이 ' +
+      '최상위 폴더에 정확히 하나여야 합니다.'
     );
   }
 
-  return configureSystem(
-    photoFolders[0].getId(),
-    sheets[0].getId()
+  const source = excelFiles[0];
+  const created = Drive.Files.create(
+    {
+      name: APP.spreadsheetName,
+      mimeType: MimeType.GOOGLE_SHEETS,
+      parents: [root.getId()],
+    },
+    source.getBlob(),
+    {
+      fields: 'id,name,mimeType',
+    }
   );
+
+  const spreadsheet = SpreadsheetApp.openById(created.id);
+
+  if (!spreadsheet.getSheetByName(APP.sheetName)) {
+    DriveApp.getFileById(created.id).setTrashed(true);
+    throw new Error(
+      '변환된 Google Sheets에 고색연구소 탭이 없습니다.'
+    );
+  }
+
+  return DriveApp.getFileById(created.id);
 }
 
 function getPublicConfig() {

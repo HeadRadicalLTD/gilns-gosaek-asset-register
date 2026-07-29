@@ -6,6 +6,19 @@ const source = fs.readFileSync(
   new URL("../google_apps_script/Code.gs", import.meta.url),
   "utf8",
 );
+const manifest = JSON.parse(fs.readFileSync(
+  new URL(
+    "../google_apps_script/appsscript.json",
+    import.meta.url,
+  ),
+  "utf8",
+));
+
+assert.match(source, /Drive\.Files\.create/);
+assert.equal(
+  manifest.dependencies.enabledAdvancedServices[0].serviceId,
+  "drive",
+);
 
 const context = {
   console,
