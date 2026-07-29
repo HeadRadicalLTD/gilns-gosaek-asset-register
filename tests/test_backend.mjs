@@ -48,6 +48,7 @@ vm.runInContext(
     getNextAssetPosition_,
     getContextWithAutoDiscovery_,
     getPublicWebAppUrl_,
+    getMobileBridgeUrl_,
     assertTargetRowEmpty_,
     pad2_,
   };`,
@@ -79,6 +80,10 @@ assert.match(
   /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/,
 );
 assert.doesNotMatch(api.getPublicWebAppUrl_(), /\/dev$/);
+assert.match(
+  api.getMobileBridgeUrl_(),
+  /^https:\/\/headradicalltd\.github\.io\//,
+);
 
 const managementValues = [
   ["69"],

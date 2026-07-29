@@ -4,6 +4,9 @@ const APP = Object.freeze({
     'https://script.google.com/macros/s/' +
     'AKfycbwRjRFFFj6FKGDV96Qol59PXvfGvzzFLHmw5eVoBNA8IMIFM2A8TOkHt74dB5yvrH0c' +
     '/exec',
+  mobileBridgeUrl:
+    'https://headradicalltd.github.io/' +
+    'gilns-gosaek-asset-register/mobile.html',
   rootFolderName: '길앤에스_고색_자산관리',
   photoFolderName: '비품 사진',
   spreadsheetName: '고색 자산관리 대장',
@@ -327,7 +330,10 @@ function createCaptureSession() {
       ok: true,
       sessionId: sessionId,
       token: token,
-      captureUrl: serviceUrl +
+      captureUrl: getMobileBridgeUrl_() +
+        '#capture=' + encodeURIComponent(sessionId) +
+        '&token=' + encodeURIComponent(token),
+      directCaptureUrl: serviceUrl +
         '?capture=' + encodeURIComponent(sessionId) +
         '&token=' + encodeURIComponent(token),
       expiresAt: metadata.expiresAt,
@@ -354,6 +360,27 @@ function getPublicWebAppUrl_() {
     .test(configuredUrl)) {
     throw new Error(
       '공개 웹앱 주소 설정이 올바르지 않습니다.'
+    );
+  }
+
+  return configuredUrl;
+}
+
+/**
+ * Android의 Apps Script 링크 연결 오류를 우회하는
+ * GitHub Pages 중간 주소를 반환합니다.
+ *
+ * @return {string} 공개 모바일 중간 페이지 주소
+ */
+function getMobileBridgeUrl_() {
+  const configuredUrl = String(
+    APP.mobileBridgeUrl || ''
+  ).trim();
+
+  if (!/^https:\/\/headradicalltd\.github\.io\/[^#?]+$/
+    .test(configuredUrl)) {
+    throw new Error(
+      '휴대폰 연결 중간 주소 설정이 올바르지 않습니다.'
     );
   }
 
