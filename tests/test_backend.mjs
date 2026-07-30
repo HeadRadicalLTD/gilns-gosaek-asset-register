@@ -52,6 +52,7 @@ vm.runInContext(
     getContextWithAutoDiscovery_,
     getSelectableSheetNames_,
     isHistorySheetName_,
+    findHeaderColumn_,
     getPublicWebAppUrl_,
     getMobileBridgeUrl_,
     assertTargetRowEmpty_,
@@ -96,6 +97,33 @@ assert.deepEqual(
     }),
   )),
   ["고색연구소", "음성공장"],
+);
+assert.equal(
+  api.findHeaderColumn_({
+    getLastColumn() {
+      return 11;
+    },
+    getRange() {
+      return {
+        getDisplayValues() {
+          return [[
+            "",
+            "관리번호",
+            "품목",
+            "모델명",
+            "구입처",
+            "금액",
+            "구입일자",
+            "관리자",
+            "P/N",
+            "보관 장소",
+            "비고",
+          ]];
+        },
+      };
+    },
+  }, "비고"),
+  11,
 );
 assert.match(
   api.getPublicWebAppUrl_(),
@@ -190,6 +218,7 @@ const validPayload = api.normalizePayload_({
   vendor: "테스트 상사",
   purchaseDate: "2026-07-29",
   storageLocation: "고색연구소",
+  remarks: "신규 장비",
   files: {
     product: [{
       name: "asset.jpg",
@@ -202,6 +231,7 @@ const validPayload = api.normalizePayload_({
 assert.doesNotThrow(() => api.validatePayload_(validPayload));
 assert.equal(validPayload.author, "이은범");
 assert.equal(validPayload.sheetName, "고색연구소");
+assert.equal(validPayload.remarks, "신규 장비");
 assert.equal(validPayload.files.product.length, 1);
 
 assert.throws(

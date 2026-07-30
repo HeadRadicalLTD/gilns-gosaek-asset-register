@@ -1,5 +1,5 @@
 const APP = Object.freeze({
-  title: '길앤에스 고색 자산등록',
+  title: '길앤에스 자산등록',
   publicWebAppUrl:
     'https://script.google.com/macros/s/' +
     'AKfycbxubcW2BW4tKQjFl5PJ0cbtTf7niLVlfr54hcwAx3ozkUQ8bEo3_SU7jlhfyOXV4ZXS' +
@@ -18,7 +18,7 @@ const APP = Object.freeze({
   headerRow: 6,
   firstDataRow: 7,
   firstDataColumn: 2,
-  dataColumnCount: 9,
+  dataColumnCount: 10,
   historyColumnCount: 13,
   timeZone: 'Asia/Seoul',
   maxFilesPerCategory: 5,
@@ -1049,6 +1049,215 @@ function isHistorySheetName_(sheetName) {
     .indexOf('등록이력') !== -1;
 }
 
+function synchronizeRemarksColumns_() {
+  const lock = LockService.getScriptLock();
+  let hasLock = false;
+
+  try {
+    lock.waitLock(30000);
+    hasLock = true;
+
+    const context = getContextWithAutoDiscovery_(false);
+    const spreadsheet = context.spreadsheet;
+    const referenceSheet = spreadsheet.getSheetByName(
+      APP.sheetName
+    );
+
+    if (!referenceSheet) {
+      throw new Error('고색연구소 시트를 찾을 수 없습니다.');
+    }
+
+    const remarksColumn = findHeaderColumn_(
+      referenceSheet,
+      '비고'
+    );
+
+    if (!remarksColumn) {
+      throw new Error(
+        '고색연구소 시트에서 비고 헤더를 찾을 수 없습니다.'
+      );
+    }
+
+    const plans = [];
+    const skipped = [];
+    const conflicts = [];
+
+    getSelectableSheetNames_(spreadsheet)
+      .forEach(function (sheetName) {
+        const sheet = spreadsheet.getSheetByName(sheetName);
+
+        if (sheetName === referenceSheet.getName()) {
+          skipped.push(sheetName);
+          return;
+        }
+
+        const existingRemarksColumn = findHeaderColumn_(
+          sheet,
+          '비고'
+        );
+
+        if (existingRemarksColumn === remarksColumn) {
+          skipped.push(sheetName);
+          return;
+        }
+
+        if (existingRemarksColumn) {
+          conflicts.push(
+            sheetName + ': 비고 열 위치가 다릅니다.'
+          );
+          return;
+        }
+
+        plans.push({
+          sheet: sheet,
+          sheetName: sheetName,
+        });
+      });
+
+    if (conflicts.length) {
+      throw new Error(
+        '비고 열을 추가하지 못한 시트가 있습니다. ' +
+        conflicts.join(' / ')
+      );
+    }
+
+    const referenceHeader = referenceSheet.getRange(
+      APP.headerRow,
+      remarksColumn
+    );
+    plans.forEach(function (plan) {
+      const sheet = plan.sheet;
+
+      if (sheet.getMaxColumns() < remarksColumn) {
+        sheet.insertColumnsAfter(
+          sheet.getMaxColumns(),
+          remarksColumn - sheet.getMaxColumns()
+        );
+      }
+
+      const targetHeader = sheet.getRange(
+        APP.headerRow,
+        remarksColumn
+      );
+      referenceHeader.copyTo(
+        targetHeader,
+        SpreadsheetApp.CopyPasteType.PASTE_FORMAT,
+        false
+      );
+      targetHeader.setValue('비고');
+
+      sheet.setColumnWidth(
+        remarksColumn,
+        referenceSheet.getColumnWidth(remarksColumn)
+      );
+    });
+
+    SpreadsheetApp.flush();
+
+    return {
+      ok: true,
+      remarksColumn: remarksColumn,
+      updatedSheets: plans.map(function (plan) {
+        return plan.sheetName;
+      }),
+      skippedSheets: skipped,
+    };
+  } finally {
+    if (hasLock) {
+      lock.releaseLock();
+    }
+  }
+}
+
+function findHeaderColumn_(sheet, headerName) {
+  const lastColumn = Math.max(sheet.getLastColumn(), 1);
+  const headers = sheet
+    .getRange(APP.headerRow, 1, 1, lastColumn)
+    .getDisplayValues()[0];
+  const normalizedHeader = String(headerName || '')
+    .replace(/\s/g, '');
+
+  for (let index = 0; index < headers.length; index += 1) {
+    if (
+      String(headers[index] || '').replace(/\s/g, '') ===
+      normalizedHeader
+    ) {
+      return index + 1;
+    }
+  }
+
+  return 0;
+}
+
+function hasColumnContent_(sheet, column) {
+  const lastRow = Math.max(sheet.getLastRow(), APP.headerRow);
+  const values = sheet
+    .getRange(
+      APP.headerRow,
+      column,
+      lastRow - APP.headerRow + 1,
+      1
+    )
+    .getDisplayValues();
+
+  return values.some(function (row) {
+    return String(row[0] || '').trim() !== '';
+  });
+}
+
+function inspectRemarksColumns_() {
+  const context = getContextWithAutoDiscovery_(false);
+  const spreadsheet = context.spreadsheet;
+  const referenceSheet = spreadsheet.getSheetByName(
+    APP.sheetName
+  );
+  const remarksColumn = findHeaderColumn_(
+    referenceSheet,
+    '비고'
+  );
+
+  return {
+    remarksColumn: remarksColumn,
+    sheets: getSelectableSheetNames_(spreadsheet)
+      .map(function (sheetName) {
+        const sheet = spreadsheet.getSheetByName(sheetName);
+        const lastRow = Math.max(
+          sheet.getLastRow(),
+          APP.headerRow
+        );
+        const values = sheet
+          .getRange(
+            APP.headerRow,
+            remarksColumn,
+            lastRow - APP.headerRow + 1,
+            1
+          )
+          .getDisplayValues();
+        const nonEmpty = [];
+
+        values.forEach(function (row, index) {
+          const value = String(row[0] || '').trim();
+
+          if (value && nonEmpty.length < 20) {
+            nonEmpty.push({
+              row: APP.headerRow + index,
+              value: value,
+            });
+          }
+        });
+
+        return {
+          sheetName: sheetName,
+          currentRemarksColumn: findHeaderColumn_(
+            sheet,
+            '비고'
+          ),
+          nonEmptyAtReferenceColumn: nonEmpty,
+        };
+      }),
+  };
+}
+
 function getNextAssetPosition_(sheet) {
   const lastRow = Math.max(
     sheet.getLastRow(),
@@ -1144,6 +1353,7 @@ function writeAssetRow_(sheet, nextAsset, payload) {
     payload.manager || '-',
     payload.partNumber || '',
     payload.storageLocation,
+    payload.remarks || '',
   ]]);
 
   sheet
@@ -1301,6 +1511,7 @@ function normalizePayload_(request) {
       source.storageLocation,
       100
     ),
+    remarks: cleanText_(source.remarks, 500),
     files: {
       invoice: normalizeFiles_(files.invoice),
       purchaseOrder: normalizeFiles_(files.purchaseOrder),

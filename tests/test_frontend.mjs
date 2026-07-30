@@ -21,6 +21,7 @@ assert.doesNotThrow(() => new vm.Script(scripts[0]));
   'id="vendor"',
   'id="purchaseDate"',
   'id="storageLocation"',
+  'id="remarks"',
   'id="invoice"',
   'id="purchaseOrder"',
   'id="taxInvoice"',
