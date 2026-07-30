@@ -17,6 +17,13 @@ const manifest = JSON.parse(fs.readFileSync(
 assert.match(source, /Drive\.Files\.create/);
 assert.match(source, /function doPost\(event\)/);
 assert.match(source, /gilns-mobile-upload/);
+assert.match(source, /window\.top\.postMessage/);
+assert.doesNotMatch(source, /window\.parent\.postMessage/);
+assert.match(source, /Date\.UTC\(/);
+assert.match(
+  source,
+  /Utilities\.formatDate\(\s*new Date\(\),\s*APP\.timeZone,\s*'yyyy-MM-dd HH:mm:ss'/
+);
 assert.match(source, /XFrameOptionsMode\.ALLOWALL/);
 assert.equal(
   manifest.dependencies.enabledAdvancedServices[0].serviceId,

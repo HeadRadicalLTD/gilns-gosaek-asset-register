@@ -139,7 +139,7 @@ function createPostMessageResponse_(requestId, result) {
     '<!doctype html><html><head>',
     '<meta charset="utf-8"></head><body>',
     '<script>',
-    'window.parent.postMessage(',
+    'window.top.postMessage(',
     message,
     ', "*");',
     '</script></body></html>',
@@ -982,6 +982,13 @@ function getContext_(createHistory, selectedSheetName) {
 
   const photoRoot = DriveApp.getFolderById(photoRootId);
   const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+
+  if (
+    spreadsheet.getSpreadsheetTimeZone() !== APP.timeZone
+  ) {
+    spreadsheet.setSpreadsheetTimeZone(APP.timeZone);
+  }
+
   const sheet = getSelectableSheet_(spreadsheet, sheetName);
 
   if (createHistory) {
@@ -1339,9 +1346,19 @@ function writeAssetRow_(sheet, nextAsset, payload) {
     );
   }
 
-  const purchaseDate = new Date(
-    payload.purchaseDate + 'T00:00:00+09:00'
-  );
+  const purchaseDateParts = payload.purchaseDate
+    .split('-')
+    .map(function (value) {
+      return Number(value);
+    });
+  const purchaseDate = new Date(Date.UTC(
+    purchaseDateParts[0],
+    purchaseDateParts[1] - 1,
+    purchaseDateParts[2],
+    12,
+    0,
+    0
+  ));
 
   target.setValues([[
     nextAsset.managementNumber,
@@ -1409,7 +1426,11 @@ function appendHistory_(
     Utilities.getUuid(),
     managementNumber,
     payload.author,
-    new Date(),
+    Utilities.formatDate(
+      new Date(),
+      APP.timeZone,
+      'yyyy-MM-dd HH:mm:ss'
+    ),
     payload.itemName,
     payload.vendor,
     payload.amount === '' ? '' : payload.amount,
