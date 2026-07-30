@@ -2,7 +2,7 @@ const APP = Object.freeze({
   title: '길앤에스 고색 자산등록',
   publicWebAppUrl:
     'https://script.google.com/macros/s/' +
-    'AKfycbwRjRFFFj6FKGDV96Qol59PXvfGvzzFLHmw5eVoBNA8IMIFM2A8TOkHt74dB5yvrH0c' +
+    'AKfycbxubcW2BW4tKQjFl5PJ0cbtTf7niLVlfr54hcwAx3ozkUQ8bEo3_SU7jlhfyOXV4ZXS' +
     '/exec',
   mobileBridgeUrl:
     'https://headradicalltd.github.io/' +
@@ -328,10 +328,16 @@ function convertSingleExcelWorkbook_(root) {
   return DriveApp.getFileById(created.id);
 }
 
-function getPublicConfig() {
+function getPublicConfig(selectedSheetName) {
   try {
-    const context = getContextWithAutoDiscovery_(false);
+    const context = getContextWithAutoDiscovery_(
+      false,
+      selectedSheetName
+    );
     const nextAsset = getNextAssetPosition_(context.sheet);
+    const sheetNames = getSelectableSheetNames_(
+      context.spreadsheet
+    );
 
     return {
       ok: true,
@@ -342,6 +348,7 @@ function getPublicConfig() {
       maxTotalBytes: APP.maxTotalBytes,
       photoFolderName: context.photoRoot.getName(),
       sheetName: context.sheet.getName(),
+      sheetNames: sheetNames,
       today: Utilities.formatDate(
         new Date(),
         APP.timeZone,
@@ -835,7 +842,10 @@ function registerAsset(request) {
       capturedSnapshot
     );
 
-    const context = getContextWithAutoDiscovery_(true);
+    const context = getContextWithAutoDiscovery_(
+      true,
+      payload.sheetName
+    );
     const nextAsset = getNextAssetPosition_(context.sheet);
     assertTargetRowEmpty_(context.sheet, nextAsset.row);
 
@@ -892,6 +902,7 @@ function registerAsset(request) {
     return {
       ok: true,
       managementNumber: nextAsset.managementNumber,
+      sheetName: context.sheet.getName(),
       row: nextAsset.row,
       folderName: assetFolder.getName(),
       folderUrl: assetFolder.getUrl(),
@@ -949,7 +960,7 @@ function registerAsset(request) {
   }
 }
 
-function getContext_(createHistory) {
+function getContext_(createHistory, selectedSheetName) {
   const properties = PropertiesService.getScriptProperties();
   const photoRootId = properties.getProperty(
     'PHOTO_ROOT_FOLDER_ID'
@@ -957,8 +968,11 @@ function getContext_(createHistory) {
   const spreadsheetId = properties.getProperty(
     'SPREADSHEET_ID'
   );
-  const sheetName = properties.getProperty('SHEET_NAME') ||
+  const configuredSheetName =
+    properties.getProperty('SHEET_NAME') ||
     APP.sheetName;
+  const sheetName = cleanText_(selectedSheetName, 100) ||
+    configuredSheetName;
 
   if (!photoRootId || !spreadsheetId) {
     throw new Error(
@@ -968,11 +982,7 @@ function getContext_(createHistory) {
 
   const photoRoot = DriveApp.getFolderById(photoRootId);
   const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-  const sheet = spreadsheet.getSheetByName(sheetName);
-
-  if (!sheet) {
-    throw new Error('고색연구소 시트를 찾을 수 없습니다.');
-  }
+  const sheet = getSelectableSheet_(spreadsheet, sheetName);
 
   if (createHistory) {
     ensureHistorySheet_(spreadsheet);
@@ -985,9 +995,12 @@ function getContext_(createHistory) {
   };
 }
 
-function getContextWithAutoDiscovery_(createHistory) {
+function getContextWithAutoDiscovery_(
+  createHistory,
+  selectedSheetName
+) {
   try {
-    return getContext_(createHistory);
+    return getContext_(createHistory, selectedSheetName);
   } catch (error) {
     const message = String(
       error && error.message ? error.message : error
@@ -998,8 +1011,42 @@ function getContextWithAutoDiscovery_(createHistory) {
     }
 
     discoverAndConfigureSystem();
-    return getContext_(createHistory);
+    return getContext_(createHistory, selectedSheetName);
   }
+}
+
+function getSelectableSheetNames_(spreadsheet) {
+  return spreadsheet.getSheets()
+    .map(function (sheet) {
+      return sheet.getName();
+    })
+    .filter(function (sheetName) {
+      return !isHistorySheetName_(sheetName);
+    });
+}
+
+function getSelectableSheet_(spreadsheet, sheetName) {
+  const cleanName = cleanText_(sheetName, 100);
+
+  if (!cleanName || isHistorySheetName_(cleanName)) {
+    throw new Error('등록할 자산 관리 시트를 선택하세요.');
+  }
+
+  const sheet = spreadsheet.getSheetByName(cleanName);
+
+  if (!sheet) {
+    throw new Error(
+      '선택한 자산 관리 시트를 찾을 수 없습니다.'
+    );
+  }
+
+  return sheet;
+}
+
+function isHistorySheetName_(sheetName) {
+  return String(sheetName || '')
+    .replace(/\s/g, '')
+    .indexOf('등록이력') !== -1;
 }
 
 function getNextAssetPosition_(sheet) {
@@ -1241,6 +1288,7 @@ function normalizePayload_(request) {
   const files = source.files || {};
 
   return {
+    sheetName: cleanText_(source.sheetName, 100),
     author: cleanText_(source.author, 40),
     itemName: cleanText_(source.itemName, 100),
     modelMaker: cleanText_(source.modelMaker, 150),
@@ -1276,6 +1324,7 @@ function normalizePayload_(request) {
 
 function validatePayload_(payload) {
   const required = [
+    ['자산 관리 목록표', payload.sheetName],
     ['작성자', payload.author],
     ['품목', payload.itemName],
     ['구입처', payload.vendor],

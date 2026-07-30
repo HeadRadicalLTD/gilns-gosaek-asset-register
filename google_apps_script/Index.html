@@ -48,7 +48,8 @@
     }
 
     button,
-    input {
+    input,
+    select {
       font: inherit;
     }
 
@@ -213,7 +214,8 @@
 
     input[type="text"],
     input[type="date"],
-    input[type="number"] {
+    input[type="number"],
+    select {
       width: 100%;
       min-height: 48px;
       padding: 11px 13px;
@@ -227,7 +229,8 @@
         box-shadow 0.18s ease;
     }
 
-    input:focus {
+    input:focus,
+    select:focus {
       border-color: var(--blue);
       box-shadow: 0 0 0 4px rgba(49, 107, 232, 0.11);
     }
@@ -582,6 +585,27 @@
       <section class="card">
         <div class="card-heading">
           <div>
+            <h2>자산 관리 목록표</h2>
+            <p>
+              등록할 공장 또는 연구소 시트를 선택하세요.
+            </p>
+          </div>
+          <span class="step-badge">00</span>
+        </div>
+
+        <div class="field">
+          <label for="sheetName">
+            등록할 시트 <span class="required">*</span>
+          </label>
+          <select id="sheetName" name="sheetName" disabled required>
+            <option value="">시트 목록을 불러오는 중</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-heading">
+          <div>
             <h2>자산 기본정보</h2>
             <p>
               별표가 있는 항목은 반드시 입력하세요.
@@ -916,6 +940,9 @@
           .replace(/[^\d]/g, '')
           .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
       });
+      document
+        .getElementById('sheetName')
+        .addEventListener('change', handleSheetChange);
 
       FILE_KEYS.forEach((key) => {
         document
@@ -936,7 +963,53 @@
             return;
           }
 
-          state.ready = true;
+          renderSheetOptions(
+            config.sheetNames,
+            config.sheetName
+          );
+          applyConfig(config);
+        })
+        .withFailureHandler((error) => {
+          setSystemError(getErrorMessage(error));
+        })
+        .getPublicConfig();
+    }
+
+    function renderSheetOptions(sheetNames, selectedSheetName) {
+      const select = document.getElementById('sheetName');
+      select.innerHTML = '';
+
+      (sheetNames || []).forEach((sheetName) => {
+        const option = document.createElement('option');
+        option.value = sheetName;
+        option.textContent = sheetName;
+        option.selected = sheetName === selectedSheetName;
+        select.appendChild(option);
+      });
+
+      select.disabled = select.options.length === 0;
+    }
+
+    function applyConfig(config) {
+      const previousSheetName = state.config
+        ? state.config.sheetName
+        : '';
+      state.config = config;
+      state.ready = true;
+
+      const storageLocation = document.getElementById(
+        'storageLocation'
+      );
+
+      if (
+        !storageLocation.value ||
+        storageLocation.value === previousSheetName
+      ) {
+        storageLocation.value = config.sheetName;
+      }
+
+      document.getElementById('sheetName').value =
+        config.sheetName;
           document.getElementById('purchaseDate').value =
             config.today;
           document.getElementById('systemStatus').textContent =
@@ -947,11 +1020,36 @@
             .classList.add('ready');
           document.getElementById('submitButton').disabled =
             false;
+    }
+
+    function handleSheetChange(event) {
+      const sheetName = event.target.value;
+
+      if (!sheetName || state.busy) {
+        return;
+      }
+
+      state.ready = false;
+      document.getElementById('submitButton').disabled = true;
+      document.getElementById('systemStatus').textContent =
+        '선택한 시트 확인 중';
+      document.getElementById('nextNumber').textContent =
+        '관리번호 확인 중';
+      clearMessages();
+
+      google.script.run
+        .withSuccessHandler((config) => {
+          if (!config.ok) {
+            setSystemError(config.message);
+            return;
+          }
+
+          applyConfig(config);
         })
         .withFailureHandler((error) => {
           setSystemError(getErrorMessage(error));
         })
-        .getPublicConfig();
+        .getPublicConfig(sheetName);
     }
 
     function hasAppsScriptBridge() {
@@ -1168,6 +1266,7 @@
 
       try {
         const payload = {
+          sheetName: valueOf('sheetName'),
           author: valueOf('author'),
           itemName: valueOf('itemName'),
           modelMaker: valueOf('modelMaker'),

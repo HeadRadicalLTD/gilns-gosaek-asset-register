@@ -50,6 +50,8 @@ vm.runInContext(
     getFileExtension_,
     getNextAssetPosition_,
     getContextWithAutoDiscovery_,
+    getSelectableSheetNames_,
+    isHistorySheetName_,
     getPublicWebAppUrl_,
     getMobileBridgeUrl_,
     assertTargetRowEmpty_,
@@ -78,6 +80,23 @@ assert.equal(api.estimateBase64Bytes_("aGVsbG8="), 5);
 assert.equal(api.getFileExtension_("photo.jpeg", "image/jpeg"), "jpeg");
 assert.equal(api.getFileExtension_("photo", "image/png"), "png");
 assert.equal(api.pad2_(3), "03");
+assert.equal(api.isHistorySheetName_("등록이력"), true);
+assert.equal(api.isHistorySheetName_("등록 이력"), true);
+assert.equal(api.isHistorySheetName_("고색연구소"), false);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(
+    api.getSelectableSheetNames_({
+      getSheets() {
+        return [
+          { getName: () => "고색연구소" },
+          { getName: () => "등록 이력" },
+          { getName: () => "음성공장" },
+        ];
+      },
+    }),
+  )),
+  ["고색연구소", "음성공장"],
+);
 assert.match(
   api.getPublicWebAppUrl_(),
   /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/,
@@ -165,6 +184,7 @@ assert.equal(
 assert.equal(discoveryCalls, 1);
 
 const validPayload = api.normalizePayload_({
+  sheetName: "고색연구소",
   author: " 이은범 ",
   itemName: "노트북",
   vendor: "테스트 상사",
@@ -181,6 +201,7 @@ const validPayload = api.normalizePayload_({
 
 assert.doesNotThrow(() => api.validatePayload_(validPayload));
 assert.equal(validPayload.author, "이은범");
+assert.equal(validPayload.sheetName, "고색연구소");
 assert.equal(validPayload.files.product.length, 1);
 
 assert.throws(

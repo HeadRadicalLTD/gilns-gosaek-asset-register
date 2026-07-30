@@ -14,7 +14,7 @@ assert.match(source, /gilns-mobile-upload/);
 assert.match(source, /Google 로그인 없이/);
 assert.match(
   source,
-  /AKfycbwRjRFFFj6FKGDV96Qol59PXvfGv/,
+  /AKfycbxubcW2BW4tKQjFl5PJ0cbtTf7ni/,
 );
 assert.doesNotMatch(source, /\/dev/);
 

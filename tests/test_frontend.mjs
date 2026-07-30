@@ -16,6 +16,7 @@ assert.doesNotThrow(() => new vm.Script(scripts[0]));
 
 [
   'id="author"',
+  'id="sheetName"',
   'id="itemName"',
   'id="vendor"',
   'id="purchaseDate"',
@@ -29,6 +30,7 @@ assert.doesNotThrow(() => new vm.Script(scripts[0]));
   ".createCaptureSession()",
   ".getCaptureSessionStatus(",
   ".registerAsset(payload)",
+  ".getPublicConfig(sheetName)",
 ].forEach((needle) => {
   assert.ok(
     html.includes(needle),
