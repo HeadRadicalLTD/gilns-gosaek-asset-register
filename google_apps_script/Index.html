@@ -7,7 +7,8 @@
     name="viewport"
     content="width=device-width, initial-scale=1"
   >
-  <title>길앤에스 자산등록</title>
+  <meta name="referrer" content="no-referrer">
+  <title>길앤에스 실물자산관리</title>
   <style>
     :root {
       color-scheme: light;
@@ -108,6 +109,20 @@
       line-height: 1.7;
     }
 
+    .home-link {
+      display: inline-flex;
+      align-items: center;
+      margin-bottom: 14px;
+      padding: 9px 13px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: 11px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
     .status-bar {
       display: flex;
       align-items: center;
@@ -121,6 +136,27 @@
       color: var(--muted);
       font-size: 14px;
       box-shadow: 0 4px 16px rgba(27, 39, 65, 0.04);
+    }
+
+    .status-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .asset-sheet-link {
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: var(--blue);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .asset-sheet-link:hover {
+      background: #2559c7;
     }
 
     .status-dot {
@@ -145,6 +181,52 @@
     form {
       display: grid;
       gap: 18px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .mode-switch {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #ffffff;
+      box-shadow: var(--shadow);
+    }
+
+    .mode-button {
+      min-height: 46px;
+      border: 0;
+      border-radius: 11px;
+      background: #eef1f6;
+      color: var(--muted);
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .mode-button.active {
+      background: var(--blue);
+      color: #ffffff;
+    }
+
+    .lookup-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+    }
+
+    .lookup-button {
+      min-width: 120px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--navy);
+      color: #ffffff;
+      font-weight: 900;
+      cursor: pointer;
     }
 
     .card {
@@ -197,6 +279,25 @@
     .field {
       display: grid;
       gap: 7px;
+    }
+
+    .field-label-row {
+      display: flex;
+      min-height: 18px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .field-meta {
+      max-width: 62%;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.2;
+      text-align: right;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .field.full {
@@ -311,6 +412,33 @@
       font-weight: 800;
     }
 
+    .missing-photo-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 8px 11px;
+      border: 1px solid #d7dfed;
+      border-radius: 10px;
+      background: #ffffff;
+      color: #42506a;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .missing-photo-option input {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: var(--blue);
+    }
+
+    .missing-photo-option:has(input:disabled) {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
     .file-list {
       display: grid;
       gap: 5px;
@@ -351,6 +479,95 @@
 
     .summary strong {
       color: var(--ink);
+    }
+
+    .photo-summary {
+      padding: 13px 15px;
+      border: 2px solid #3269e8;
+      border-radius: 12px;
+      background: #eef4ff;
+      color: #214caa;
+      cursor: pointer;
+      transition: background 0.18s ease, transform 0.18s ease;
+    }
+
+    .photo-summary:hover,
+    .photo-summary:focus-visible {
+      background: var(--blue-soft);
+      outline: none;
+      transform: translateY(-1px);
+    }
+
+    .photo-summary strong::before {
+      content: "📷 ";
+    }
+
+    .asset-search-results {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .asset-search-result {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #c8d4e7;
+      border-radius: 12px;
+      background: #fff;
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .asset-search-result:hover,
+    .asset-search-result:focus-visible {
+      border-color: var(--blue);
+      background: var(--blue-soft);
+      outline: none;
+    }
+
+    .asset-search-result strong,
+    .asset-search-result small {
+      display: block;
+    }
+
+    .existing-photo {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      white-space: normal !important;
+    }
+
+    .existing-photo a {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--blue);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .existing-photo.pending-delete a {
+      color: var(--muted);
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+
+    .photo-delete-button {
+      flex: 0 0 auto;
+      padding: 5px 8px;
+      border: 1px solid #f0b7b7;
+      border-radius: 8px;
+      background: #fff3f3;
+      color: #b42318;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .photo-delete-button.selected {
+      border-color: #b42318;
+      background: #b42318;
+      color: #fff;
     }
 
     .submit-button {
@@ -538,6 +755,16 @@
         padding: 20px 16px;
       }
 
+      .status-bar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .status-actions {
+        justify-content: space-between;
+        width: 100%;
+      }
+
       .field-grid,
       .upload-grid {
         grid-template-columns: 1fr;
@@ -562,11 +789,17 @@
     }
   </style>
 </head>
-<body>
+<body data-user-role="<?= userRole ?>" data-actor-name="<?= actorName ?>" data-web-app-url="<?= webAppUrl ?>" data-admin-token="<?= adminToken ?>" data-current-module="asset">
+  <?!= getSharedBackgroundHtml_() ?>
   <main class="app-shell">
     <header class="hero">
+      <a
+        class="home-link"
+        href="<?= webAppUrl ?>?adminToken=<?= adminToken ?>"
+        target="_top"
+      >통합 메뉴로 돌아가기</a>
       <p class="eyebrow">GILNS ASSET REGISTER</p>
-      <h1>길앤에스 자산등록</h1>
+      <h1>길앤에스 실물자산관리</h1>
       <p>
         자산정보와 증빙 사진을 한 번에 등록합니다.
         등록이 완료되면 관리번호, 사진 폴더,
@@ -583,13 +816,45 @@
         ></span>
         <span id="systemStatus">시스템 연결 확인 중</span>
       </span>
-      <strong id="nextNumber">관리번호 확인 중</strong>
+      <span class="status-actions">
+        <strong id="nextNumber">관리번호 확인 중</strong>
+        <a
+          id="assetSheetLink"
+          class="asset-sheet-link hidden"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+        >자산관리표 열기</a>
+        <a
+          id="movementLink"
+          class="asset-sheet-link"
+          href="<?= webAppUrl ?>?module=movement&adminToken=<?= adminToken ?>"
+          target="_top"
+        >물품 반출입 관리</a>
+      </span>
     </div>
 
     <div id="errorMessage" class="message error"></div>
     <div id="successMessage" class="message success"></div>
 
     <form id="assetForm" novalidate>
+      <div class="mode-switch" aria-label="작업 선택">
+        <button
+          id="registerModeButton"
+          class="mode-button active"
+          type="button"
+        >
+          신규 자산 등록
+        </button>
+        <button
+          id="editModeButton"
+          class="mode-button"
+          type="button"
+        >
+          기존 자산 수정
+        </button>
+      </div>
+
       <section class="card">
         <div class="card-heading">
           <div>
@@ -598,7 +863,7 @@
               등록할 공장 또는 연구소 시트를 선택하세요.
             </p>
           </div>
-          <span class="step-badge">00</span>
+          <span id="sheetStepBadge" class="step-badge">01</span>
         </div>
 
         <div class="field">
@@ -611,30 +876,86 @@
         </div>
       </section>
 
+      <section id="editLookupCard" class="card hidden">
+        <div class="card-heading">
+          <div>
+            <h2>수정할 자산 조회</h2>
+            <p>
+              자산명 또는 품목으로 검색한 뒤 수정할 자산을 선택하세요.
+            </p>
+          </div>
+          <span id="lookupStepBadge" class="step-badge">02</span>
+        </div>
+
+        <div class="field-grid">
+          <div class="field full">
+            <label for="editAssetQuery">
+              자산명 또는 품목 <span class="required">*</span>
+            </label>
+            <div class="lookup-row">
+              <input
+                id="editAssetQuery"
+                type="search"
+                maxlength="100"
+                placeholder="예: 핸드폰거치대"
+              >
+              <button
+                id="loadAssetButton"
+                class="lookup-button"
+                type="button"
+              >
+                자산 검색
+              </button>
+            </div>
+            <input id="editManagementNumber" type="hidden">
+            <div id="editSearchResults" class="asset-search-results"></div>
+          </div>
+
+          <div class="field full">
+            <label for="editReason">
+              수정 사유 <span class="required">*</span>
+            </label>
+            <textarea
+              id="editReason"
+              maxlength="300"
+              placeholder="예: 보관 장소 변경"
+            ></textarea>
+          </div>
+        </div>
+      </section>
+
       <section class="card">
         <div class="card-heading">
           <div>
-            <h2>자산 기본정보</h2>
+            <h2 id="basicInfoTitle">자산 기본 정보</h2>
             <p>
               별표가 있는 항목은 반드시 입력하세요.
             </p>
           </div>
-          <span class="step-badge">01</span>
+          <span id="basicStepBadge" class="step-badge">02</span>
         </div>
 
         <div class="field-grid">
           <div class="field">
-            <label for="author">
-              작성자 <span class="required">*</span>
-            </label>
+            <div class="field-label-row">
+              <label for="author">
+                작성자 <span class="required">*</span>
+              </label>
+              <span id="authorMatchText" class="field-meta">
+                사원 명부에서 선택
+              </span>
+            </div>
             <input
               id="author"
               name="author"
               type="text"
               maxlength="40"
               autocomplete="name"
+              placeholder="로그인한 사용자"
+              readonly
               required
             >
+            <datalist id="authorNameList"></datalist>
           </div>
 
           <div class="field">
@@ -676,7 +997,10 @@
           </div>
 
           <div class="field">
-            <label for="amount">금액</label>
+            <div class="field-label-row">
+              <label for="amount">금액</label>
+              <span class="field-meta">원 단위 숫자</span>
+            </div>
             <input
               id="amount"
               name="amount"
@@ -685,7 +1009,6 @@
               autocomplete="off"
               placeholder="예: 59000"
             >
-            <p class="hint">원 단위 숫자로 입력합니다.</p>
           </div>
 
           <div class="field">
@@ -707,17 +1030,9 @@
               name="manager"
               type="text"
               maxlength="40"
+              readonly
             >
-          </div>
-
-          <div class="field">
-            <label for="partNumber">P/N</label>
-            <input
-              id="partNumber"
-              name="partNumber"
-              type="text"
-              maxlength="100"
-            >
+            <span class="field-meta">선택한 시트에 따라 자동 설정됩니다.</span>
           </div>
 
           <div class="field">
@@ -746,7 +1061,7 @@
         </div>
       </section>
 
-      <section class="card">
+      <section id="phoneCaptureCard" class="card">
         <div class="phone-connect">
           <div>
             <h2>휴대폰 카메라 연결</h2>
@@ -777,7 +1092,7 @@
         </div>
       </section>
 
-      <section class="card">
+      <section id="photoUploadCard" class="card">
         <div class="card-heading">
           <div>
             <h2>증빙·실물 사진</h2>
@@ -786,7 +1101,7 @@
               선택한 사진은 등록 전에 자동 압축됩니다.
             </p>
           </div>
-          <span class="step-badge">02</span>
+          <span id="photoStepBadge" class="step-badge">03</span>
         </div>
 
         <div class="upload-grid">
@@ -803,6 +1118,14 @@
               accept="image/*"
               multiple
             >
+            <label class="missing-photo-option">
+              <input
+                id="invoiceMissing"
+                type="checkbox"
+                data-missing-key="invoice"
+              >
+              사진 없음
+            </label>
             <ul id="invoiceList" class="file-list"></ul>
             <p id="invoicePhoneCount" class="phone-count"></p>
           </div>
@@ -820,6 +1143,14 @@
               accept="image/*"
               multiple
             >
+            <label class="missing-photo-option">
+              <input
+                id="purchaseOrderMissing"
+                type="checkbox"
+                data-missing-key="purchaseOrder"
+              >
+              사진 없음
+            </label>
             <ul
               id="purchaseOrderList"
               class="file-list"
@@ -843,6 +1174,14 @@
               accept="image/*"
               multiple
             >
+            <label class="missing-photo-option">
+              <input
+                id="taxInvoiceMissing"
+                type="checkbox"
+                data-missing-key="taxInvoice"
+              >
+              사진 없음
+            </label>
             <ul id="taxInvoiceList" class="file-list"></ul>
             <p
               id="taxInvoicePhoneCount"
@@ -855,7 +1194,10 @@
               <span class="upload-icon">04</span>
               실물 사진
             </div>
-            <p class="hint">정면, 측면, 명판 등 여러 장 가능</p>
+            <p class="hint">
+              정면, 측면, 명판 등 여러 장 가능
+              (앞면, 옆면, 뒷면 등 최소 3장을 넣어주세요.)
+            </p>
             <input
               class="file-input"
               id="product"
@@ -870,9 +1212,17 @@
       </section>
 
       <div class="submit-card">
-        <div class="summary">
+        <div
+          id="photoSummary"
+          class="summary photo-summary"
+          role="button"
+          tabindex="0"
+          aria-label="사진 관리 영역으로 이동"
+        >
           <strong id="fileCount">선택한 사진 0장</strong><br>
-          등록하면 폴더와 자산대장이 함께 생성됩니다.
+          <span id="submitSummary">
+            등록하면 폴더와 자산대장이 함께 생성됩니다.
+          </span>
         </div>
         <button
           id="submitButton"
@@ -894,8 +1244,8 @@
   >
     <div class="loading-panel">
       <div class="spinner" aria-hidden="true"></div>
-      <strong>자산을 등록하고 있습니다</strong>
-      <p class="hint">
+      <strong id="loadingTitle">자산을 처리하고 있습니다</strong>
+      <p id="loadingHint" class="hint">
         사진 저장과 자산대장 입력이 끝날 때까지
         이 화면을 닫지 마세요.
       </p>
@@ -906,16 +1256,32 @@
     src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
   ></script>
   <script>
+    const ADMIN_TOKEN = '<?= adminToken ?>';
+    gilnsProtectSessionUrl(ADMIN_TOKEN, { module: 'asset' });
+    const INITIAL_MODE = '<?= initialMode ?>';
+    const INITIAL_SHEET_NAME = '<?= initialSheetName ?>';
+    const INITIAL_MANAGEMENT_NUMBER = '<?= initialManagementNumber ?>';
+    const USER_ROLE = document.body.dataset.userRole;
+    const IS_ADMIN = USER_ROLE === 'admin';
+    const ACTOR_NAME = document.body.dataset.actorName;
     const FILE_KEYS = [
       'invoice',
       'purchaseOrder',
       'taxInvoice',
       'product',
     ];
+    const DOCUMENT_KEYS = [
+      'invoice',
+      'purchaseOrder',
+      'taxInvoice',
+    ];
     const state = {
+      mode: 'register',
+      editLoaded: false,
       ready: false,
       busy: false,
       config: null,
+      employees: [],
       files: {
         invoice: [],
         purchaseOrder: [],
@@ -928,7 +1294,25 @@
         taxInvoice: 0,
         product: 0,
       },
+      existingPhotos: {
+        invoice: [],
+        purchaseOrder: [],
+        taxInvoice: [],
+        product: [],
+      },
+      deletedPhotoIds: {
+        invoice: [],
+        purchaseOrder: [],
+        taxInvoice: [],
+        product: [],
+      },
+      missingPhotos: {
+        invoice: false,
+        purchaseOrder: false,
+        taxInvoice: false,
+      },
       captureSession: null,
+      captureCompleted: false,
       capturePoll: null,
     };
 
@@ -950,6 +1334,12 @@
       const amount = document.getElementById('amount');
 
       form.addEventListener('submit', handleSubmit);
+      form.addEventListener('input', () => {
+        updateSubmitAvailability();
+      });
+      form.addEventListener('change', () => {
+        updateSubmitAvailability();
+      });
       document
         .getElementById('connectPhoneButton')
         .addEventListener('click', connectPhone);
@@ -961,6 +1351,41 @@
       document
         .getElementById('sheetName')
         .addEventListener('change', handleSheetChange);
+      document
+        .getElementById('registerModeButton')
+        .addEventListener('click', () => {
+          setMode('register');
+        });
+      document
+        .getElementById('editModeButton')
+        .addEventListener('click', () => {
+          setMode('edit');
+        });
+      document
+        .getElementById('loadAssetButton')
+        .addEventListener('click', loadAssetForEdit);
+      document
+        .getElementById('editAssetQuery')
+        .addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            loadAssetForEdit();
+          }
+        });
+      document
+        .getElementById('photoSummary')
+        .addEventListener('click', openPhotoEditor);
+      document
+        .getElementById('photoSummary')
+        .addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openPhotoEditor();
+          }
+        });
+      document
+        .getElementById('author')
+        .addEventListener('input', updateAuthorMatch);
 
       FILE_KEYS.forEach((key) => {
         document
@@ -969,6 +1394,220 @@
             handleFileSelection(key, event.target.files);
           });
       });
+
+      DOCUMENT_KEYS.forEach((key) => {
+        document
+          .getElementById(key + 'Missing')
+          .addEventListener('change', (event) => {
+            handleMissingPhotoChange(
+              key,
+              event.target.checked
+            );
+          });
+      });
+    }
+
+    function setMode(mode) {
+      if (state.busy || !['register', 'edit'].includes(mode)) {
+        return;
+      }
+      if (!state.ready || !state.config) {
+        showError('자산대장 연결을 확인하는 중입니다. 잠시 후 다시 눌러주세요.');
+        return;
+      }
+
+      state.mode = mode;
+      state.editLoaded = false;
+      clearMessages();
+
+      const isEdit = mode === 'edit';
+      document.getElementById('sheetStepBadge').textContent =
+        '01';
+      document.getElementById('lookupStepBadge').textContent =
+        '02';
+      document.getElementById('basicStepBadge').textContent =
+        isEdit ? '03' : '02';
+      document.getElementById('basicInfoTitle').textContent =
+        isEdit ? '자산 기본 정보 수정' : '자산 기본 정보';
+      document.getElementById('photoStepBadge').textContent =
+        isEdit ? '04' : '03';
+      document.getElementById('registerModeButton')
+        .classList.toggle('active', !isEdit);
+      document.getElementById('editModeButton')
+        .classList.toggle('active', isEdit);
+      document.getElementById('editLookupCard')
+        .classList.toggle('hidden', !isEdit);
+      document.getElementById('phoneCaptureCard')
+        .classList.toggle('hidden', isEdit);
+      document.getElementById('photoUploadCard')
+        .classList.toggle('hidden', isEdit);
+      document.getElementById('submitButton').textContent =
+        isEdit ? '자산 정보 수정하기' : '자산 등록하기';
+      document.getElementById('submitSummary').textContent =
+        isEdit
+          ? '자산을 조회한 뒤 이 영역을 눌러 기존 사진을 확인·수정할 수 있습니다.'
+          : '등록하면 폴더와 자산대장이 함께 생성됩니다.';
+
+      if (isEdit) {
+        resetEditPhotos();
+        document.getElementById('editAssetQuery').value = '';
+        document.getElementById('editManagementNumber').value = '';
+        document.getElementById('editSearchResults').innerHTML = '';
+        document.getElementById('author').value =
+          state.config.actorName || ACTOR_NAME;
+        updateAuthorMatch();
+        document.getElementById('nextNumber').textContent =
+          '수정할 자산을 검색하세요';
+        document.getElementById('submitButton').disabled = true;
+      } else {
+        document.getElementById('assetForm').reset();
+        resetEditPhotos();
+        document.getElementById('author').value =
+          state.config.actorName || ACTOR_NAME;
+        document.getElementById('storageLocation').value =
+          state.config ? state.config.sheetName : '고색연구소';
+        document.getElementById('manager').value =
+          state.config ? state.config.manager : '';
+        document.getElementById('purchaseDate').value =
+          state.config ? state.config.today : '';
+        updateSubmitAvailability();
+        document.getElementById('nextNumber').textContent =
+          state.config
+            ? '예정 관리번호 ' +
+              state.config.nextManagementNumber
+            : '관리번호 확인 중';
+      }
+    }
+
+    function loadAssetForEdit() {
+      if (!state.ready || state.busy) {
+        return;
+      }
+
+      const query = valueOf('editAssetQuery');
+
+      if (!query) {
+        showError('자산명 또는 품목을 입력하세요.');
+        return;
+      }
+
+      setBusy(true, '자산을 검색하고 있습니다', '검색 결과를 불러오는 중입니다. 잠시만 기다려 주세요.');
+      clearMessages();
+
+      google.script.run
+        .withSuccessHandler((result) => {
+          setBusy(false);
+          renderEditSearchResults(result.results || []);
+        })
+        .withFailureHandler((error) => {
+          setBusy(false);
+          state.editLoaded = false;
+          showError(getErrorMessage(error));
+        })
+        .searchAssetsForEdit(
+          valueOf('sheetName'),
+          query,
+          ADMIN_TOKEN
+        );
+    }
+
+    function renderEditSearchResults(results) {
+      const target = document.getElementById('editSearchResults');
+      target.innerHTML = '';
+      state.editLoaded = false;
+      document.getElementById('editManagementNumber').value = '';
+      document.getElementById('photoUploadCard').classList.add('hidden');
+      resetEditPhotos();
+
+      if (!results.length) {
+        target.innerHTML = '<p class="hint">일치하는 자산이 없습니다.</p>';
+        document.getElementById('nextNumber').textContent =
+          '검색 결과 없음';
+        updateSubmitAvailability();
+        return;
+      }
+
+      results.forEach((asset) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'asset-search-result';
+        button.innerHTML =
+          '<strong>' + escapeHtml(asset.itemName || '이름 없음') + '</strong>' +
+          '<span>관리번호 ' + escapeHtml(String(asset.managementNumber)) +
+          (asset.modelMaker ? ' · ' + escapeHtml(asset.modelMaker) : '') +
+          (asset.vendor ? ' · ' + escapeHtml(asset.vendor) : '') + '</span>';
+        button.addEventListener('click', () => {
+          loadAssetByManagementNumber(asset.managementNumber);
+        });
+        target.appendChild(button);
+      });
+      document.getElementById('nextNumber').textContent =
+        '검색 결과 ' + results.length + '건 · 수정할 자산을 선택하세요';
+      updateSubmitAvailability();
+    }
+
+    function loadAssetByManagementNumber(managementNumber) {
+      if (!state.ready || state.busy) {
+        return;
+      }
+      setBusy(true);
+      clearMessages();
+      google.script.run
+        .withSuccessHandler((result) => {
+          setBusy(false);
+          document.getElementById('editManagementNumber').value =
+            result.asset.managementNumber;
+          populateAssetForEdit(result.asset, result.photos);
+          state.editLoaded = true;
+          document.getElementById('photoUploadCard')
+            .classList.remove('hidden');
+          updateSubmitAvailability();
+          document.getElementById('nextNumber').textContent =
+            '관리번호 ' + result.asset.managementNumber + ' 수정 중';
+        })
+        .withFailureHandler((error) => {
+          setBusy(false);
+          state.editLoaded = false;
+          showError(getErrorMessage(error));
+        })
+        .getAssetForEdit(
+          valueOf('sheetName'),
+          managementNumber,
+          ADMIN_TOKEN
+        );
+    }
+
+    function populateAssetForEdit(asset, photos) {
+      [
+        'itemName',
+        'modelMaker',
+        'vendor',
+        'purchaseDate',
+        'storageLocation',
+        'remarks',
+      ].forEach((key) => {
+        document.getElementById(key).value =
+          asset[key] == null ? '' : asset[key];
+      });
+      document.getElementById('amount').value =
+        asset.amount === ''
+          ? ''
+          : Number(asset.amount).toLocaleString('ko-KR');
+      document.getElementById('manager').value =
+        state.config ? state.config.manager : (asset.manager || '');
+      populateExistingPhotos(photos);
+      showSuccessText(
+        '관리번호 ' + asset.managementNumber +
+        '번 정보와 사진을 불러왔습니다.'
+      );
+    }
+
+    function showSuccessText(message) {
+      const success = document.getElementById(
+        'successMessage'
+      );
+      success.textContent = message;
+      success.classList.add('show');
     }
 
     function loadConfig() {
@@ -983,14 +1622,48 @@
 
           renderSheetOptions(
             config.sheetNames,
-            config.sheetName
+            INITIAL_SHEET_NAME || config.sheetName
           );
+          if (
+            INITIAL_SHEET_NAME &&
+            INITIAL_SHEET_NAME !== config.sheetName
+          ) {
+            loadInitialAssetConfig(INITIAL_SHEET_NAME);
+            return;
+          }
           applyConfig(config);
+          applyInitialAssetRoute();
         })
         .withFailureHandler((error) => {
           setSystemError(getErrorMessage(error));
         })
-        .getPublicConfig();
+        .getPublicConfig('', ADMIN_TOKEN);
+    }
+
+    function loadInitialAssetConfig(sheetName) {
+      google.script.run
+        .withSuccessHandler((config) => {
+          if (!config.ok) {
+            setSystemError(config.message);
+            return;
+          }
+          applyConfig(config);
+          applyInitialAssetRoute();
+        })
+        .withFailureHandler((error) => {
+          setSystemError(getErrorMessage(error));
+        })
+        .getPublicConfig(sheetName, ADMIN_TOKEN);
+    }
+
+    function applyInitialAssetRoute() {
+      if (INITIAL_MODE !== 'edit') {
+        return;
+      }
+      setMode('edit');
+      if (/^\d+$/.test(INITIAL_MANAGEMENT_NUMBER)) {
+        loadAssetByManagementNumber(Number(INITIAL_MANAGEMENT_NUMBER));
+      }
     }
 
     function renderSheetOptions(sheetNames, selectedSheetName) {
@@ -1014,6 +1687,10 @@
         : '';
       state.config = config;
       state.ready = true;
+      state.employees = config.employees || [];
+      document.getElementById('author').value =
+        config.actorName || ACTOR_NAME;
+      renderAuthorNames();
 
       const storageLocation = document.getElementById(
         'storageLocation'
@@ -1028,16 +1705,72 @@
 
       document.getElementById('sheetName').value =
         config.sheetName;
-          document.getElementById('purchaseDate').value =
-            config.today;
-          document.getElementById('systemStatus').textContent =
-            config.photoFolderName + ' · ' + config.sheetName;
-          document.getElementById('nextNumber').textContent =
-            '예정 관리번호 ' + config.nextManagementNumber;
-          document.getElementById('statusDot')
-            .classList.add('ready');
-          document.getElementById('submitButton').disabled =
-            false;
+      document.getElementById('manager').value =
+        config.manager || '';
+      document.getElementById('purchaseDate').value =
+        config.today;
+      document.getElementById('systemStatus').textContent =
+        config.photoFolderName + ' · ' + config.sheetName;
+      document.getElementById('nextNumber').textContent =
+        '예정 관리번호 ' + config.nextManagementNumber;
+      const assetSheetLink = document.getElementById(
+        'assetSheetLink'
+      );
+      assetSheetLink.href = config.assetSheetUrl;
+      assetSheetLink.classList.toggle(
+        'hidden',
+        !config.assetSheetUrl
+      );
+      document.getElementById('statusDot')
+        .classList.add('ready');
+      updateSubmitAvailability();
+    }
+
+    function renderAuthorNames() {
+      document.getElementById('authorNameList').innerHTML =
+        state.employees.map((employee) => [
+          '<option value="', escapeHtml(employee.name), '" ',
+          'label="', escapeHtml(
+            employee.department + ' · ' + employee.employeeNumber
+          ), '"></option>',
+        ].join('')).join('');
+      updateAuthorMatch();
+    }
+
+    function getAuthorMatches(name) {
+      if (!name) {
+        return [];
+      }
+
+      return state.employees.filter((employee) =>
+        employee.name === name
+      );
+    }
+
+    function updateAuthorMatch() {
+      const name = valueOf('author');
+      const matches = getAuthorMatches(name);
+      const text = document.getElementById('authorMatchText');
+
+      if (!state.employees.length) {
+        text.textContent =
+          '사용 가능한 사원 없음';
+      } else if (!name) {
+        text.textContent =
+          '사원 명부에서 선택';
+      } else if (matches.length === 1) {
+        text.textContent =
+          matches[0].department + ' · ' +
+          matches[0].employeeNumber;
+      } else if (matches.length > 1) {
+        text.textContent =
+          '동명이인 - 관리자 확인';
+      } else {
+        text.textContent =
+          '목록에서 선택';
+      }
+
+      updateSubmitAvailability();
     }
 
     function handleSheetChange(event) {
@@ -1048,11 +1781,20 @@
       }
 
       state.ready = false;
+      state.editLoaded = false;
+      document.getElementById('editAssetQuery').value = '';
+      document.getElementById('editManagementNumber').value = '';
+      document.getElementById('editSearchResults').innerHTML = '';
+      document.getElementById('photoUploadCard')
+        .classList.toggle('hidden', state.mode === 'edit');
+      resetEditPhotos();
       document.getElementById('submitButton').disabled = true;
       document.getElementById('systemStatus').textContent =
         '선택한 시트 확인 중';
       document.getElementById('nextNumber').textContent =
         '관리번호 확인 중';
+      document.getElementById('assetSheetLink')
+        .classList.add('hidden');
       clearMessages();
 
       google.script.run
@@ -1067,7 +1809,7 @@
         .withFailureHandler((error) => {
           setSystemError(getErrorMessage(error));
         })
-        .getPublicConfig(sheetName);
+        .getPublicConfig(sheetName, ADMIN_TOKEN);
     }
 
     function hasAppsScriptBridge() {
@@ -1084,6 +1826,8 @@
         .classList.add('error');
       document.getElementById('nextNumber').textContent =
         '연결 필요';
+      document.getElementById('assetSheetLink')
+        .classList.add('hidden');
       document.getElementById('submitButton').disabled = true;
       showError(message);
     }
@@ -1119,7 +1863,10 @@
           button.textContent = '휴대폰 연결됨';
           state.captureSession = result;
           renderQrCode(result.captureUrl);
-          renderRemoteCounts(result.counts);
+          renderRemoteCounts(
+            result.counts,
+            result.completed
+          );
           startCapturePolling();
         })
         .withFailureHandler((error) => {
@@ -1127,7 +1874,7 @@
           button.textContent = '휴대폰 연결 QR 만들기';
           showError(getErrorMessage(error));
         })
-        .createCaptureSession();
+        .createCaptureSession(ADMIN_TOKEN);
     }
 
     function renderQrCode(url) {
@@ -1174,7 +1921,10 @@
 
       google.script.run
         .withSuccessHandler((result) => {
-          renderRemoteCounts(result.counts);
+          renderRemoteCounts(
+            result.counts,
+            result.completed
+          );
         })
         .withFailureHandler((error) => {
           if (state.capturePoll) {
@@ -1189,15 +1939,124 @@
         );
     }
 
-    function renderRemoteCounts(counts) {
+    function renderRemoteCounts(counts, completed) {
+      state.captureCompleted = Boolean(completed);
       FILE_KEYS.forEach((key) => {
         const count = Number(counts && counts[key] || 0);
         state.remoteCounts[key] = count;
+
+        if (
+          count > 0 &&
+          DOCUMENT_KEYS.includes(key)
+        ) {
+          state.missingPhotos[key] = false;
+          document.getElementById(
+            key + 'Missing'
+          ).checked = false;
+        }
+
         document.getElementById(key + 'PhoneCount')
           .textContent = count > 0
             ? '휴대폰 촬영 ' + count + '장 연결됨'
             : '';
       });
+      DOCUMENT_KEYS.forEach(updateMissingPhotoControl);
+      updateFileCount();
+    }
+
+    function resetEditPhotos() {
+      FILE_KEYS.forEach((key) => {
+        state.files[key] = [];
+        state.remoteCounts[key] = 0;
+        state.existingPhotos[key] = [];
+        state.deletedPhotoIds[key] = [];
+        const input = document.getElementById(key);
+        if (input) {
+          input.value = '';
+          input.disabled = false;
+        }
+        renderFileList(key);
+      });
+      DOCUMENT_KEYS.forEach((key) => {
+        state.missingPhotos[key] = false;
+        const checkbox = document.getElementById(key + 'Missing');
+        if (checkbox) {
+          checkbox.checked = false;
+          checkbox.disabled = false;
+        }
+      });
+      updateFileCount();
+    }
+
+    function populateExistingPhotos(photos) {
+      const categories = photos && photos.categories
+        ? photos.categories
+        : {};
+      FILE_KEYS.forEach((key) => {
+        state.files[key] = [];
+        state.remoteCounts[key] = 0;
+        state.existingPhotos[key] = Array.isArray(categories[key])
+          ? categories[key]
+          : [];
+        state.deletedPhotoIds[key] = [];
+        document.getElementById(key).value = '';
+        renderFileList(key);
+      });
+      DOCUMENT_KEYS.forEach((key) => {
+        state.missingPhotos[key] =
+          state.existingPhotos[key].length === 0;
+        document.getElementById(key + 'Missing').checked =
+          state.missingPhotos[key];
+        updateMissingPhotoControl(key);
+      });
+      updateFileCount();
+    }
+
+    function openPhotoEditor() {
+      if (state.mode !== 'edit') {
+        document.getElementById('photoUploadCard').scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+        return;
+      }
+      if (!state.editLoaded) {
+        showError('수정할 자산을 먼저 검색하여 선택하세요.');
+        return;
+      }
+      const card = document.getElementById('photoUploadCard');
+      card.classList.remove('hidden');
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function keptExistingPhotoCount(key) {
+      const deleted = state.deletedPhotoIds[key] || [];
+      return (state.existingPhotos[key] || []).filter((photo) =>
+        deleted.indexOf(photo.fileId) === -1
+      ).length;
+    }
+
+    function effectivePhotoCount(key) {
+      return keptExistingPhotoCount(key) +
+        state.files[key].length +
+        (state.mode === 'register' ? state.remoteCounts[key] : 0);
+    }
+
+    function toggleExistingPhotoDeletion(key, fileId) {
+      const deleted = state.deletedPhotoIds[key];
+      const index = deleted.indexOf(fileId);
+      if (index === -1) {
+        deleted.push(fileId);
+      } else {
+        deleted.splice(index, 1);
+      }
+      if (DOCUMENT_KEYS.includes(key)) {
+        state.missingPhotos[key] = effectivePhotoCount(key) === 0;
+        document.getElementById(key + 'Missing').checked =
+          state.missingPhotos[key];
+      }
+      renderFileList(key);
+      updateMissingPhotoControl(key);
       updateFileCount();
     }
 
@@ -1207,11 +2066,19 @@
         ? state.config.maxFilesPerCategory
         : 5;
 
-      if (files.length > max) {
+      if (
+        files.length + keptExistingPhotoCount(key) +
+          (state.mode === 'register' ? state.remoteCounts[key] : 0) > max
+      ) {
         document.getElementById(key).value = '';
         state.files[key] = [];
         renderFileList(key);
-        showError('항목별 사진은 최대 ' + max + '장입니다.');
+        updateMissingPhotoControl(key);
+        showError(
+          'PC와 휴대폰 사진을 합쳐 최대 ' +
+          max +
+          '장입니다.'
+        );
         return;
       }
 
@@ -1223,24 +2090,116 @@
         document.getElementById(key).value = '';
         state.files[key] = [];
         renderFileList(key);
+        updateMissingPhotoControl(key);
         showError('이미지 파일만 선택할 수 있습니다.');
         return;
       }
 
       state.files[key] = files;
+
+      if (
+        files.length > 0 &&
+        DOCUMENT_KEYS.includes(key)
+      ) {
+        state.missingPhotos[key] = false;
+        document.getElementById(
+          key + 'Missing'
+        ).checked = false;
+      }
+
       renderFileList(key);
+      updateMissingPhotoControl(key);
       updateFileCount();
       clearMessages();
+    }
+
+    function handleMissingPhotoChange(key, checked) {
+      if (!DOCUMENT_KEYS.includes(key)) {
+        return;
+      }
+
+      const hasPhonePhoto =
+        state.mode === 'register' && state.remoteCounts[key] > 0;
+
+      if (checked && hasPhonePhoto) {
+        document.getElementById(
+          key + 'Missing'
+        ).checked = false;
+        showError(
+          '휴대폰 사진이 연결되어 있어 ' +
+          '사진 없음을 선택할 수 없습니다.'
+        );
+        return;
+      }
+
+      state.missingPhotos[key] = Boolean(checked);
+
+      if (checked) {
+        state.files[key] = [];
+        document.getElementById(key).value = '';
+        if (state.mode === 'edit') {
+          state.deletedPhotoIds[key] = state.existingPhotos[key]
+            .map((photo) => photo.fileId);
+        }
+        renderFileList(key);
+      } else if (state.mode === 'edit') {
+        state.deletedPhotoIds[key] = [];
+        renderFileList(key);
+      }
+
+      updateMissingPhotoControl(key);
+      updateFileCount();
+      clearMessages();
+    }
+
+    function updateMissingPhotoControl(key) {
+      if (!DOCUMENT_KEYS.includes(key)) {
+        return;
+      }
+
+      const input = document.getElementById(key);
+      const checkbox = document.getElementById(
+        key + 'Missing'
+      );
+      const hasPhoto =
+        effectivePhotoCount(key) > 0;
+
+      checkbox.disabled = hasPhoto;
+      input.disabled = state.missingPhotos[key];
     }
 
     function renderFileList(key) {
       const list = document.getElementById(key + 'List');
       list.innerHTML = '';
 
+      (state.existingPhotos[key] || []).forEach((photo) => {
+        const deleted = state.deletedPhotoIds[key]
+          .indexOf(photo.fileId) !== -1;
+        const item = document.createElement('li');
+        item.className = 'existing-photo' +
+          (deleted ? ' pending-delete' : '');
+        const link = document.createElement('a');
+        link.href = photo.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = photo.name + ' · ' + formatBytes(photo.size);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'photo-delete-button' +
+          (deleted ? ' selected' : '');
+        button.textContent = deleted ? '삭제 취소' : '삭제 선택';
+        button.addEventListener('click', () => {
+          toggleExistingPhotoDeletion(key, photo.fileId);
+        });
+        item.appendChild(link);
+        item.appendChild(button);
+        list.appendChild(item);
+      });
+
       state.files[key].forEach((file) => {
         const item = document.createElement('li');
         item.textContent =
-          '• ' + file.name + ' · ' + formatBytes(file.size);
+          '추가 예정 · ' + file.name + ' · ' + formatBytes(file.size);
         list.appendChild(item);
       });
     }
@@ -1248,14 +2207,118 @@
     function updateFileCount() {
       const count = FILE_KEYS.reduce(
         (total, key) => {
-          return total +
-            state.files[key].length +
-            state.remoteCounts[key];
+          return total + effectivePhotoCount(key);
         },
         0
       );
       document.getElementById('fileCount').textContent =
-        '선택한 사진 ' + count + '장';
+        state.mode === 'edit'
+          ? '현재 유지·추가 사진 ' + count + '장 · 눌러서 사진 수정'
+          : '선택한 사진 ' + count + '장';
+      updateSubmitAvailability();
+    }
+
+    function updateSubmitAvailability() {
+      const button = document.getElementById('submitButton');
+      const summary = document.getElementById('submitSummary');
+
+      if (!button) {
+        return;
+      }
+
+      const minimum = state.config
+        ? Number(state.config.minProductPhotos || 3)
+        : 3;
+      const productCount = effectivePhotoCount('product');
+      const documentsReady = DOCUMENT_KEYS.every((key) => {
+        return effectivePhotoCount(key) > 0 ||
+          state.missingPhotos[key];
+      });
+      const requiredFieldsReady = [
+        'sheetName',
+        'itemName',
+        'vendor',
+        'purchaseDate',
+        'storageLocation',
+      ].every((id) => valueOf(id)) &&
+        getAuthorMatches(valueOf('author')).length === 1;
+      const missingProductCount = Math.max(
+        0,
+        minimum - productCount
+      );
+      const missingDocuments = DOCUMENT_KEYS.filter((key) => {
+        return effectivePhotoCount(key) === 0 &&
+          !state.missingPhotos[key];
+      });
+      const labels = {
+        invoice: '송장',
+        purchaseOrder: '발주서',
+        taxInvoice: '세금계산서',
+      };
+      const registrationReady =
+        requiredFieldsReady &&
+        missingProductCount === 0 &&
+        documentsReady;
+      const editProductChanged =
+        state.files.product.length > 0 ||
+        state.deletedPhotoIds.product.length > 0;
+
+      button.disabled =
+        state.busy ||
+        !state.ready ||
+        (
+          state.mode === 'register' &&
+          !registrationReady
+        ) ||
+        (
+          state.mode === 'edit' &&
+          (
+            !state.editLoaded ||
+            !valueOf('editReason') ||
+            !requiredFieldsReady ||
+            (editProductChanged && missingProductCount > 0)
+          )
+        );
+
+      if (!summary) {
+        return;
+      }
+
+      const blockers = [];
+
+      if (!requiredFieldsReady) {
+        blockers.push('필수 입력란 확인');
+      }
+
+      if (
+        missingProductCount > 0 &&
+        (state.mode === 'register' || editProductChanged)
+      ) {
+        blockers.push(
+          '실물 사진 ' + missingProductCount + '장 더 필요'
+        );
+      }
+
+      if (missingDocuments.length > 0 && state.mode === 'register') {
+        blockers.push(
+          missingDocuments
+            .map((key) => labels[key])
+            .join('·') +
+          ' 사진 또는 사진 없음 선택'
+        );
+      }
+
+      if (state.mode === 'edit' && !state.editLoaded) {
+        blockers.unshift('수정할 자산 선택');
+      } else if (state.mode === 'edit' && !valueOf('editReason')) {
+        blockers.unshift('수정 사유 입력');
+      }
+
+      summary.textContent = blockers.length > 0
+        ? blockers.join(' / ')
+        : state.mode === 'edit'
+          ? '정보와 사진을 확인했습니다. 자산을 수정할 수 있습니다.'
+          : '모든 필수 항목이 확인되어 등록할 수 있습니다.';
     }
 
     async function handleSubmit(event) {
@@ -1271,11 +2334,117 @@
         return;
       }
 
+      if (getAuthorMatches(valueOf('author')).length !== 1) {
+        showError('사원 명부 목록에서 작성자를 선택하세요.');
+        return;
+      }
+
+      if (state.mode === 'edit') {
+        if (!state.editLoaded) {
+          showError('수정할 자산을 먼저 조회하세요.');
+          return;
+        }
+
+        const reason = valueOf('editReason');
+
+        if (!reason) {
+          showError('수정 사유를 입력하세요.');
+          return;
+        }
+
+        const editProductChanged =
+          state.files.product.length > 0 ||
+          state.deletedPhotoIds.product.length > 0;
+        if (
+          editProductChanged &&
+          effectivePhotoCount('product') <
+            Number(state.config.minProductPhotos || 3)
+        ) {
+          showError('실물 사진은 최소 3장을 유지하거나 등록하세요.');
+          return;
+        }
+
+        const incompleteDocument = DOCUMENT_KEYS.find((key) =>
+          effectivePhotoCount(key) === 0 &&
+          !state.missingPhotos[key]
+        );
+        if (incompleteDocument) {
+          showError(
+            '송장, 발주서, 세금계산서는 사진을 남기거나 ' +
+            '사진 없음을 선택하세요.'
+          );
+          return;
+        }
+
+        clearMessages();
+        setBusy(true);
+
+        try {
+          const updatePayload = {
+            adminToken: ADMIN_TOKEN,
+            managementNumber: valueOf('editManagementNumber'),
+            reason: reason,
+            sheetName: valueOf('sheetName'),
+            author: valueOf('author'),
+            itemName: valueOf('itemName'),
+            modelMaker: valueOf('modelMaker'),
+            vendor: valueOf('vendor'),
+            amount: valueOf('amount').replace(/,/g, ''),
+            purchaseDate: valueOf('purchaseDate'),
+            manager: valueOf('manager'),
+            storageLocation: valueOf('storageLocation'),
+            remarks: valueOf('remarks'),
+            files: {},
+            deletePhotoFileIds: {},
+            missingPhotos: {
+              invoice: state.missingPhotos.invoice,
+              purchaseOrder: state.missingPhotos.purchaseOrder,
+              taxInvoice: state.missingPhotos.taxInvoice,
+            },
+          };
+
+          for (const key of FILE_KEYS) {
+            updatePayload.files[key] = [];
+            updatePayload.deletePhotoFileIds[key] =
+              state.deletedPhotoIds[key].slice();
+            for (const file of state.files[key]) {
+              updatePayload.files[key].push(await prepareImage(file));
+            }
+          }
+
+          google.script.run
+            .withSuccessHandler(handleUpdateSuccess)
+            .withFailureHandler((error) => {
+              setBusy(false);
+              showError(getErrorMessage(error));
+            })
+            .updateAsset(updatePayload);
+        } catch (error) {
+          setBusy(false);
+          showError(getErrorMessage(error));
+        }
+        return;
+      }
+
       if (
-        state.files.product.length +
-        state.remoteCounts.product === 0
+        effectivePhotoCount('product') <
+          Number(state.config.minProductPhotos || 3)
       ) {
-        showError('실물 사진을 한 장 이상 등록하세요.');
+        showError('실물 사진을 최소 3장 등록하세요.');
+        return;
+      }
+
+      const incompleteDocument = DOCUMENT_KEYS.find((key) => {
+        return (
+          effectivePhotoCount(key) === 0
+        ) && !state.missingPhotos[key];
+      });
+
+      if (incompleteDocument) {
+        showError(
+          '송장, 발주서, 세금계산서는 사진을 등록하거나 ' +
+          '사진 없음을 선택하세요.'
+        );
         return;
       }
 
@@ -1284,6 +2453,7 @@
 
       try {
         const payload = {
+          adminToken: ADMIN_TOKEN,
           sheetName: valueOf('sheetName'),
           author: valueOf('author'),
           itemName: valueOf('itemName'),
@@ -1292,10 +2462,16 @@
           amount: valueOf('amount').replace(/,/g, ''),
           purchaseDate: valueOf('purchaseDate'),
           manager: valueOf('manager'),
-          partNumber: valueOf('partNumber'),
           storageLocation: valueOf('storageLocation'),
           remarks: valueOf('remarks'),
           files: {},
+          missingPhotos: {
+            invoice: state.missingPhotos.invoice,
+            purchaseOrder:
+              state.missingPhotos.purchaseOrder,
+            taxInvoice:
+              state.missingPhotos.taxInvoice,
+          },
           captureSession: state.captureSession
             ? {
                 sessionId: state.captureSession.sessionId,
@@ -1348,6 +2524,37 @@
       }
     }
 
+    function handleUpdateSuccess(result) {
+      setBusy(false);
+      state.editLoaded = false;
+
+      const success = document.getElementById(
+        'successMessage'
+      );
+      success.innerHTML =
+        '<strong>관리번호 ' +
+        escapeHtml(String(result.managementNumber)) +
+        '번 수정 완료</strong><br>' +
+        escapeHtml(result.folderName) +
+        '<br><a href="' +
+        encodeURI(result.folderUrl) +
+        '" target="_blank" rel="noopener">사진 폴더 열기</a>';
+      success.classList.add('show');
+      document.getElementById('editReason').value = '';
+      document.getElementById('editAssetQuery').value = '';
+      document.getElementById('editManagementNumber').value = '';
+      document.getElementById('editSearchResults').innerHTML = '';
+      document.getElementById('photoUploadCard').classList.add('hidden');
+      resetEditPhotos();
+      document.getElementById('submitButton').disabled = true;
+      document.getElementById('nextNumber').textContent =
+        '수정 내용이 로그에 기록되었습니다';
+      success.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+
     function handleSuccess(result) {
       setBusy(false);
 
@@ -1365,8 +2572,12 @@
       success.classList.add('show');
 
       document.getElementById('assetForm').reset();
+      document.getElementById('author').value =
+        state.config.actorName || ACTOR_NAME;
       document.getElementById('storageLocation').value =
-        '고색연구소';
+        state.config.sheetName;
+      document.getElementById('manager').value =
+        state.config.manager || '';
       document.getElementById('purchaseDate').value =
         state.config.today;
 
@@ -1374,18 +2585,28 @@
         state.files[key] = [];
         renderFileList(key);
       });
+      DOCUMENT_KEYS.forEach((key) => {
+        state.missingPhotos[key] = false;
+        const checkbox = document.getElementById(
+          key + 'Missing'
+        );
+        checkbox.checked = false;
+        checkbox.disabled = false;
+        document.getElementById(key).disabled = false;
+      });
 
       if (state.capturePoll) {
         clearInterval(state.capturePoll);
         state.capturePoll = null;
       }
       state.captureSession = null;
+      state.captureCompleted = false;
       renderRemoteCounts({
         invoice: 0,
         purchaseOrder: 0,
         taxInvoice: 0,
         product: 0,
-      });
+      }, false);
       document.getElementById('qrPanel')
         .classList.remove('show');
       document.getElementById('qrCode').innerHTML = '';
@@ -1514,12 +2735,17 @@
       );
     }
 
-    function setBusy(busy) {
+    function setBusy(busy, title, hint) {
       state.busy = busy;
+      if (busy) {
+        document.getElementById('loadingTitle').textContent =
+          title || (state.mode === 'edit' ? '자산 정보를 수정하고 있습니다' : '자산을 등록하고 있습니다');
+        document.getElementById('loadingHint').textContent =
+          hint || '저장이 끝날 때까지 이 화면을 닫지 마세요.';
+      }
       document.getElementById('loadingOverlay')
         .classList.toggle('show', busy);
-      document.getElementById('submitButton').disabled =
-        busy || !state.ready;
+      updateSubmitAvailability();
     }
 
     function valueOf(id) {

@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>외부 방문 신청</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: #14213d;
+      font-family: Arial, "Noto Sans KR", sans-serif;
+      background: #eef4ff;
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .hidden { display: none !important; }
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: min(920px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 24px 0 56px;
+    }
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 900; }
+    .brand .company-logo { width: 38px; height: 42px; object-fit: contain; border-radius: 9px; }
+    .back { color: #334155; font-size: 14px; font-weight: 800; text-decoration: none; }
+    .hero, .card {
+      border: 1px solid rgba(255,255,255,.78);
+      background: rgba(255,255,255,.84);
+      box-shadow: 0 18px 55px rgba(31, 51, 92, .13);
+      backdrop-filter: blur(16px);
+    }
+    .hero { padding: 30px; border-radius: 26px; }
+    .eyebrow { margin: 0 0 8px; color: #356de8; font-size: 12px; font-weight: 900; letter-spacing: .14em; }
+    h1 { margin: 0; font-size: clamp(30px, 5vw, 44px); }
+    .hero p:last-child { margin: 12px 0 0; color: #64748b; line-height: 1.65; }
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 18px 0;
+      padding: 7px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.74);
+    }
+    .tab {
+      padding: 14px;
+      color: #64748b;
+      font-weight: 900;
+      border: 0;
+      border-radius: 13px;
+      background: transparent;
+    }
+    .tab.active { color: #fff; background: #356de8; }
+    .card { margin-top: 16px; padding: 28px; border-radius: 24px; }
+    .card h2 { margin: 0 0 6px; font-size: 24px; }
+    .intro { margin: 0 0 22px; color: #64748b; line-height: 1.6; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 17px; }
+    .field.full { grid-column: 1 / -1; }
+    label { display: block; margin-bottom: 7px; font-size: 14px; font-weight: 900; }
+    .required { color: #e11d48; }
+    input, textarea {
+      width: 100%;
+      padding: 13px 14px;
+      color: #14213d;
+      border: 1px solid #cbd8ec;
+      border-radius: 12px;
+      outline: none;
+      background: rgba(255,255,255,.92);
+    }
+    input:focus, textarea:focus { border-color: #356de8; box-shadow: 0 0 0 3px rgba(53,109,232,.12); }
+    input.invalid { border-color: #ef4444; }
+    textarea { min-height: 92px; resize: vertical; }
+    .help, .field-error { margin: 6px 0 0; font-size: 12px; line-height: 1.45; }
+    .help { color: #64748b; }
+    .field-error { color: #ef3340; font-weight: 800; }
+    .visitor-heading { display: flex; justify-content: space-between; align-items: center; margin: 26px 0 12px; }
+    .visitor-heading h3 { margin: 0; font-size: 20px; }
+    .count { padding: 7px 10px; color: #356de8; font-size: 13px; font-weight: 900; border-radius: 10px; background: #edf3ff; }
+    .visitor-list { display: grid; gap: 12px; }
+    .visitor-row { padding: 18px; border: 1px solid #d7e1f0; border-radius: 17px; background: rgba(248,250,252,.78); }
+    .visitor-row-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .visitor-row-head strong { font-size: 16px; }
+    .representative { display: flex; align-items: center; gap: 7px; margin: 0; color: #475569; font-size: 13px; }
+    .representative input, .check input { width: auto; }
+    .remove, .add {
+      padding: 9px 12px;
+      font-weight: 800;
+      border-radius: 10px;
+    }
+    .remove { margin-left: 10px; color: #b91c1c; border: 1px solid #fecaca; background: #fff1f2; }
+    .remove:disabled { opacity: .4; cursor: not-allowed; }
+    .add { width: 100%; margin-top: 12px; color: #356de8; border: 1px dashed #9bb9ef; background: #f5f8ff; }
+    .checks { display: grid; gap: 10px; margin-top: 22px; }
+    .check { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 13px; border-radius: 12px; background: #f7f9fd; font-weight: 700; line-height: 1.5; }
+    .submit {
+      width: 100%;
+      margin-top: 22px;
+      padding: 15px;
+      color: #fff;
+      font-weight: 900;
+      border: 0;
+      border-radius: 13px;
+      background: #356de8;
+    }
+    .submit:disabled { cursor: not-allowed; background: #b8c5da; }
+    .message { display: none; margin: 14px 0 0; padding: 13px 15px; border-radius: 12px; font-weight: 800; }
+    .message.error { display: block; color: #b91c1c; background: #fff1f2; border: 1px solid #fecaca; }
+    .message.success { display: block; color: #087d5b; background: #ecfdf5; border: 1px solid #a7f3d0; }
+    .result { margin-top: 18px; padding: 20px; border-radius: 16px; background: #f7f9fd; }
+    .result h3 { margin: 0 0 10px; }
+    .lookup-application + .lookup-application { margin-top: 18px; padding-top: 18px; border-top: 2px solid #d8e2f2; }
+    .application-number { display: block; margin: 10px 0; color: #235bd4; font-size: 20px; font-weight: 900; word-break: break-all; }
+    .copy, .cancel {
+      padding: 11px 14px;
+      font-weight: 900;
+      border-radius: 11px;
+    }
+    .copy { color: #235bd4; border: 1px solid #adc5f2; background: #fff; }
+    .cancel { margin-top: 14px; color: #fff; border: 0; background: #c53030; }
+    .status-badge { display: inline-block; padding: 7px 10px; color: #235bd4; font-weight: 900; border-radius: 10px; background: #eaf1ff; }
+    .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 14px 0; }
+    .summary-grid div { padding: 12px; border-radius: 10px; background: #fff; }
+    .summary-grid small { display: block; margin-bottom: 4px; color: #64748b; }
+    .visitor-status { display: grid; gap: 8px; margin-top: 14px; }
+    .visitor-status article { display: flex; justify-content: space-between; gap: 10px; padding: 12px; border-radius: 10px; background: #fff; }
+    .overlay { display: none; position: fixed; inset: 0; z-index: 20; place-items: center; color: #fff; font-weight: 900; background: rgba(15,23,42,.58); }
+    .overlay.show { display: grid; }
+    @media (max-width: 680px) {
+      .shell { width: min(100% - 18px, 560px); padding-top: 14px; }
+      .hero, .card { padding: 22px 18px; border-radius: 20px; }
+      .grid, .summary-grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .visitor-row .grid { gap: 12px; }
+      .visitor-row-head { align-items: flex-start; }
+    }
+  </style>
+</head>
+<body data-web-app-url="<?= webAppUrl ?>">
+  <?!= getSharedBackgroundHtml_() ?>
+  <main class="shell">
+    <div class="top">
+      <div class="brand"><?!= getCompanyLogoHtml_() ?><span>GIL&amp;S</span></div>
+      <a class="back" href="<?= webAppUrl ?>?module=visitor&amp;mode=portal" target="_top">방문 안내로</a>
+    </div>
+    <section class="hero">
+      <p class="eyebrow">VISITOR APPLICATION</p>
+      <h1>외부 방문 신청</h1>
+      <p>방문 전에 신청하고, 신청번호와 대표 연락처로 승인 상태를 확인하세요.</p>
+    </section>
+
+    <div class="tabs">
+      <button class="tab active" type="button" data-tab="apply">새 방문 신청</button>
+      <button class="tab" type="button" data-tab="lookup">신청 내역 조회·취소</button>
+    </div>
+
+    <div id="globalMessage" class="message"></div>
+
+    <section id="applyPanel" class="card">
+      <h2>방문 정보</h2>
+      <p class="intro">별표 항목을 모두 입력해야 신청할 수 있습니다.</p>
+      <form id="applicationForm" novalidate>
+        <div class="grid">
+          <div class="field full">
+            <label for="organization">소속회사 <span class="required">*</span></label>
+            <input id="organization" maxlength="100" autocomplete="organization">
+          </div>
+          <div class="field">
+            <label for="visitStartDate">방문 시작일 <span class="required">*</span></label>
+            <input id="visitStartDate" type="date">
+          </div>
+          <div class="field">
+            <label for="visitEndDate">방문 종료일 <span class="required">*</span></label>
+            <input id="visitEndDate" type="date">
+          </div>
+          <div class="field full">
+            <label for="visitPurpose">방문 목적 <span class="required">*</span></label>
+            <input id="visitPurpose" maxlength="200" placeholder="예: 업무 협의, 납품, 장비 점검">
+          </div>
+          <div class="field full">
+            <label for="hostName">방문 대상 직원 <span class="required">*</span></label>
+            <input id="hostName" maxlength="80" autocomplete="off" placeholder="담당자 이름을 정확히 입력하세요">
+            <p id="hostMessage" class="field-error hidden"></p>
+            <p class="help">사원 명부의 이름과 일치하는지만 확인하며 직원 목록은 표시하지 않습니다.</p>
+          </div>
+        </div>
+
+        <div class="visitor-heading">
+          <h3>방문객 정보</h3>
+          <span id="visitorCount" class="count">1명</span>
+        </div>
+        <div id="visitorList" class="visitor-list"></div>
+        <button id="addVisitor" class="add" type="button">방문객 추가</button>
+
+        <div class="field full" style="margin-top:18px">
+          <label for="remarks">비고</label>
+          <textarea id="remarks" maxlength="300"></textarea>
+        </div>
+
+        <div class="checks">
+          <details>
+            <summary><strong>개인정보 수집·이용 내용 보기</strong></summary>
+            <p class="help"><strong>개인정보처리자:</strong> 주식회사 길앤에스</p>
+            <p class="help"><strong>수집·이용 목적:</strong> 방문 신청 접수와 승인, 방문자 본인 확인, 출입 통제, 비상 연락, 보안사고 조사 및 감사 대응</p>
+            <p class="help"><strong>필수 항목:</strong> 소속회사, 방문기간, 방문목적, 방문 대상 직원, 방문객별 성명과 연락처</p>
+            <p class="help"><strong>선택 항목:</strong> 차량번호, 반입물품, 비고. 선택 항목을 입력하지 않아도 방문 신청은 가능합니다.</p>
+            <p class="help"><strong>보유·이용 기간:</strong> 방문 종료일로부터 5년. 기간이 끝나면 관계 법령에 따라 보관할 필요가 있는 경우를 제외하고 지체 없이 파기합니다.</p>
+            <p class="help"><strong>동의 거부 권리:</strong> 개인정보 수집·이용에 동의하지 않을 수 있으나, 필수 항목 동의를 거부하면 방문 신청과 출입이 제한됩니다.</p>
+            <p class="help"><strong>신분증 확인:</strong> 현장 방문 시 본인 확인을 위해 신분증 제시를 요청할 수 있습니다. 담당자는 성명과 사진을 육안으로 확인한 뒤 즉시 돌려드리며, 신분증 사본·사진·주민등록번호·운전면허번호는 수집하거나 저장하지 않습니다.</p>
+            <p class="help"><strong>동행인 입력:</strong> 대표 신청자는 동행인에게 위 내용을 안내하고 동의를 받은 뒤 정보를 입력해야 합니다.</p>
+          </details>
+          <label class="check"><input id="privacyConsent" type="checkbox"><span>개인정보 수집·이용 및 방문이력 5년 보관에 동의합니다. <span class="required">*</span></span></label>
+          <label id="companionConsentLabel" class="check hidden"><input id="companionConsent" type="checkbox"><span>동행인에게 개인정보 처리 내용을 안내하고 동의를 받아 입력했습니다. <span class="required">*</span></span></label>
+        </div>
+        <button id="applySubmit" class="submit" type="submit" disabled>방문 신청하기</button>
+      </form>
+      <div id="applyResult" class="result hidden"></div>
+    </section>
+
+    <section id="lookupPanel" class="card hidden">
+      <h2>신청 내역 조회</h2>
+      <p class="intro">대표 방문객의 이름과 연락처를 입력하세요. 신청번호를 기억하지 않아도 됩니다.</p>
+      <form id="lookupForm" novalidate>
+        <div class="grid">
+          <div class="field">
+            <label for="lookupName">대표 방문객 이름 <span class="required">*</span></label>
+            <input id="lookupName" maxlength="80" autocomplete="name" placeholder="예: 홍길동">
+          </div>
+          <div class="field">
+            <label for="lookupPhone">대표 방문객 연락처 <span class="required">*</span></label>
+            <input id="lookupPhone" maxlength="20" inputmode="tel" autocomplete="tel">
+          </div>
+        </div>
+        <button id="lookupSubmit" class="submit" type="submit">신청 내역 조회</button>
+      </form>
+      <div id="lookupResult" class="result hidden"></div>
+    </section>
+  </main>
+
+  <div id="overlay" class="overlay">처리 중입니다.</div>
+
+  <script>
+    const WEB_APP_URL = document.body.dataset.webAppUrl;
+    const state = { ready: true, busy: false, maxVisitors: 20, hostValid: false, hostTimer: null, lastLookup: null };
+    const visitorList = document.getElementById('visitorList');
+
+    document.querySelectorAll('.tab').forEach((button) => {
+      button.addEventListener('click', () => switchTab(button.dataset.tab));
+    });
+    document.getElementById('addVisitor').addEventListener('click', () => addVisitorRow());
+    visitorList.addEventListener('click', (event) => {
+      const remove = event.target.closest('.remove');
+      if (!remove) return;
+      remove.closest('.visitor-row').remove();
+      ensureRepresentative();
+      updateVisitorRows();
+    });
+    visitorList.addEventListener('input', updateApplyAvailability);
+    visitorList.addEventListener('change', updateApplyAvailability);
+    document.querySelectorAll('#applicationForm input, #applicationForm textarea').forEach((element) => {
+      element.addEventListener('input', updateApplyAvailability);
+      element.addEventListener('change', updateApplyAvailability);
+    });
+    document.getElementById('visitStartDate').addEventListener('change', () => {
+      const start = valueOf('visitStartDate');
+      document.getElementById('visitEndDate').min = start;
+      if (valueOf('visitEndDate') < start) document.getElementById('visitEndDate').value = start;
+      updateApplyAvailability();
+    });
+    document.getElementById('hostName').addEventListener('input', scheduleHostValidation);
+    document.getElementById('applicationForm').addEventListener('submit', submitApplication);
+    document.getElementById('lookupForm').addEventListener('submit', lookupApplication);
+
+    function initializeForm() {
+      const today = getKoreanToday();
+      ['visitStartDate', 'visitEndDate'].forEach((id) => {
+        document.getElementById(id).min = today;
+      });
+      updateApplyAvailability();
+    }
+
+    function getKoreanToday() {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(new Date()).reduce((result, part) => {
+        result[part.type] = part.value;
+        return result;
+      }, {});
+      return parts.year + '-' + parts.month + '-' + parts.day;
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach((button) => button.classList.toggle('active', button.dataset.tab === tab));
+      document.getElementById('applyPanel').classList.toggle('hidden', tab !== 'apply');
+      document.getElementById('lookupPanel').classList.toggle('hidden', tab !== 'lookup');
+      clearMessage();
+    }
+
+    function addVisitorRow(values = {}) {
+      if (visitorList.children.length >= state.maxVisitors) return showMessage('방문객은 최대 ' + state.maxVisitors + '명까지 추가할 수 있습니다.', 'error');
+      const row = document.createElement('article');
+      row.className = 'visitor-row';
+      row.innerHTML = [
+        '<div class="visitor-row-head"><strong>방문객 <span class="row-number"></span></strong>',
+        '<div><label class="representative"><input class="representative-radio" type="radio" name="representative"> 대표 방문객</label>',
+        '<button class="remove" type="button">삭제</button></div></div>',
+        '<div class="grid">',
+        '<div class="field"><label>성명 <span class="required">*</span></label><input class="visitor-name" maxlength="80" autocomplete="name"></div>',
+        '<div class="field"><label>본인 연락처 <span class="required">*</span></label><input class="visitor-phone" maxlength="20" inputmode="tel" autocomplete="tel"></div>',
+        '<div class="field"><label>차량번호</label><input class="visitor-vehicle" maxlength="40" placeholder="없으면 비워두세요"></div>',
+        '<div class="field"><label>반입물품</label><input class="visitor-items" maxlength="300" placeholder="없으면 비워두세요"></div>',
+        '</div>',
+      ].join('');
+      row.querySelector('.visitor-name').value = values.name || '';
+      row.querySelector('.visitor-phone').value = values.phone || '';
+      row.querySelector('.visitor-vehicle').value = values.vehicleNumber || '';
+      row.querySelector('.visitor-items').value = values.carryItems || '';
+      visitorList.appendChild(row);
+      if (visitorList.children.length === 1 || values.isRepresentative) row.querySelector('.representative-radio').checked = true;
+      updateVisitorRows();
+    }
+
+    function updateVisitorRows() {
+      [...visitorList.children].forEach((row, index) => {
+        row.querySelector('.row-number').textContent = String(index + 1).padStart(2, '0');
+        row.querySelector('.remove').disabled = visitorList.children.length === 1;
+      });
+      const count = visitorList.children.length;
+      document.getElementById('visitorCount').textContent = count + '명';
+      document.getElementById('addVisitor').disabled = count >= state.maxVisitors;
+      document.getElementById('companionConsentLabel').classList.toggle('hidden', count < 2);
+      if (count < 2) document.getElementById('companionConsent').checked = false;
+      updateApplyAvailability();
+    }
+
+    function ensureRepresentative() {
+      if (!visitorList.querySelector('.representative-radio:checked') && visitorList.firstElementChild) visitorList.firstElementChild.querySelector('.representative-radio').checked = true;
+    }
+
+    function scheduleHostValidation() {
+      state.hostValid = false;
+      const input = document.getElementById('hostName');
+      input.classList.remove('invalid');
+      document.getElementById('hostMessage').classList.add('hidden');
+      clearTimeout(state.hostTimer);
+      const name = input.value.trim();
+      if (!name) return updateApplyAvailability();
+      state.hostTimer = setTimeout(() => validateHost(name), 500);
+      updateApplyAvailability();
+    }
+
+    function validateHost(name) {
+      google.script.run
+        .withSuccessHandler((result) => {
+          if (valueOf('hostName') !== name) return;
+          state.hostValid = Boolean(result.ok && result.exists);
+          const message = document.getElementById('hostMessage');
+          const input = document.getElementById('hostName');
+          input.classList.toggle('invalid', !state.hostValid);
+          message.textContent = state.hostValid ? '' : (result.message || '사원 명부에서 해당 이름을 찾을 수 없습니다.');
+          message.classList.toggle('hidden', state.hostValid);
+          updateApplyAvailability();
+        })
+        .withFailureHandler((error) => {
+          state.hostValid = false;
+          const message = document.getElementById('hostMessage');
+          document.getElementById('hostName').classList.add('invalid');
+          message.textContent = errorMessage(error);
+          message.classList.remove('hidden');
+          updateApplyAvailability();
+        })
+        .validateVisitorHostName(name);
+    }
+
+    function isApplyReady() {
+      const visitors = collectVisitors();
+      const basic = valueOf('organization') && valueOf('visitStartDate') && valueOf('visitEndDate') && valueOf('visitPurpose') && valueOf('hostName');
+      const visitorsReady = visitors.length > 0 && visitors.every((visitor) => visitor.name && visitor.phone);
+      const consent = document.getElementById('privacyConsent').checked && (visitors.length < 2 || document.getElementById('companionConsent').checked);
+      return Boolean(state.ready && basic && visitorsReady && state.hostValid && consent);
+    }
+
+    function updateApplyAvailability() {
+      document.getElementById('applySubmit').disabled = state.busy || !isApplyReady();
+    }
+
+    function collectVisitors() {
+      return [...visitorList.children].map((row) => ({
+        name: row.querySelector('.visitor-name').value.trim(),
+        phone: row.querySelector('.visitor-phone').value.trim(),
+        vehicleNumber: row.querySelector('.visitor-vehicle').value.trim(),
+        carryItems: row.querySelector('.visitor-items').value.trim(),
+        isRepresentative: row.querySelector('.representative-radio').checked,
+      }));
+    }
+
+    function submitApplication(event) {
+      event.preventDefault();
+      if (!isApplyReady() || state.busy) return showMessage('필수 입력항목과 방문 대상 확인 결과를 확인하세요.', 'error');
+      setBusy(true);
+      clearMessage();
+      const payload = {
+        organization: valueOf('organization'),
+        visitStartDate: valueOf('visitStartDate'),
+        visitEndDate: valueOf('visitEndDate'),
+        visitPurpose: valueOf('visitPurpose'),
+        hostName: valueOf('hostName'),
+        visitors: collectVisitors(),
+        remarks: valueOf('remarks'),
+        privacyConsent: document.getElementById('privacyConsent').checked,
+        companionConsent: document.getElementById('companionConsent').checked,
+      };
+      google.script.run
+        .withSuccessHandler((result) => {
+          setBusy(false);
+          document.getElementById('applicationForm').classList.add('hidden');
+          const box = document.getElementById('applyResult');
+          box.innerHTML = '<h3>방문 신청 완료</h3><p>아래 신청번호를 반드시 저장하세요.</p><span class="application-number">' + escapeHtml(result.applicationNumber) + '</span><p>상태: <strong>승인 대기</strong></p><button id="copyNumber" class="copy" type="button">신청번호 복사</button>';
+          box.classList.remove('hidden');
+          document.getElementById('copyNumber').addEventListener('click', () => navigator.clipboard.writeText(result.applicationNumber));
+          showMessage('방문 신청이 접수되었습니다.', 'success');
+        })
+        .withFailureHandler((error) => { setBusy(false); showMessage(errorMessage(error), 'error'); updateApplyAvailability(); })
+        .createVisitorApplication(payload);
+    }
+
+    function lookupApplication(event) {
+      event.preventDefault();
+      if (state.busy) return;
+      const payload = { name: valueOf('lookupName'), phone: valueOf('lookupPhone') };
+      if (!payload.name || !payload.phone) return showMessage('대표 방문객 이름과 연락처를 입력하세요.', 'error');
+      setBusy(true);
+      clearMessage();
+      google.script.run
+        .withSuccessHandler((result) => { setBusy(false); state.lastLookup = payload; renderLookup(result.applications || []); })
+        .withFailureHandler((error) => { setBusy(false); showMessage(errorMessage(error), 'error'); document.getElementById('lookupResult').classList.add('hidden'); })
+        .getVisitorApplicationStatus(payload);
+    }
+
+    function renderLookup(applications) {
+      const box = document.getElementById('lookupResult');
+      box.innerHTML = applications.map((application) => {
+        const visitors = application.visitors.map((visitor) => '<article><span><strong>' + escapeHtml(visitor.name) + '</strong><br><small>' + escapeHtml(visitor.phone) + '</small></span><span>' + escapeHtml(visitor.visitStatus) + (visitor.reason ? '<br><small>' + escapeHtml(visitor.reason) + '</small>' : '') + '</span></article>').join('');
+        return '<section class="lookup-application"><span class="status-badge">' + escapeHtml(application.status) + '</span><span class="application-number">' + escapeHtml(application.applicationNumber) + '</span><div class="summary-grid"><div><small>방문기간</small>' + escapeHtml(application.visitStartDate) + ' ~ ' + escapeHtml(application.visitEndDate) + '</div><div><small>소속회사</small>' + escapeHtml(application.organization) + '</div><div><small>방문목적</small>' + escapeHtml(application.visitPurpose) + '</div><div><small>방문대상</small>' + escapeHtml(application.hostName) + '</div></div><div class="visitor-status">' + visitors + '</div>' + (application.canCancel ? '<button class="cancel cancel-application" data-application-number="' + escapeHtml(application.applicationNumber) + '" type="button">이 방문 신청 취소</button>' : '') + '</section>';
+      }).join('');
+      box.classList.remove('hidden');
+      box.querySelectorAll('.cancel-application').forEach((button) => {
+        button.addEventListener('click', () => cancelApplication(button.dataset.applicationNumber));
+      });
+    }
+
+    function cancelApplication(applicationNumber) {
+      if (!state.lastLookup || !window.confirm('이 방문 신청 전체를 취소할까요? 취소 후에는 되돌릴 수 없습니다.')) return;
+      setBusy(true);
+      google.script.run
+        .withSuccessHandler((result) => { setBusy(false); showMessage('방문 신청이 취소되었습니다.', 'success'); document.getElementById('lookupResult').classList.add('hidden'); })
+        .withFailureHandler((error) => { setBusy(false); showMessage(errorMessage(error), 'error'); })
+        .cancelVisitorApplication({ applicationNumber: applicationNumber, phone: state.lastLookup.phone });
+    }
+
+    function valueOf(id) { return document.getElementById(id).value.trim(); }
+    function setBusy(busy) { state.busy = busy; clearTimeout(state.overlayTimer); const overlay = document.getElementById('overlay'); if (busy) { state.overlayTimer = setTimeout(() => overlay.classList.add('show'), 350); } else { overlay.classList.remove('show'); } updateApplyAvailability(); }
+    function showMessage(text, type) { const box = document.getElementById('globalMessage'); box.textContent = text; box.className = 'message ' + type; window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    function clearMessage() { const box = document.getElementById('globalMessage'); box.textContent = ''; box.className = 'message'; }
+    function errorMessage(error) { return error && error.message ? error.message : String(error || '처리 중 오류가 발생했습니다.'); }
+    function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[char])); }
+
+    addVisitorRow({ isRepresentative: true });
+    initializeForm();
+  </script>
+</body>
+</html>

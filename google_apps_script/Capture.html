@@ -122,6 +122,41 @@
       opacity: 0.55;
     }
 
+    .save-card {
+      position: sticky;
+      bottom: 10px;
+      margin-top: 16px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 12px 28px rgba(29, 49, 80, 0.16);
+    }
+
+    .save-button {
+      width: 100%;
+      min-height: 54px;
+      border: 0;
+      border-radius: 14px;
+      background: var(--green);
+      color: white;
+      font: inherit;
+      font-weight: 900;
+    }
+
+    .save-button:disabled {
+      background: #aeb8c7;
+      cursor: not-allowed;
+    }
+
+    .save-hint {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
     input[type="file"] {
       position: absolute;
       width: 1px;
@@ -143,7 +178,8 @@
     }
   </style>
 </head>
-<body>
+<body data-web-app-url="<?= webAppUrl ?>">
+  <?!= getSharedBackgroundHtml_() ?>
   <main>
     <header>
       <p>GILNS MOBILE CAMERA</p>
@@ -235,7 +271,10 @@
         <strong>실물 사진</strong>
         <span id="productCount" class="count">0</span>
       </div>
-      <p class="hint">정면, 측면, 명판 등을 촬영합니다.</p>
+      <p class="hint">
+        정면, 측면, 명판 등 여러 장 가능
+        (앞면, 옆면, 뒷면 등 최소 3장을 넣어주세요.)
+      </p>
       <button
         class="capture-button"
         data-key="product"
@@ -253,6 +292,20 @@
         사진을 전송하고 있습니다.
       </div>
     </section>
+
+    <section class="save-card">
+      <button
+        id="saveCaptureButton"
+        class="save-button"
+        type="button"
+        disabled
+      >
+        휴대폰 촬영 마치기
+      </button>
+      <p id="saveHint" class="save-hint">
+        부족한 사진은 PC에서 추가할 수 있습니다.
+      </p>
+    </section>
   </main>
 
   <script>
@@ -267,6 +320,8 @@
       'product',
     ];
     let ready = false;
+    let saving = false;
+    let captureCompleted = false;
 
     document.addEventListener('DOMContentLoaded', () => {
       KEYS.forEach((key) => {
@@ -289,6 +344,9 @@
         });
       });
 
+      document
+        .getElementById('saveCaptureButton')
+        .addEventListener('click', completeCapture);
       refreshStatus();
 
     });
@@ -352,10 +410,60 @@
         document.getElementById(key + 'Count').textContent =
           String(result.counts[key] || 0);
       });
+      captureCompleted = Boolean(result.completed);
+      updateSaveButton();
       setStatus(
-        'PC와 연결되었습니다. 촬영하면 바로 전송됩니다.',
+        captureCompleted
+          ? '휴대폰 촬영을 마쳤습니다.'
+          : 'PC와 연결되었습니다. 촬영하면 바로 전송됩니다.',
         false
       );
+    }
+
+    function updateSaveButton() {
+      const button = document.getElementById(
+        'saveCaptureButton'
+      );
+      const hint = document.getElementById('saveHint');
+
+      button.disabled =
+        !ready ||
+        saving ||
+        captureCompleted;
+      button.textContent = captureCompleted
+        ? '휴대폰 촬영 완료'
+        : saving
+          ? '처리 중'
+          : '휴대폰 촬영 마치기';
+      hint.textContent = captureCompleted
+        ? '부족한 사진을 PC에서 추가한 뒤 등록하세요.'
+        : '현재 사진은 자동 전송됩니다. ' +
+          '부족한 사진은 PC에서 추가할 수 있습니다.';
+    }
+
+    function completeCapture() {
+      if (!ready || saving || captureCompleted) {
+        return;
+      }
+
+      saving = true;
+      updateSaveButton();
+
+      google.script.run
+        .withSuccessHandler((result) => {
+          saving = false;
+          captureCompleted = true;
+          renderStatus(result);
+        })
+        .withFailureHandler((error) => {
+          saving = false;
+          updateSaveButton();
+          setStatus(getErrorMessage(error), true);
+        })
+        .completeCaptureSession(
+          SESSION_ID,
+          SESSION_TOKEN
+        );
     }
 
     function setStatus(message, isError) {

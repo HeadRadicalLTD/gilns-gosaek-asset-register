@@ -1,0 +1,291 @@
+<style>
+  html {
+    min-height: 100%;
+    overflow-x: hidden;
+    background: #d9d9f7;
+  }
+
+  body {
+    position: relative;
+    isolation: isolate;
+    min-height: 100vh;
+    background: transparent !important;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+
+  button,
+  a,
+  [role="button"] { cursor: pointer; }
+
+  .company-logo {
+    width: 64px !important;
+    height: auto !important;
+    cursor: pointer;
+  }
+
+  .gilns-top-button {
+    position: fixed;
+    z-index: 9998;
+    top: 50%;
+    right: 16px;
+    bottom: auto;
+    min-width: 52px;
+    min-height: 176px;
+    padding: 16px 12px;
+    border: 1px solid rgba(255,255,255,.46);
+    border-radius: 18px;
+    background: #1f2f4d;
+    color: #fff;
+    font: inherit;
+    font-weight: 900;
+    box-shadow: 0 12px 30px rgba(31,47,77,.25);
+    transform: translateY(-50%);
+    writing-mode: vertical-rl;
+  }
+
+  .gilns-job-navigation {
+    position: absolute;
+    z-index: 20;
+    top: 22px;
+    right: 22px;
+    width: min(360px, calc(100% - 44px));
+  }
+
+  .gilns-job-toggle {
+    display: block;
+    min-height: 42px;
+    margin-left: auto;
+    padding: 10px 14px;
+    border: 1px solid rgba(255,255,255,.38);
+    border-radius: 11px;
+    background: rgba(255,255,255,.13);
+    color: #fff;
+    font: inherit;
+    font-weight: 900;
+    backdrop-filter: blur(8px);
+  }
+  .gilns-job-panel {
+    display: none;
+    position: absolute;
+    top: 50px;
+    right: 0;
+    width: 100%;
+    padding: 16px;
+    border: 1px solid rgba(203,213,225,.95);
+    border-radius: 16px;
+    background: rgba(255,255,255,.98);
+    box-shadow: 0 18px 46px rgba(15,23,42,.24);
+  }
+  .gilns-job-navigation.is-open .gilns-job-panel { display: block; }
+  .gilns-job-panel strong { display: block; margin-bottom: 5px; color: #17233b; font-size: 17px; }
+  .gilns-job-panel p { margin: 0 0 12px; color: #64748b; font-size: 13px; }
+  .gilns-job-links { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .gilns-job-links a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid #d7deea;
+    border-radius: 13px;
+    color: #17233b;
+    background: #fff;
+    font-weight: 900;
+    text-decoration: none;
+  }
+  .gilns-job-links a:hover,
+  .gilns-job-links a:focus-visible { border-color: #3269e8; background: #eef4ff; }
+
+  @media (max-width: 720px) {
+    .gilns-job-links { grid-template-columns: 1fr; }
+    .gilns-job-navigation { top: 14px; right: 14px; width: min(310px, calc(100% - 28px)); }
+    .gilns-top-button {
+      top: auto;
+      right: 14px;
+      bottom: 14px;
+      min-width: 148px;
+      min-height: 48px;
+      padding: 12px 16px;
+      border-radius: 999px;
+      transform: none;
+      writing-mode: horizontal-tb;
+    }
+  }
+
+  .gilns-ambient-background {
+    position: fixed;
+    z-index: -1;
+    inset: 0;
+    overflow: hidden;
+    background:
+      linear-gradient(135deg, #f3c9f3 0%, #ddd5fa 42%, #bae9ef 100%);
+    pointer-events: none;
+  }
+
+  .gilns-ambient-background::after {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(120deg, rgba(255,255,255,.22), transparent 42%),
+      radial-gradient(circle at 50% 115%, rgba(255,255,255,.28), transparent 42%);
+    content: "";
+  }
+
+  .gilns-ambient-orb {
+    position: absolute;
+    border-radius: 999px;
+    opacity: .5;
+    filter: blur(3px);
+    will-change: transform;
+  }
+
+  .gilns-ambient-orb.one {
+    top: -18vmax;
+    left: -12vmax;
+    width: 48vmax;
+    height: 48vmax;
+    background: radial-gradient(circle, rgba(255,255,255,.72), rgba(234,145,242,.22) 52%, transparent 72%);
+    animation: gilns-drift-one 18s ease-in-out infinite alternate;
+  }
+
+  .gilns-ambient-orb.two {
+    top: 16vh;
+    right: -18vmax;
+    width: 52vmax;
+    height: 52vmax;
+    background: radial-gradient(circle, rgba(104,188,243,.46), rgba(128,210,226,.18) 54%, transparent 72%);
+    animation: gilns-drift-two 22s ease-in-out infinite alternate;
+  }
+
+  .gilns-ambient-orb.three {
+    bottom: -25vmax;
+    left: 20vw;
+    width: 50vmax;
+    height: 50vmax;
+    background: radial-gradient(circle, rgba(144,119,232,.34), rgba(255,255,255,.08) 55%, transparent 72%);
+    animation: gilns-drift-three 25s ease-in-out infinite alternate;
+  }
+
+  @keyframes gilns-drift-one {
+    from { transform: translate3d(-3%, -2%, 0) scale(1); }
+    to { transform: translate3d(18%, 15%, 0) scale(1.12); }
+  }
+
+  @keyframes gilns-drift-two {
+    from { transform: translate3d(4%, -8%, 0) scale(.96); }
+    to { transform: translate3d(-17%, 16%, 0) scale(1.1); }
+  }
+
+  @keyframes gilns-drift-three {
+    from { transform: translate3d(-10%, 10%, 0) scale(1); }
+    to { transform: translate3d(17%, -13%, 0) scale(1.14); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .gilns-ambient-orb { animation: none !important; }
+  }
+</style>
+<div class="gilns-ambient-background" aria-hidden="true">
+  <span class="gilns-ambient-orb one"></span>
+  <span class="gilns-ambient-orb two"></span>
+  <span class="gilns-ambient-orb three"></span>
+</div>
+<script>
+  window.gilnsProtectSessionUrl = function (token, parameters) {
+    if (!token) {
+      return;
+    }
+    sessionStorage.setItem('gilns-admin-token', token);
+  };
+
+  window.addEventListener('pageshow', function () {
+    document.documentElement.classList.remove('gilns-page-leaving');
+  });
+
+  window.addEventListener('DOMContentLoaded', function () {
+    const body = document.body;
+    const webAppUrl = body.dataset.webAppUrl || '';
+    const token = body.dataset.adminToken || '';
+    const role = body.dataset.userRole || '';
+    const current = body.dataset.currentModule || '';
+
+    document.querySelectorAll('.company-logo').forEach(function (logo) {
+      if (!webAppUrl) return;
+      logo.setAttribute('role', 'link');
+      logo.setAttribute('tabindex', '0');
+      logo.setAttribute('aria-label', '처음 페이지로 이동');
+      const goHome = function () { window.top.location.href = webAppUrl; };
+      logo.addEventListener('click', goHome);
+      logo.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          goHome();
+        }
+      });
+    });
+
+    const topButton = document.createElement('button');
+    topButton.type = 'button';
+    topButton.className = 'gilns-top-button';
+    topButton.textContent = '↑ 맨 위로 돌아가기';
+    topButton.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    document.body.appendChild(topButton);
+
+    if (!webAppUrl || !token || !role || !current) return;
+    const jobs = role === 'admin'
+      ? [
+        ['asset', '실물자산관리'],
+        ['info', '정보자산관리'],
+        ['visitor', '외부 방문객 관리'],
+        ['employee', '부서 출입 관리'],
+        ['movement', '물품 반출입'],
+        ['requests', '관리 요청'],
+        ['audit', '감사로그'],
+      ]
+      : [
+        ['asset', '실물자산 등록·수정'],
+        ['info', '정보자산 등록'],
+        ['visitor', '외부 방문객 등록'],
+        ['employee', '부서 출입 신청'],
+        ['movement', '물품 반출입 신청'],
+        ['requests', '관리 요청'],
+      ];
+    const available = jobs.filter(function (job) { return job[0] !== current; });
+    const hero = document.querySelector('header.hero, .hero, main.card');
+    if (!hero) return;
+    hero.style.position = 'relative';
+    hero.style.overflow = 'visible';
+    const legacyLinks = hero.querySelectorAll(':scope > .nav a');
+    legacyLinks.forEach(function (link, index) {
+      if (index > 0) link.style.display = 'none';
+    });
+    const nav = document.createElement('nav');
+    nav.className = 'gilns-job-navigation';
+    nav.setAttribute('aria-label', '다른 업무 바로가기');
+    nav.innerHTML = '<button class="gilns-job-toggle" type="button" aria-expanded="false">다른 업무 바로가기 ▾</button>' +
+      '<div class="gilns-job-panel"><strong>다른 업무 바로가기</strong>' +
+      '<p>원하는 업무를 누르면 바로 이동합니다.</p>' +
+      '<div class="gilns-job-links">' + available.map(function (job) {
+        const href = job[2] || webAppUrl + '?module=' +
+          encodeURIComponent(job[0]) + '&adminToken=' + encodeURIComponent(token);
+        return '<a target="_top" href="' + href +
+          '">' + job[1] + '</a>';
+      }).join('') + '</div></div>';
+    const toggle = nav.querySelector('.gilns-job-toggle');
+    toggle.addEventListener('click', function () {
+      const open = nav.classList.toggle('is-open');
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.textContent = open ? '다른 업무 바로가기 ▴' : '다른 업무 바로가기 ▾';
+    });
+    document.addEventListener('click', function (event) {
+      if (!nav.contains(event.target)) {
+        nav.classList.remove('is-open');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.textContent = '다른 업무 바로가기 ▾';
+      }
+    });
+    hero.appendChild(nav);
+  });
+</script>

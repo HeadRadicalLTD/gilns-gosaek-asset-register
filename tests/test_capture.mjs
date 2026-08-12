@@ -30,13 +30,23 @@ assert.doesNotThrow(() => new vm.Script(scripts[0]));
   'data-key="purchaseOrder"',
   'data-key="taxInvoice"',
   'data-key="product"',
+  'id="saveCaptureButton"',
+  '최소 3장을 넣어주세요',
+  '부족한 사진은 PC에서 추가할 수 있습니다.',
+  '휴대폰 촬영 마치기',
   ".uploadCapturedPhoto({",
   ".getCaptureSessionStatus(",
+  ".completeCaptureSession(",
 ].forEach((needle) => {
   assert.ok(
     html.includes(needle),
     `missing capture contract: ${needle}`,
   );
 });
+
+assert.ok(
+  !html.includes("count < MIN_PRODUCT_PHOTOS"),
+  "phone photo count must not block partial capture",
+);
 
 console.log("CAPTURE_TESTS_OK=1");

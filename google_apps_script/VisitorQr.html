@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>외부 방문객 등록</title>
+  <style>
+    :root { --ink:#172033; --green:#16845b; }
+    * { box-sizing: border-box; }
+    body {
+      display: grid;
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px;
+      background:
+        radial-gradient(circle at top right,#d7efe3 0,transparent 34%),
+        linear-gradient(180deg,#f7faf9 0%,#edf4f1 100%);
+      color: var(--ink);
+      font-family: Pretendard,"Noto Sans KR",Arial,sans-serif;
+      place-items: center;
+    }
+    .card {
+      position: relative;
+      width: min(100%,560px);
+      padding: 38px 28px;
+      border: 1px solid #cfddd6;
+      border-radius: 28px;
+      background: #fff;
+      text-align: center;
+      box-shadow: 0 22px 54px rgba(23,32,51,.13);
+    }
+    .badge {
+      display: inline-block;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: #e7f6ef;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .08em;
+    }
+    h1 { margin: 18px 0 8px; font-size: clamp(30px,7vw,44px); letter-spacing: -.04em; }
+    p { margin: 0 0 26px; color: #667085; line-height: 1.6; }
+    .qr {
+      display: grid;
+      width: 300px;
+      height: 300px;
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 18px;
+      border: 1px solid #d4dfd9;
+      border-radius: 22px;
+      background: #fff;
+      place-items: center;
+    }
+    .qr img,.qr canvas { display:block;max-width:100%;height:auto!important; }
+    .brand { display:flex;align-items:center;justify-content:center;gap:10px;font-weight:900; }
+    .brand .company-logo { width:42px;height:45px;object-fit:contain;border-radius:9px; }
+    .back { display:inline-block;margin-top:22px;color:#334155;font-size:14px;font-weight:800;text-decoration:none; }
+    @media(max-width:480px){body{padding:12px}.card{padding:30px 18px;border-radius:22px}.qr{width:270px;height:270px}}
+  </style>
+</head>
+<body data-visitor-url="<?= visitorSelfUrl ?>" data-web-app-url="<?= webAppUrl ?>" data-admin-token="<?= typeof adminToken !== 'undefined' ? adminToken : '' ?>" data-user-role="<?= typeof userRole !== 'undefined' ? userRole : '' ?>" data-current-module="<?= typeof userRole !== 'undefined' && userRole ? 'visitor' : '' ?>">
+  <?!= getSharedBackgroundHtml_() ?>
+  <main class="card hero">
+    <div class="brand"><?!= getCompanyLogoHtml_() ?><span>GIL&amp;S</span></div>
+    <span class="badge">VISITOR</span>
+    <h1>방문객 현장 등록</h1>
+    <p>직원이 이 화면을 띄우면 방문객이 휴대폰 카메라로 QR을 촬영합니다. 승인된 신청만 입장할 수 있습니다.</p>
+    <div id="visitorQr" class="qr"></div>
+    <a class="back" href="<?= webAppUrl ?>?module=visitor&amp;mode=portal" target="_top">방문 안내로 돌아가기</a>
+  </main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    const VISITOR_URL = document.body.dataset.visitorUrl;
+    const ADMIN_TOKEN = document.body.dataset.adminToken;
+    if (ADMIN_TOKEN) gilnsProtectSessionUrl(ADMIN_TOKEN, { module: 'visitor' });
+    const target = document.getElementById('visitorQr');
+
+    if (window.QRCode) {
+      new QRCode(target, {
+        text: VISITOR_URL,
+        width: 264,
+        height: 264,
+        colorDark: '#172033',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M,
+      });
+    } else {
+      target.textContent = 'QR 코드를 불러오지 못했습니다.';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="referrer" content="no-referrer">
+  <title>부서 출입 관리</title>
+  <style>
+    *{box-sizing:border-box} :root{--navy:#1f2f4d;--blue:#3269e8;--green:#16845b;--red:#c83a3a;--muted:#667085}
+    body{margin:0;color:#17233b;font-family:Arial,"Noto Sans KR",sans-serif}.hidden{display:none!important}.shell{width:min(1080px,calc(100% - 32px));margin:auto;padding:28px 0 56px}
+    .hero,.card,.status{border:1px solid rgba(203,213,225,.9);box-shadow:0 18px 46px rgba(31,47,77,.1)}.hero{padding:34px;border-radius:26px;background:var(--navy);color:#fff}.hero h1{margin:10px 0;font-size:clamp(32px,5vw,50px)}.hero p{margin:0;color:#dce6f7}.nav{display:flex;gap:10px;flex-wrap:wrap}.nav a{padding:10px 13px;border:1px solid rgba(255,255,255,.35);border-radius:10px;color:#fff;text-decoration:none;font-weight:900}
+    .status{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:16px 0;padding:14px 18px;border-radius:14px;background:#fff}.status a{color:#235bd4;font-weight:900}.dot{width:10px;height:10px;display:inline-block;margin-right:8px;border-radius:50%;background:#18a66e}
+    .message{display:none;margin:14px 0;padding:14px 16px;border-radius:12px;font-weight:800}.message.show{display:block}.message.error{color:#a92121;background:#fff0f0}.message.success{color:#126b4c;background:#e9f8f1}
+    .card{margin-top:18px;padding:26px;border-radius:22px;background:rgba(255,255,255,.94)}.card h2{margin:0 0 6px;font-size:25px}.hint{margin:0 0 20px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.full{grid-column:1/-1}label{display:block;margin-bottom:7px;font-weight:900}input,select,textarea{width:100%;min-height:52px;padding:12px 14px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;font:inherit}textarea{min-height:92px;resize:vertical}.required{color:var(--red)}
+    .primary{width:100%;min-height:56px;margin-top:18px;border:0;border-radius:13px;background:var(--blue);color:#fff;font:inherit;font-weight:900}.primary:disabled{opacity:.45;cursor:not-allowed}
+    .records{display:grid;gap:12px}.record{padding:18px;border:1px solid #d9e0eb;border-radius:15px;background:#fff}.record-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.record h3{margin:0;font-size:19px}.badge{padding:7px 10px;border-radius:999px;background:#edf3ff;color:#235bd4;font-size:13px;font-weight:900}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.meta div{padding:10px;border-radius:10px;background:#f6f8fc}.meta small{display:block;color:var(--muted)}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.actions button{min-height:44px;padding:9px 14px;border:0;border-radius:10px;color:#fff;font-weight:900}.approve{background:var(--green)}.reject{background:var(--red)}.enter{background:var(--blue)}.exit{background:#7856d8}.empty{padding:24px;border:1px dashed #cbd5e1;border-radius:13px;text-align:center;color:var(--muted)}
+    .overlay{display:none;position:fixed;z-index:9999;inset:0;align-items:center;justify-content:center;background:rgba(15,23,42,.5);color:#fff;font-size:21px;font-weight:900}.overlay.show{display:flex}
+    @media(max-width:700px){.shell{width:min(100% - 20px,1080px);padding-top:10px}.hero,.card{padding:21px;border-radius:18px}.grid,.meta{grid-template-columns:1fr}.full{grid-column:auto}.record-head{display:block}.badge{display:inline-block;margin-top:8px}}
+  </style>
+</head>
+<body data-web-app-url="<?= webAppUrl ?>" data-admin-token="<?= adminToken ?>" data-user-role="<?= userRole ?>" data-current-module="employee">
+  <?!= getSharedBackgroundHtml_() ?>
+  <main class="shell">
+    <header class="hero">
+      <nav class="nav"><a href="<?= webAppUrl ?>?adminToken=<?= adminToken ?>">통합 메뉴</a></nav>
+      <h1>부서 출입 관리</h1>
+      <p>다른 부서의 보호구역에 들어가기 전에 신청하고, 대상 부서 직원의 승인을 받습니다.</p>
+    </header>
+    <div class="status"><span><span class="dot"></span><span id="systemStatus">연결 확인 중</span></span><a id="ledgerLink" class="<?= userRole === 'admin' ? '' : 'hidden' ?>" href="#" target="_blank" rel="noopener">부서 출입대장 열기</a></div>
+    <div id="errorMessage" class="message error"></div><div id="successMessage" class="message success"></div>
+
+    <section class="card">
+      <h2>1. 부서 출입 신청</h2>
+      <p class="hint">본인 부서가 아닌 다른 부서에 들어갈 때 신청합니다.</p>
+      <form id="requestForm">
+        <div class="grid">
+          <div><label>신청자</label><input id="requesterName" readonly></div>
+          <div><label>현재 부서</label><input id="requesterDepartment" readonly></div>
+          <div><label for="targetDepartment">출입할 부서 <span class="required">*</span></label><select id="targetDepartment"><option value="">선택하세요</option></select></div>
+          <div><label for="visitDate">출입 예정일 <span class="required">*</span></label><input id="visitDate" type="date"></div>
+          <div class="full"><label for="purpose">출입 목적 <span class="required">*</span></label><textarea id="purpose" maxlength="300" placeholder="예: 장비 점검, 업무 협의, 제품 조립 지원"></textarea></div>
+        </div>
+        <button id="submitButton" class="primary" type="submit" disabled>출입 신청하기</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>2. 내가 신청한 내역</h2>
+      <p class="hint">승인되면 방문 당일 입장 등록을 누르고, 나올 때 퇴장 등록을 누르세요.</p>
+      <div id="myRequests" class="records"><div class="empty">신청 내역을 불러오는 중입니다.</div></div>
+    </section>
+
+    <section class="card">
+      <h2>3. 우리 부서 승인 요청</h2>
+      <p class="hint">등록자의 신청을 확인하고 승인 또는 반려합니다.</p>
+      <div id="approvalRequests" class="records"><div class="empty">승인 요청을 불러오는 중입니다.</div></div>
+    </section>
+  </main>
+  <div id="overlay" class="overlay">처리 중입니다. 잠시만 기다려 주세요.</div>
+  <script>
+    const WEB_APP_URL=document.body.dataset.webAppUrl;const ADMIN_TOKEN=document.body.dataset.adminToken;gilnsProtectSessionUrl(ADMIN_TOKEN,{module:'employee'});const state={ready:false,busy:false};
+    const form=document.getElementById('requestForm');form.addEventListener('input',updateButton);form.addEventListener('change',updateButton);form.addEventListener('submit',submitRequest);document.getElementById('approvalRequests').addEventListener('click',handleDecision);document.getElementById('myRequests').addEventListener('click',handleState);
+    loadConfig();
+    function loadConfig(){setBusy(true);google.script.run.withSuccessHandler(applyConfig).withFailureHandler(fail).getDepartmentAccessConfig(ADMIN_TOKEN)}
+    function applyConfig(config){setBusy(false);if(!config.ok)return showError(config.message);state.ready=true;document.getElementById('systemStatus').textContent='부서 출입관리 연결됨';const ledger=document.getElementById('ledgerLink');if(config.ledgerUrl)ledger.href=config.ledgerUrl;document.getElementById('requesterName').value=config.actorName;document.getElementById('requesterDepartment').value=config.department||'미지정';document.getElementById('visitDate').value=config.today;const select=document.getElementById('targetDepartment');if(select.options.length===1)select.innerHTML='<option value="">선택하세요</option>'+config.departments.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('');render('myRequests',config.myRequests||[],false);render('approvalRequests',config.approvalRequests||[],true);updateButton()}
+    function submitRequest(event){event.preventDefault();if(state.busy)return;setBusy(true);clearMessages();google.script.run.withSuccessHandler(config=>{applyConfig(config);form.reset();document.getElementById('visitDate').value=config.today;document.getElementById('requesterName').value=config.actorName;document.getElementById('requesterDepartment').value=config.department||'미지정';showSuccess('부서 출입 신청을 등록했습니다.')}).withFailureHandler(fail).createDepartmentAccessRequest({adminToken:ADMIN_TOKEN,targetDepartment:value('targetDepartment'),visitDate:value('visitDate'),purpose:value('purpose')})}
+    function handleDecision(event){const button=event.target.closest('button[data-action]');if(!button||state.busy)return;const action=button.dataset.action;let reason='';if(action==='reject'){reason=window.prompt('반려 사유를 입력하세요.','')||'';if(!reason)return}if(!window.confirm(action==='approve'?'이 출입 신청을 승인할까요?':'이 출입 신청을 반려할까요?'))return;setBusy(true);google.script.run.withSuccessHandler(config=>{applyConfig(config);showSuccess(action==='approve'?'출입 신청을 승인했습니다.':'출입 신청을 반려했습니다.')}).withFailureHandler(fail).processDepartmentAccessDecision({adminToken:ADMIN_TOKEN,requestId:button.dataset.id,action:action,reason:reason})}
+    function handleState(event){const button=event.target.closest('button[data-state]');if(!button||state.busy)return;const action=button.dataset.state;if(!window.confirm(action==='enter'?'입장 등록할까요?':'퇴장 등록할까요?'))return;setBusy(true);google.script.run.withSuccessHandler(config=>{applyConfig(config);showSuccess(action==='enter'?'입장 등록을 완료했습니다.':'퇴장 등록을 완료했습니다.')}).withFailureHandler(fail).markDepartmentAccessState({adminToken:ADMIN_TOKEN,requestId:button.dataset.id,action:action})}
+    function render(id,records,approval){const target=document.getElementById(id);if(!records.length){target.innerHTML='<div class="empty">'+(approval?'현재 처리할 승인 요청이 없습니다.':'아직 신청 내역이 없습니다.')+'</div>';return}target.innerHTML=records.map(r=>'<article class="record"><div class="record-head"><h3>'+esc(r.requesterName)+' → '+esc(r.targetDepartment)+'</h3><span class="badge">'+esc(r.status)+'</span></div><div class="meta"><div><small>출입 예정일</small>'+esc(r.visitDate)+'</div><div><small>신청자 부서</small>'+esc(r.requesterDepartment||'미지정')+'</div><div><small>출입 목적</small>'+esc(r.purpose)+'</div></div>'+(r.reason?'<p><strong>처리 사유:</strong> '+esc(r.reason)+'</p>':'')+'<div class="actions">'+(approval?'<button class="approve" data-action="approve" data-id="'+esc(r.requestId)+'">승인</button><button class="reject" data-action="reject" data-id="'+esc(r.requestId)+'">반려</button>':r.status==='승인'?'<button class="enter" data-state="enter" data-id="'+esc(r.requestId)+'">입장 등록</button>':r.status==='입장'?'<button class="exit" data-state="exit" data-id="'+esc(r.requestId)+'">퇴장 등록</button>':'')+'</div></article>').join('')}
+    function updateButton(){document.getElementById('submitButton').disabled=state.busy||!state.ready||!value('targetDepartment')||!value('visitDate')||!value('purpose')}function value(id){return document.getElementById(id).value.trim()}function setBusy(v){state.busy=v;clearTimeout(state.overlayTimer);const overlay=document.getElementById('overlay');if(v){state.overlayTimer=setTimeout(()=>overlay.classList.add('show'),350)}else{overlay.classList.remove('show')}updateButton()}function fail(error){setBusy(false);showError(error&&error.message?error.message:String(error||'처리 중 오류가 발생했습니다.'))}function clearMessages(){document.getElementById('errorMessage').classList.remove('show');document.getElementById('successMessage').classList.remove('show')}function showError(t){const e=document.getElementById('errorMessage');e.textContent=t;e.classList.add('show');window.scrollTo({top:0,behavior:'smooth'})}function showSuccess(t){const e=document.getElementById('successMessage');e.textContent=t;e.classList.add('show');window.scrollTo({top:0,behavior:'smooth'})}function esc(v){return String(v==null?'':v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+  </script>
+</body>
+</html>

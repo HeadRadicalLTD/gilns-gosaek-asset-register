@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>길앤에스 로그인</title>
+  <style>
+    :root {
+      --navy: #17233c;
+      --blue: #2e66d8;
+      --muted: #60708d;
+      --red: #b83240;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      display: grid;
+      min-height: 100vh;
+      margin: 0;
+      padding: 28px;
+      overflow-x: hidden;
+      color: var(--navy);
+      font-family: Pretendard, "Noto Sans KR", Arial, sans-serif;
+      place-items: center;
+    }
+
+    .login {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      width: min(100%, 620px);
+      padding: 42px 42px 34px;
+      border: 1px solid rgba(255,255,255,.72);
+      border-radius: 32px;
+      background: rgba(255,255,255,.48);
+      box-shadow: 0 28px 70px rgba(41,55,104,.22);
+      backdrop-filter: blur(22px);
+    }
+
+    .login::before {
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        radial-gradient(circle at 12% 4%, rgba(255,255,255,.58), transparent 30%),
+        linear-gradient(120deg, rgba(255,255,255,.12), transparent 48%);
+      content: "";
+    }
+
+    .logo {
+      display: grid;
+      width: 74px;
+      height: 74px;
+      margin: 0 auto;
+      border: 1px solid rgba(255,255,255,.72);
+      border-radius: 24px;
+      background: rgba(255,255,255,.43);
+      box-shadow: 0 12px 30px rgba(51,60,112,.1);
+      place-items: center;
+    }
+
+    .logo .company-logo {
+      display: block;
+      width: 48px;
+      height: 52px;
+      border-radius: 9px;
+      object-fit: contain;
+    }
+
+    .badge {
+      display: block;
+      margin: 22px 0 7px;
+      color: rgba(23,35,60,.62);
+      font-size: 11px;
+      font-weight: 950;
+      letter-spacing: .16em;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 8vw, 48px);
+      letter-spacing: -.055em;
+      text-align: center;
+    }
+
+    .description {
+      margin: 10px 0 30px;
+      color: rgba(23,35,60,.65);
+      font-size: 14px;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .role-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .role-option {
+      min-height: 78px;
+      padding: 14px;
+      border: 1px solid rgba(54,77,127,.22);
+      border-radius: 16px;
+      background: rgba(255,255,255,.42);
+      color: #33466d;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .role-option strong,
+    .role-option span { display: block; }
+    .role-option strong { font-size: 17px; }
+    .role-option span { margin-top: 5px; font-size: 12px; opacity: .72; }
+
+    .role-option.active {
+      border-color: var(--blue);
+      background: rgba(255,255,255,.78);
+      color: #173f85;
+      box-shadow: 0 0 0 4px rgba(46,102,216,.11);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 9px;
+      color: #223252;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .input-wrap { position: relative; }
+
+    .input-icon {
+      position: absolute;
+      top: 50%;
+      left: 15px;
+      width: 21px;
+      height: 21px;
+      color: #526b9b;
+      pointer-events: none;
+      transform: translateY(-50%);
+    }
+
+    input {
+      width: 100%;
+      height: 56px;
+      padding: 0 48px;
+      border: 1px solid rgba(54,77,127,.28);
+      border-radius: 14px;
+      background: rgba(255,255,255,.56);
+      color: var(--navy);
+      font: inherit;
+      font-size: 17px;
+      outline: none;
+      backdrop-filter: blur(9px);
+    }
+
+    input:focus {
+      border-color: var(--blue);
+      background: rgba(255,255,255,.76);
+      box-shadow: 0 0 0 4px rgba(46,102,216,.13);
+    }
+
+    .toggle {
+      position: absolute;
+      top: 50%;
+      right: 8px;
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: #526b9b;
+      cursor: pointer;
+      transform: translateY(-50%);
+    }
+
+    .submit {
+      display: grid;
+      width: 100%;
+      min-height: 54px;
+      margin-top: 18px;
+      border: 0;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #2c5cae, #214c8f);
+      color: #fff;
+      font: inherit;
+      font-weight: 900;
+      letter-spacing: .02em;
+      box-shadow: 0 12px 26px rgba(34,76,143,.24);
+      cursor: pointer;
+      place-items: center;
+      transition: transform 150ms ease, box-shadow 150ms ease;
+    }
+
+    .submit:hover { transform: translateY(-2px); box-shadow: 0 16px 30px rgba(34,76,143,.3); }
+    .submit:disabled { opacity: .58; cursor: wait; transform: none; }
+
+    .home-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      margin-top: 25px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(51,73,118,.17);
+      color: #334c78;
+      font-size: 14px;
+      font-weight: 850;
+      text-decoration: none;
+    }
+
+    .home-link:hover { color: #17233c; }
+
+    .error {
+      display: none;
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px solid rgba(184,50,64,.25);
+      border-radius: 12px;
+      background: rgba(255,241,243,.8);
+      color: var(--red);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .error.show { display: block; }
+
+    .login-success {
+      display: none;
+      margin-top: 8px;
+      padding: 22px;
+      border: 1px solid rgba(11,123,88,.2);
+      border-radius: 18px;
+      background: rgba(239,252,247,.72);
+      text-align: center;
+    }
+
+    .login-success.show { display: block; }
+    .login-success strong { display: block; margin-bottom: 6px; font-size: 20px; }
+    .login-success p { margin: 0 0 16px; color: #426457; font-size: 13px; line-height: 1.55; }
+    .login-success .submit { text-decoration: none; }
+
+    @media (max-width: 520px) {
+      body { padding: 12px; align-items: start; }
+      .login { margin: 12px 0; padding: 30px 20px 26px; border-radius: 26px; }
+      .description { margin-bottom: 24px; }
+      .role-options { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body
+  data-web-app-url="<?= webAppUrl ?>"
+  data-requested-module="<?= requestedModule ?>"
+  data-invalid-token="<?= invalidToken ?>"
+>
+  <?!= getSharedBackgroundHtml_() ?>
+  <main class="login">
+    <div class="logo" aria-label="길앤에스">
+      <?!= getCompanyLogoHtml_() ?>
+    </div>
+    <span class="badge">GIL&amp;S · SECURE LOGIN</span>
+    <h1>로그인</h1>
+    <p class="description">사용할 권한을 선택하고 본인 성명과 비밀번호를 입력하세요. 성명은 사원 명부와 일치해야 합니다.</p>
+
+    <div class="role-options" role="group" aria-label="로그인 유형">
+      <button class="role-option active" type="button" data-role="registrar" aria-pressed="true">
+        <strong>등록자</strong>
+        <span>신규 정보 등록</span>
+      </button>
+      <button class="role-option" type="button" data-role="admin" aria-pressed="false">
+        <strong>관리자</strong>
+        <span>조회·수정·관리</span>
+      </button>
+    </div>
+
+    <form id="loginForm">
+      <label for="actorName">성명</label>
+      <div class="input-wrap">
+        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <input id="actorName" type="text" maxlength="80" autocomplete="name" placeholder="사원 명부에 등록된 성명" required>
+      </div>
+      <label for="password"><span id="passwordRoleLabel">등록자</span> 비밀번호</label>
+      <div class="input-wrap">
+        <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+        </svg>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <button id="passwordToggle" class="toggle" type="button" aria-label="비밀번호 표시">보기</button>
+      </div>
+      <button id="loginButton" class="submit" type="submit">등록자로 로그인</button>
+    </form>
+    <div id="errorMessage" class="error" role="alert"></div>
+
+    <section id="loginSuccess" class="login-success" aria-live="polite">
+      <strong id="successTitle">인증 완료</strong>
+      <p>아래 버튼을 눌러 선택한 화면으로 이동하세요.</p>
+      <a id="portalLink" class="submit" href="#" target="_top">관리 화면 들어가기</a>
+    </section>
+
+    <a class="home-link" href="<?= webAppUrl ?>" target="_top"><span aria-hidden="true">←</span> 처음 페이지로 돌아가기</a>
+  </main>
+
+  <script>
+    const WEB_APP_URL = document.body.dataset.webAppUrl;
+    const REQUESTED_MODULE = document.body.dataset.requestedModule;
+    const INVALID_TOKEN = document.body.dataset.invalidToken === 'true';
+    let selectedRole = 'registrar';
+    const SAVED_TOKEN = sessionStorage.getItem('gilns-admin-token');
+
+    if (INVALID_TOKEN) {
+      sessionStorage.removeItem('gilns-admin-token');
+    }
+
+    document.querySelectorAll('.role-option')
+      .forEach((button) => {
+        button.addEventListener('click', () => {
+          selectedRole = button.dataset.role;
+          const label = selectedRole === 'admin'
+            ? '관리자'
+            : '등록자';
+          document.querySelectorAll('.role-option')
+            .forEach((item) => {
+              const active = item === button;
+              item.classList.toggle('active', active);
+              item.setAttribute('aria-pressed', String(active));
+            });
+          document.getElementById('passwordRoleLabel').textContent = label;
+          document.getElementById('loginButton').textContent =
+            label + '로 로그인';
+          document.getElementById('password').value = '';
+          document.getElementById('password').focus();
+          document.getElementById('errorMessage').classList.remove('show');
+        });
+      });
+
+    document.getElementById('passwordToggle')
+      .addEventListener('click', () => {
+        const input = document.getElementById('password');
+        const button = document.getElementById('passwordToggle');
+        const reveal = input.type === 'password';
+        input.type = reveal ? 'text' : 'password';
+        button.textContent = reveal ? '숨김' : '보기';
+        button.setAttribute('aria-label', reveal ? '비밀번호 숨기기' : '비밀번호 표시');
+      });
+
+    document.getElementById('loginForm')
+      .addEventListener('submit', (event) => {
+        event.preventDefault();
+        const password = document.getElementById('password').value;
+        const actorName = document.getElementById('actorName').value.trim();
+        const button = document.getElementById('loginButton');
+        const error = document.getElementById('errorMessage');
+
+        button.disabled = true;
+        button.textContent = '확인 중...';
+        error.classList.remove('show');
+
+        google.script.run
+          .withSuccessHandler((result) => {
+            sessionStorage.setItem('gilns-admin-token', result.token);
+            const label = result.role === 'admin'
+              ? '관리자'
+              : '등록자';
+            document.getElementById('loginForm').hidden = true;
+            document.querySelector('.role-options').hidden = true;
+            document.getElementById('successTitle').textContent =
+              label + ' 인증 완료';
+            document.getElementById('portalLink').href = result.redirectUrl;
+            document.getElementById('portalLink').textContent =
+              label + ' 화면 들어가기';
+            document.getElementById('loginSuccess').classList.add('show');
+          })
+          .withFailureHandler((failure) => {
+            button.disabled = false;
+            button.textContent =
+              (selectedRole === 'admin' ? '관리자' : '등록자') +
+              '로 로그인';
+            error.textContent = failure && failure.message
+              ? failure.message
+              : '로그인하지 못했습니다.';
+            error.classList.add('show');
+          })
+          .adminLogin(
+            password,
+            REQUESTED_MODULE,
+            selectedRole,
+            actorName
+          );
+      });
+  </script>
+</body>
+</html>

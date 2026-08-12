@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>물품 반출입 관리</title>
+  <style>
+    :root {
+      --ink:#172033; --muted:#667085; --line:#d6dfeb;
+      --blue:#316be8; --green:#16845b; --red:#c83a3a;
+    }
+    *{box-sizing:border-box}.hidden{display:none!important}
+    body{margin:0;background:#eef3f8;color:var(--ink);font-family:Pretendard,"Noto Sans KR",Arial,sans-serif}
+    button,input,select,textarea{font:inherit}
+    .shell{width:min(1080px,calc(100% - 28px));margin:0 auto;padding:24px 0 64px}
+    .hero{padding:30px;border-radius:24px;background:#1e2b46;color:#fff;box-shadow:0 16px 38px rgba(23,32,51,.14)}
+    .nav{display:flex;justify-content:space-between;gap:12px;margin-bottom:22px}
+    .nav a{padding:8px 11px;border:1px solid rgba(255,255,255,.2);border-radius:9px;color:#fff;font-size:13px;font-weight:800;text-decoration:none}
+    .eyebrow{margin:0 0 8px;color:#9bb8ff;font-size:12px;font-weight:900;letter-spacing:.12em}
+    h1{margin:0;font-size:clamp(30px,5vw,46px);letter-spacing:-.04em}
+    .hero p:last-child{margin:12px 0 0;color:#d8e1f1;line-height:1.6}
+    .status{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:14px 0;padding:13px 16px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--muted);font-size:13px}
+    .status a{color:var(--blue);font-weight:800}
+    .card{margin-top:16px;padding:24px;border:1px solid var(--line);border-radius:20px;background:#fff;box-shadow:0 8px 22px rgba(23,32,51,.05)}
+    .card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:20px}
+    .card h2{margin:0;font-size:22px}.card-head p{margin:7px 0 0;color:var(--muted);font-size:14px}
+    .count{padding:8px 11px;border-radius:10px;background:#eef3ff;color:var(--blue);font-weight:900}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+    .field.full{grid-column:1/-1}
+    label{display:block;margin-bottom:7px;font-size:14px;font-weight:800}
+    .required{color:var(--red)}
+    input,select,textarea{width:100%;min-height:48px;padding:11px 13px;border:1px solid #cbd6e6;border-radius:11px;background:#fff;outline:none}
+    textarea{min-height:90px;resize:vertical}
+    input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(49,107,232,.1)}
+    .submit{width:100%;min-height:52px;margin-top:20px;border:0;border-radius:12px;background:var(--blue);color:#fff;font-weight:900;cursor:pointer}
+    .submit:disabled{opacity:.45;cursor:not-allowed}
+    .records{display:grid;gap:12px}
+    .record{display:grid;grid-template-columns:1.2fr 1fr 1fr 1.2fr;gap:12px;align-items:center;padding:16px;border:1px solid var(--line);border-radius:14px}
+    .record strong,.record span{min-width:0}.record small{display:block;margin-top:4px;color:var(--muted);font-size:12px}
+    .status-badge{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;background:#eef3ff;color:var(--blue);font-size:13px;font-weight:900}
+    .decision-box{display:flex;gap:8px;grid-column:1/-1;padding-top:12px;border-top:1px solid var(--line)}
+    .approve-button,.reject-button{min-height:42px;padding:9px 16px;border:0;border-radius:10px;color:#fff;font-weight:900;cursor:pointer}.approve-button{background:var(--green)}.reject-button{background:var(--red)}
+    .return-box{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;grid-column:1/-1;padding-top:12px;border-top:1px solid var(--line)}
+    .return-box input{min-height:42px}
+    .return-button{padding:0 18px;border:0;border-radius:10px;background:var(--green);color:#fff;font-weight:900;cursor:pointer}
+    .empty{padding:34px;border:1px dashed #cbd6e6;border-radius:14px;color:var(--muted);text-align:center}
+    .asset-search-results{display:grid;gap:8px;margin-top:8px}.asset-result{width:100%;padding:12px 14px;border:1px solid #cbd6e6;border-radius:11px;background:#fff;color:var(--ink);text-align:left;cursor:pointer}.asset-result:hover{border-color:var(--blue);background:#f5f8ff}.asset-result small{display:block;margin-top:4px;color:var(--muted)}.selected-asset{margin-top:10px;padding:12px 14px;border:2px solid var(--blue);border-radius:11px;background:#eef4ff;font-weight:900}
+    .message{display:none;margin-top:14px;padding:13px;border-radius:12px;font-size:14px}.message.show{display:block}
+    .error{border:1px solid #efb8b8;background:#fff1f1;color:var(--red)}.success{border:1px solid #b7ddc8;background:#eef9f3;color:#0f6846}
+    .overlay{display:none;position:fixed;z-index:20;inset:0;align-items:center;justify-content:center;background:rgba(23,32,51,.42);color:#fff;font-size:18px;font-weight:900}.overlay.show{display:flex}
+    @media(max-width:760px){.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.record{grid-template-columns:1fr}.return-box{grid-template-columns:1fr}.return-button{min-height:44px}.status{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body data-web-app-url="<?= webAppUrl ?>" data-admin-token="<?= adminToken ?>" data-actor-name="<?= actorName ?>" data-user-role="<?= userRole ?>" data-current-module="movement">
+  <?!= getSharedBackgroundHtml_() ?>
+  <main class="shell">
+    <header class="hero">
+      <nav class="nav">
+        <a href="<?= webAppUrl ?>?adminToken=<?= adminToken ?>" target="_top">통합 메뉴</a>
+        <a href="<?= webAppUrl ?>?module=asset&adminToken=<?= adminToken ?>" target="_top">실물자산관리</a>
+      </nav>
+      <p class="eyebrow">PHYSICAL ASSET MOVEMENT</p>
+      <h1>물품 반출입 <?= userRole === 'admin' ? '관리' : '신청' ?></h1>
+      <p>품목을 검색해 반출을 신청하며, 해당 부서 실장이 승인한 뒤 반출할 수 있습니다.</p>
+    </header>
+
+    <div class="status">
+      <span id="systemStatus">반출입 대장 연결 확인 중</span>
+      <a id="ledgerLink" href="#" class="hidden" target="_blank">반출입 대장 열기</a>
+    </div>
+    <div id="errorMessage" class="message error"></div>
+    <div id="successMessage" class="message success"></div>
+
+    <section class="card">
+      <div class="card-head"><div><h2>물품 반출 신청</h2><p>자산 시트를 선택하고 품목명을 검색하면 관리번호가 자동으로 입력됩니다.</p></div></div>
+      <form id="checkoutForm">
+        <div class="grid">
+          <div class="field"><label for="sheetName">자산 시트 <span class="required">*</span></label><select id="sheetName"><option value="">선택하세요</option></select></div>
+          <div class="field full"><label for="assetSearch">품목 검색 <span class="required">*</span></label><input id="assetSearch" autocomplete="off" placeholder="예: 노트북, 핸드폰 거치대"><input id="managementNumber" type="hidden"><div id="assetSearchResults" class="asset-search-results"></div><div id="selectedAsset" class="selected-asset hidden"></div></div>
+          <div class="field"><label for="borrower">반출자 <span class="required">*</span></label><input id="borrower"></div>
+          <div class="field"><label for="department">부서 <span class="required">*</span></label><input id="department"></div>
+          <div class="field"><label for="purpose">반출 목적 <span class="required">*</span></label><input id="purpose"></div>
+          <div class="field"><label for="destination">반출 장소 <span class="required">*</span></label><input id="destination"></div>
+          <div class="field"><label for="expectedReturnDate">반입 예정일 <span class="required">*</span></label><input id="expectedReturnDate" type="date"></div>
+          <div class="field"><label for="handler"><?= userRole === 'admin' ? '반출 처리자' : '신청자' ?> <span class="required">*</span></label><input id="handler" value="<?= actorName ?>" readonly></div>
+          <div class="field full"><label for="remarks">비고</label><textarea id="remarks"></textarea></div>
+        </div>
+        <button id="checkoutButton" class="submit" type="submit" disabled>반출 신청</button>
+      </form>
+    </section>
+
+    <section id="pendingSection" class="card hidden">
+      <div class="card-head"><div><h2>승인 대기 중인 반출 신청</h2><p>신청 내용을 확인한 뒤 승인하거나 반려합니다.</p></div><span id="pendingCount" class="count">00</span></div>
+      <div id="pendingRecords" class="records"><div class="empty">승인 대기 신청을 불러오는 중입니다.</div></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><div><h2><?= userRole === 'admin' ? '현재 반출 중' : '내 반출입 신청 내역' ?></h2><p><?= userRole === 'admin' ? '반입 시 처리자와 물품 상태를 남깁니다.' : '승인 대기·반출 중·반려·반입 완료 상태를 확인합니다.' ?></p></div><span id="openCount" class="count">00</span></div>
+      <div id="records" class="records"><div class="empty">반출입 대장을 불러오는 중입니다.</div></div>
+    </section>
+  </main>
+  <div id="overlay" class="overlay">처리 중입니다.</div>
+  <script>
+    const ADMIN_TOKEN = document.body.dataset.adminToken;
+    gilnsProtectSessionUrl(ADMIN_TOKEN, { module: 'movement' });
+    const ACTOR_NAME = document.body.dataset.actorName;
+    const USER_ROLE = document.body.dataset.userRole;
+    const IS_ADMIN = USER_ROLE === 'admin';
+    const state = { ready:false, busy:false, records:[], department:'', canManageMovement:false, selectedAsset:null, searchTimer:null };
+    const form = document.getElementById('checkoutForm');
+    form.addEventListener('input', updateButton);
+    form.addEventListener('change', updateButton);
+    form.addEventListener('submit', checkout);
+    document.getElementById('sheetName').addEventListener('change',clearAssetSelection);
+    document.getElementById('assetSearch').addEventListener('input',scheduleAssetSearch);
+
+    function loadConfig(){
+      google.script.run.withSuccessHandler((config)=>{
+        if(!config.ok){showError(config.message);return;}
+        state.ready=true;state.department=config.department||'';state.canManageMovement=Boolean(config.canManageMovement);
+        document.getElementById('pendingSection').classList.toggle('hidden',!state.canManageMovement);
+        document.getElementById('handler').value=config.actorName||ACTOR_NAME;
+        if(!IS_ADMIN){document.getElementById('borrower').value=config.actorName||ACTOR_NAME;document.getElementById('department').value=config.department||'';}
+        document.getElementById('systemStatus').textContent='물품 반출입 대장 연결됨';
+        const ledger=document.getElementById('ledgerLink');if(config.ledgerUrl){ledger.href=config.ledgerUrl;ledger.classList.remove('hidden');}
+        document.getElementById('sheetName').innerHTML='<option value="">선택하세요</option>'+config.assetSheets.map((name)=>'<option value="'+escapeHtml(name)+'">'+escapeHtml(name)+'</option>').join('');
+        renderPending(config.pendingRecords||[]);render(IS_ADMIN?(config.openRecords||[]):(config.myRecords||[]));updateButton();
+      }).withFailureHandler((error)=>showError(messageOf(error))).getAssetMovementConfig(ADMIN_TOKEN);
+    }
+
+    function checkout(event){
+      event.preventDefault();if(!ready()||state.busy)return;
+      setBusy(true);clearMessages();
+      const payload={adminToken:ADMIN_TOKEN,sheetName:value('sheetName'),managementNumber:value('managementNumber'),borrower:value('borrower'),department:value('department'),purpose:value('purpose'),destination:value('destination'),expectedReturnDate:value('expectedReturnDate'),handler:value('handler'),remarks:value('remarks')};
+      google.script.run.withSuccessHandler((result)=>{setBusy(false);showSuccess(result.itemName+' 반출 신청 완료');form.reset();clearAssetSelection();document.getElementById('handler').value=ACTOR_NAME;if(!IS_ADMIN){document.getElementById('borrower').value=ACTOR_NAME;document.getElementById('department').value=state.department;}renderPending(result.pendingRecords||[]);render(IS_ADMIN?(result.openRecords||[]):(result.myRecords||[]));updateButton();}).withFailureHandler((error)=>{setBusy(false);showError(messageOf(error));}).registerAssetCheckout(payload);
+    }
+
+    function decide(recordId,action){let reason='';if(action==='reject'){reason=prompt('반려 사유를 입력하세요.','')||'';if(!reason)return;}if(!confirm(action==='approve'?'이 반출 신청을 승인할까요?':'이 반출 신청을 반려할까요?'))return;setBusy(true);clearMessages();google.script.run.withSuccessHandler((config)=>{setBusy(false);renderPending(config.pendingRecords||[]);render(IS_ADMIN?(config.openRecords||[]):(config.myRecords||[]));showSuccess(action==='approve'?'반출 신청을 승인했습니다.':'반출 신청을 반려했습니다.');}).withFailureHandler((error)=>{setBusy(false);showError(messageOf(error));}).processAssetCheckoutDecision({adminToken:ADMIN_TOKEN,recordId,action,reason});}
+
+    function renderPending(records){const count=document.getElementById('pendingCount');const target=document.getElementById('pendingRecords');if(!count||!target)return;count.textContent=String(records.length).padStart(2,'0');if(!records.length){target.innerHTML='<div class="empty">현재 승인 대기 중인 반출 신청이 없습니다.</div>';return;}target.innerHTML=records.map((r)=>['<article class="record"><strong>',escapeHtml(r.itemName),'<small>',escapeHtml(r.sheetName),' #',escapeHtml(r.managementNumber),'</small></strong><span>',escapeHtml(r.borrower),'<small>',escapeHtml(r.department),'</small></span><span>',escapeHtml(r.destination),'<small>',escapeHtml(r.purpose),'</small></span><span>',escapeHtml(r.expectedReturnDate),'<small>신청자 ',escapeHtml(r.requestedBy),'</small></span><div class="decision-box"><button class="approve-button" type="button" data-action="approve" data-id="',escapeHtml(r.recordId),'">승인</button><button class="reject-button" type="button" data-action="reject" data-id="',escapeHtml(r.recordId),'">반려</button></div></article>'].join('')).join('');target.querySelectorAll('button[data-action]').forEach((button)=>button.addEventListener('click',()=>decide(button.dataset.id,button.dataset.action)));}
+
+    function returnAsset(recordId,button){
+      const box=button.closest('.return-box');const handler=box.querySelector('.return-handler').value.trim();const condition=box.querySelector('.return-condition').value.trim();
+      if(!handler||!condition){showError('반입 처리자와 반입 상태를 입력하세요.');return;}
+      if(!confirm('이 물품을 반입 완료 처리할까요?'))return;
+      setBusy(true);clearMessages();
+      google.script.run.withSuccessHandler((result)=>{setBusy(false);showSuccess(result.itemName+' 반입 처리 완료 · '+result.returnedAt);render(result.openRecords||[]);}).withFailureHandler((error)=>{setBusy(false);showError(messageOf(error));}).returnCheckedOutAsset({adminToken:ADMIN_TOKEN,recordId,handler,condition});
+    }
+
+    function render(records){
+      state.records=records;document.getElementById('openCount').textContent=String(records.length).padStart(2,'0');const target=document.getElementById('records');
+      if(!records.length){target.innerHTML='<div class="empty">'+(IS_ADMIN?'현재 반출 중인 물품이 없습니다.':'아직 반출입 신청 내역이 없습니다.')+'</div>';return;}
+      target.innerHTML=records.map((r)=>['<article class="record"><strong>',escapeHtml(r.itemName),'<small>',escapeHtml(r.sheetName),' #',escapeHtml(r.managementNumber),'</small></strong><span>',escapeHtml(r.borrower),'<small>',escapeHtml(r.department),'</small></span><span>',escapeHtml(r.destination),'<small>',escapeHtml(r.purpose),'</small></span><span class="status-badge">',escapeHtml(r.status||'반출중'),'<small>',escapeHtml(r.expectedReturnDate),'</small></span>',IS_ADMIN?'<div class="return-box"><input class="return-handler" value="'+escapeHtml(ACTOR_NAME)+'" readonly><input class="return-condition" placeholder="반입 상태 (예: 이상 없음)"><button class="return-button" type="button" data-id="'+escapeHtml(r.recordId)+'">반입 처리</button></div>':'','</article>'].join('')).join('');
+      target.querySelectorAll('.return-button').forEach((button)=>button.addEventListener('click',()=>returnAsset(button.dataset.id,button)));
+    }
+
+    function scheduleAssetSearch(){clearTimeout(state.searchTimer);state.selectedAsset=null;document.getElementById('managementNumber').value='';document.getElementById('selectedAsset').classList.add('hidden');const query=value('assetSearch');if(!value('sheetName')||query.length<1){document.getElementById('assetSearchResults').innerHTML='';updateButton();return;}state.searchTimer=setTimeout(()=>searchAssets(query),250);updateButton();}
+    function searchAssets(query){google.script.run.withSuccessHandler((result)=>renderAssetResults(result.results||[])).withFailureHandler((error)=>showError(messageOf(error))).searchAssetsForMovement(value('sheetName'),query,ADMIN_TOKEN);}
+    function renderAssetResults(results){const target=document.getElementById('assetSearchResults');if(!results.length){target.innerHTML='<div class="empty">일치하는 품목이 없습니다.</div>';return;}target.innerHTML=results.map((asset)=>'<button class="asset-result" type="button" data-number="'+escapeHtml(asset.managementNumber)+'" data-name="'+escapeHtml(asset.itemName)+'"><strong>'+escapeHtml(asset.itemName)+'</strong><small>관리번호 '+escapeHtml(asset.managementNumber)+(asset.modelMaker?' · '+escapeHtml(asset.modelMaker):'')+'</small></button>').join('');target.querySelectorAll('.asset-result').forEach((button)=>button.addEventListener('click',()=>selectAsset(button.dataset.number,button.dataset.name)));}
+    function selectAsset(number,name){state.selectedAsset={managementNumber:number,itemName:name};document.getElementById('managementNumber').value=number;document.getElementById('assetSearch').value=name;document.getElementById('assetSearchResults').innerHTML='';const selected=document.getElementById('selectedAsset');selected.textContent='선택됨 · '+name+' · 관리번호 '+number;selected.classList.remove('hidden');updateButton();}
+    function clearAssetSelection(){state.selectedAsset=null;document.getElementById('managementNumber').value='';document.getElementById('assetSearch').value='';document.getElementById('assetSearchResults').innerHTML='';document.getElementById('selectedAsset').classList.add('hidden');updateButton();}
+    function ready(){return state.selectedAsset&&['sheetName','managementNumber','borrower','department','purpose','destination','expectedReturnDate','handler'].every((id)=>value(id));}
+    function updateButton(){document.getElementById('checkoutButton').disabled=state.busy||!state.ready||!ready();}
+    function setBusy(value){state.busy=value;clearTimeout(state.overlayTimer);const overlay=document.getElementById('overlay');if(value){state.overlayTimer=setTimeout(()=>overlay.classList.add('show'),350);}else{overlay.classList.remove('show');}updateButton();}
+    function value(id){return document.getElementById(id).value.trim();}
+    function clearMessages(){['errorMessage','successMessage'].forEach((id)=>document.getElementById(id).classList.remove('show'));}
+    function showError(text){const e=document.getElementById('errorMessage');e.textContent=text;e.classList.add('show');}
+    function showSuccess(text){const e=document.getElementById('successMessage');e.textContent=text;e.classList.add('show');}
+    function messageOf(error){return error&&error.message?error.message:String(error||'처리 중 오류가 발생했습니다.');}
+    function escapeHtml(text){return String(text==null?'':text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');}
+    loadConfig();
+  </script>
+</body>
+</html>

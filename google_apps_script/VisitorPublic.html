@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>외부 방문 안내</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: #14213d;
+      font-family: Arial, "Noto Sans KR", sans-serif;
+      background: #eef4ff;
+    }
+    button, a { font: inherit; }
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: min(980px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 38px 0 54px;
+    }
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .brand {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      font-weight: 900;
+    }
+    .brand .company-logo {
+      display: block;
+      width: 42px;
+      height: 45px;
+      object-fit: contain;
+      border-radius: 10px;
+    }
+    .back {
+      color: #334155;
+      font-size: 14px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+    .hero {
+      padding: 38px;
+      border: 1px solid rgba(255,255,255,.7);
+      border-radius: 28px;
+      background: rgba(255,255,255,.72);
+      box-shadow: 0 24px 70px rgba(31, 51, 92, .16);
+      backdrop-filter: blur(16px);
+    }
+    .eyebrow {
+      margin: 0 0 10px;
+      color: #356de8;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .14em;
+    }
+    h1 { margin: 0; font-size: clamp(32px, 5vw, 52px); }
+    .hero > p:last-of-type {
+      margin: 14px 0 0;
+      color: #64748b;
+      line-height: 1.7;
+    }
+    .choices {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 24px;
+    }
+    .choice {
+      display: flex;
+      min-height: 250px;
+      flex-direction: column;
+      padding: 28px;
+      color: inherit;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,.8);
+      border-radius: 24px;
+      background: rgba(255,255,255,.82);
+      box-shadow: 0 18px 55px rgba(31, 51, 92, .13);
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+    .choice:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 24px 65px rgba(31, 51, 92, .18);
+    }
+    .number {
+      display: grid;
+      width: 48px;
+      height: 48px;
+      place-items: center;
+      color: #fff;
+      font-weight: 900;
+      border-radius: 15px;
+      background: #356de8;
+    }
+    .checkin .number { background: #158b66; }
+    h2 { margin: 24px 0 10px; font-size: 26px; }
+    .choice p { margin: 0; color: #64748b; line-height: 1.65; }
+    .open {
+      display: block;
+      margin-top: auto;
+      padding-top: 26px;
+      color: #356de8;
+      font-weight: 900;
+    }
+    .checkin .open { color: #087d5b; }
+    @media (max-width: 680px) {
+      .shell { width: min(100% - 22px, 560px); padding-top: 18px; }
+      .hero { padding: 26px 22px; border-radius: 22px; }
+      .choices { grid-template-columns: 1fr; }
+      .choice { min-height: 220px; }
+    }
+  </style>
+</head>
+<body data-web-app-url="<?= webAppUrl ?>">
+  <?!= getSharedBackgroundHtml_() ?>
+  <main class="shell">
+    <div class="top">
+      <div class="brand">
+        <?!= getCompanyLogoHtml_() ?>
+        <span>GIL&amp;S</span>
+      </div>
+      <a class="back" href="<?= webAppUrl ?>" target="_top">처음으로</a>
+    </div>
+
+    <section class="hero">
+      <p class="eyebrow">GILNS VISITOR ACCESS</p>
+      <h1>외부 방문 안내</h1>
+      <p>방문 전에는 신청을 작성하고, 실제 도착한 뒤에는 현장 QR을 통해 입장 등록을 진행합니다.</p>
+
+      <div class="choices">
+        <a class="choice" href="<?= webAppUrl ?>?module=visitor&amp;mode=apply" target="_top">
+          <span class="number">01</span>
+          <h2>방문 신청</h2>
+          <p>방문기간과 방문객 정보를 작성하고 신청 내역을 조회하거나 취소합니다.</p>
+          <span class="open">방문 신청 열기 →</span>
+        </a>
+        <a class="choice checkin" href="<?= webAppUrl ?>?module=visitor&amp;mode=qr" target="_top">
+          <span class="number">02</span>
+          <h2>방문객 등록</h2>
+          <p>회사 직원이 현장 QR을 띄우면 승인된 방문객이 휴대폰으로 촬영해 입장합니다.</p>
+          <span class="open">현장 QR 열기 →</span>
+        </a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
