@@ -7911,6 +7911,58 @@ function formatMovementRow_(sheet, row, isNew) {
   sheet.getRange(row, 9).setNumberFormat('yyyy-mm-dd hh:mm:ss');
 }
 
+function getInfoAssetSheetOptions_(spreadsheet) {
+  const sites = [
+    { department: '고색연구소', departmentCode: 'L' },
+    { department: '화성1공장', departmentCode: 'F1' },
+    { department: '화성2공장', departmentCode: 'F2' },
+    { department: '화성2공장(조립실)', departmentCode: 'F2-A' },
+  ];
+  const ledgerUrl = spreadsheet.getUrl();
+  return sites.map(function (site) {
+    const sheetName = site.departmentCode + '-정보';
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    if (!sheet) return null;
+    return {
+      sheetName: sheetName,
+      department: site.department,
+      departmentCode: site.departmentCode,
+      ledgerUrl: ledgerUrl + '#gid=' + sheet.getSheetId(),
+    };
+  }).filter(function (site) { return Boolean(site); });
+}
+
+function resolveInfoAssetTarget_(source, defaultDepartment, spreadsheet) {
+  const request = source || {};
+  const sheetName = cleanText_(request.sheetName, 100);
+  const department = cleanText_(request.department, 100);
+  const sheets = getInfoAssetSheetOptions_(spreadsheet);
+  let target;
+  if (sheetName) {
+    target = sheets.find(function (sheet) {
+      return sheet.sheetName === sheetName;
+    });
+    if (!target) {
+      throw new Error('등록할 정보자산 시트를 다시 선택하세요. 시트가 없거나 허용되지 않습니다.');
+    }
+    if (department && getDepartmentCode_(department) !== target.departmentCode) {
+      throw new Error('선택한 정보자산 시트와 사업장·부서가 일치하지 않습니다.');
+    }
+  } else {
+    // Keep older clients working while resolving their department to a real sheet.
+    const selectedDepartment = department || cleanText_(defaultDepartment, 100);
+    if (!selectedDepartment) {
+      throw new Error('등록할 정보자산 시트를 먼저 선택하세요.');
+    }
+    const code = getDepartmentCode_(selectedDepartment);
+    target = sheets.find(function (sheet) { return sheet.departmentCode === code; });
+    if (!target) {
+      throw new Error('선택한 사업장의 정보자산 시트가 없습니다. 관리자에게 확인해 주세요.');
+    }
+  }
+  return target;
+}
+
 function getInfoAssetConfig(adminToken) {
   try {
     const session = requireSessionInfo_(adminToken, 'infoRegister');
@@ -7922,6 +7974,7 @@ function getInfoAssetConfig(adminToken) {
       actorName: session.actorName,
       ledgerUrl: system.spreadsheet.getUrl() +
         '#gid=' + system.ledger.getSheetId(),
+      sheets: getInfoAssetSheetOptions_(system.spreadsheet),
       categories: [
         'PC·노트북', '서버', '네트워크 장비',
         '소프트웨어·라이선스', '클라우드·SaaS',
@@ -7932,11 +7985,12 @@ function getInfoAssetConfig(adminToken) {
         '화성2공장', '화성2공장(조립실)',
       ],
       defaultDepartment: session.department || '',
+      recordLimit: INFO_ASSET.maxRecords,
       managerOptionsByDepartment: getAssetManagerOptionsBySite_(),
       securityClasses: INFO_ASSET.securityClasses.slice(),
       statuses: ['사용중', '예비', '점검중', '폐기예정', '폐기'],
       records: userRole === 'admin'
-        ? listInfoAssets_(system.ledger)
+        ? listInfoAssets_(system.ledger, true)
         : [],
     };
   } catch (error) {
@@ -7959,14 +8013,10 @@ function registerInfoAsset(request) {
     lock.waitLock(30000);
     hasLock = true;
     const payload = normalizeInfoAssetPayload_(source);
-    if (!payload.department) {
-      payload.department = cleanText_(session.department, 100);
-    }
-    if (!payload.department) {
-      throw new Error('등록자의 사업장·부서 정보를 확인하세요.');
-    }
-    validateInfoAssetOwner_(payload);
     const system = ensureInfoAssetSystem_();
+    const target = resolveInfoAssetTarget_(source, session.department, system.spreadsheet);
+    payload.department = target.department;
+    validateInfoAssetOwner_(payload);
     const assetId = getNextInfoAssetId_(
       system.ledger,
       payload.department
@@ -8029,7 +8079,7 @@ function registerInfoAsset(request) {
       assetId: assetId,
       assetName: payload.assetName,
       records: userRole === 'admin'
-        ? listInfoAssets_(system.ledger)
+        ? listInfoAssets_(system.ledger, true)
         : [],
     };
   } catch (error) {
@@ -8057,6 +8107,7 @@ function updateInfoAsset(request) {
   let hasLock = false;
   let targetRange = null;
   let originalValues = null;
+  let didWrite = false;
   try {
     const source = request || {};
     const session = requireSessionInfo_(
@@ -8080,11 +8131,15 @@ function updateInfoAsset(request) {
       INFO_ASSET.columnCount
     );
     originalValues = targetRange.getValues();
-    if (!payload.department) {
-      payload.department = String(
-        originalValues[0][INFO_ASSET_COL.department - 1] || ''
-      );
+    const originalDepartment = String(
+      originalValues[0][INFO_ASSET_COL.department - 1] || ''
+    );
+    const target = resolveInfoAssetTarget_(source, originalDepartment, system.spreadsheet);
+    if (cleanText_(source.sheetName, 100) &&
+        getDepartmentCode_(originalDepartment) !== target.departmentCode) {
+      throw new Error('선택한 시트에 속한 정보자산만 수정할 수 있습니다.');
     }
+    payload.department = target.department;
     validateInfoAssetOwner_(payload);
     const createdAt = originalValues[0][INFO_ASSET_COL.registeredAt - 1] || new Date();
     const now = new Date();
@@ -8115,6 +8170,7 @@ function updateInfoAsset(request) {
       now,
       payload.remarks,
     ]];
+    didWrite = true;
     targetRange.setValues(values);
     formatInfoAssetRow_(system.ledger, row);
     syncInformationDepartmentSheets_(system.spreadsheet, system.ledger);
@@ -8135,10 +8191,10 @@ function updateInfoAsset(request) {
       ok: true,
       assetId: assetId,
       assetName: payload.assetName,
-      records: listInfoAssets_(system.ledger),
+      records: listInfoAssets_(system.ledger, true),
     };
   } catch (error) {
-    if (targetRange && originalValues) {
+    if (didWrite && targetRange && originalValues) {
       try {
         targetRange.setValues(originalValues);
         SpreadsheetApp.flush();
@@ -8486,12 +8542,13 @@ function ensureInfoAssetFreeTextLocation_(spreadsheet, ledger) {
   properties.setProperty(propertyKey, '1');
 }
 
-function listInfoAssets_(sheet) {
+function listInfoAssets_(sheet, perDepartmentLimit) {
   const lastRow = sheet.getLastRow();
   if (lastRow < INFO_ASSET.firstDataRow) {
     return [];
   }
 
+  const departmentCounts = Object.create(null);
   return sheet.getRange(
     INFO_ASSET.firstDataRow,
     1,
@@ -8502,8 +8559,13 @@ function listInfoAssets_(sheet) {
     .filter(function (row) {
       return String(row[0] || '') !== '';
     })
-    .slice(-INFO_ASSET.maxRecords)
     .reverse()
+    .filter(function (row, index) {
+      if (!perDepartmentLimit) return index < INFO_ASSET.maxRecords;
+      const code = String(row[INFO_ASSET_COL.departmentCode - 1] || row[INFO_ASSET_COL.department - 1] || '');
+      departmentCounts[code] = (departmentCounts[code] || 0) + 1;
+      return departmentCounts[code] <= INFO_ASSET.maxRecords;
+    })
     .map(function (row) {
       return {
         assetId: String(row[0] || ''),

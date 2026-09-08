@@ -73,7 +73,9 @@ assert.ok(info.includes("정보자산 수정"));
   'class="form-section edit-only hidden"',
   "const nextMode=IS_ADMIN&&mode==='edit'?'edit':'register'",
   "if(isEdit){runner.updateInfoAsset(request);}else{runner.registerInfoAsset(request);}",
-  '사업장·부서를 선택하세요',
+  '등록할 시트를 선택하세요',
+  'id="sheetSelectionCard"',
+  '<select id="department" disabled>',
 ].forEach((needle) => assert.ok(
   info.includes(needle),
   `InfoAssets role/mode separation missing: ${needle}`,
