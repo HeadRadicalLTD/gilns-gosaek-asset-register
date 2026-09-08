@@ -3789,7 +3789,7 @@ function getAccessPublicConfig(accessType, adminToken) {
     const system = getAccessSystemForUse_();
     const spreadsheet = system.spreadsheet;
     if (type === 'visitor') {
-      syncVisitorLedgerFromApplications_(
+      syncVisitorLedgerFromApplicationsIfDue_(
         spreadsheet,
         system.log.visitor
       );
@@ -3933,7 +3933,7 @@ function getVisitorSelfConfig() {
   try {
     const system = getAccessSystemForUse_();
     const spreadsheet = system.spreadsheet;
-    syncVisitorLedgerFromApplications_(
+    syncVisitorLedgerFromApplicationsIfDue_(
       spreadsheet,
       system.log.visitor
     );
@@ -4434,7 +4434,6 @@ function registerApprovedVisitorEntry(request) {
     const firstEntry = originalApplicationValues[0][0] || entryAt;
     applicationRange.setValues([[firstEntry, entryAt]]);
     applicationRange.setNumberFormat('yyyy-mm-dd hh:mm:ss');
-    SpreadsheetApp.flush();
 
     appendAccessAuditLog_(system.log, {
       eventType: '승인방문객입장',
@@ -4575,8 +4574,12 @@ function processVisitorApplicationDecision(request) {
       return next;
     });
     targetRange.setValues(nextValues);
-    formatVisitorApplicationRows_(sheet, startRow, rows.length);
-    SpreadsheetApp.flush();
+    // 기존 행의 테두리·날짜 서식은 setValues로 유지된다. 승인·반려 때마다
+    // 행 전체를 다시 꾸미거나 강제 저장하지 않아 응답 시간을 줄인다.
+    const updatedRows = nextValues.map(function (values, index) {
+      return visitorApplicationRowToRecord_(values, startRow + index);
+    });
+    const nextStatus = getVisitorApplicationOverallStatus_(updatedRows);
 
     const eventType = action === 'approve'
       ? '방문객승인'
@@ -4593,9 +4596,7 @@ function processVisitorApplicationDecision(request) {
       })[0].name,
       details: {
         previousStatus: overallStatus,
-        nextStatus: getVisitorApplicationOverallStatus_(
-          getVisitorApplicationRows_(sheet, applicationNumber)
-        ),
+        nextStatus: nextStatus,
         reason: reason,
         visitorId: visitorId,
         visitorName: rows.filter(function (row) {
@@ -4608,9 +4609,7 @@ function processVisitorApplicationDecision(request) {
     return {
       ok: true,
       applicationNumber: applicationNumber,
-      status: getVisitorApplicationOverallStatus_(
-        getVisitorApplicationRows_(sheet, applicationNumber)
-      ),
+      status: nextStatus,
       applications: listVisitorApplications_(system.spreadsheet),
     };
   } catch (error) {
@@ -4735,7 +4734,6 @@ function processEmployeeAttendance(request) {
     targetRange.setValues([values]);
     formatAccessDataRow_(sheet, row, values.length);
     SpreadsheetApp.flush();
-
     appendAccessAuditLog_(system.log, {
       eventType: '사원입장등록',
       author: session.actorName,
@@ -4846,8 +4844,6 @@ function completeAccessExit(request) {
         'yyyy-mm-dd hh:mm:ss'
       );
     }
-    SpreadsheetApp.flush();
-
     appendAccessAuditLog_(system.log, {
       eventType: '퇴장처리',
       author: processedBy,
@@ -6074,13 +6070,13 @@ function getVisitorApplicationOverallStatus_(rows) {
   return keys.join(' / ');
 }
 
-function getVisitorAccessStateMap_(spreadsheet, applicationNumber) {
+function getVisitorAccessStateMapsByApplication_(spreadsheet) {
   const sheet = getAccessSheet_(spreadsheet, 'visitor');
   const lastRow = sheet.getLastRow();
-  const states = {};
+  const statesByApplication = {};
 
   if (lastRow < 2) {
-    return states;
+    return statesByApplication;
   }
 
   const values = sheet.getRange(
@@ -6090,9 +6086,10 @@ function getVisitorAccessStateMap_(spreadsheet, applicationNumber) {
     ACCESS.visitorColumnCount
   ).getValues();
   values.forEach(function (row) {
-    if (String(row[16] || '') !== applicationNumber) {
-      return;
-    }
+    const applicationNumber = String(row[16] || '');
+    if (!applicationNumber) return;
+    const states = statesByApplication[applicationNumber] ||
+      (statesByApplication[applicationNumber] = {});
     const visitorId = String(row[17] || '');
     const current = states[visitorId];
     const entryTime = row[6] instanceof Date
@@ -6107,7 +6104,27 @@ function getVisitorAccessStateMap_(spreadsheet, applicationNumber) {
       };
     }
   });
-  return states;
+  return statesByApplication;
+}
+
+function getVisitorAccessStateMap_(spreadsheet, applicationNumber) {
+  return getVisitorAccessStateMapsByApplication_(spreadsheet)[
+    String(applicationNumber || '')
+  ] || {};
+}
+
+// 신청대장과 출입대장을 전부 대조하는 복구 작업은 오래된 기록만 보정할 때
+// 필요하다. 일반 화면 진입마다 반복하지 않고, 같은 배포 실행 중에는 6시간에
+// 한 번만 수행해 승인·입장·퇴장 처리의 대기 시간을 줄인다.
+function syncVisitorLedgerFromApplicationsIfDue_(spreadsheet, logSheet) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'visitor-ledger-reconcile-v1-' + spreadsheet.getId();
+  if (cache.get(cacheKey) === '1') {
+    return { skipped: true };
+  }
+  const result = syncVisitorLedgerFromApplications_(spreadsheet, logSheet);
+  cache.put(cacheKey, '1', 21600);
+  return result;
 }
 
 function syncVisitorLedgerFromApplications_(spreadsheet, logSheet) {
@@ -6350,12 +6367,13 @@ function hasVisitorApplicationEntry_(spreadsheet, applicationNumber) {
   ).length > 0;
 }
 
-function summarizeVisitorApplication_(spreadsheet, rows, fullPhone) {
+function summarizeVisitorApplication_(
+  spreadsheet, rows, fullPhone, accessStatesByApplication
+) {
   const first = rows[0];
-  const accessStates = getVisitorAccessStateMap_(
-    spreadsheet,
-    first.applicationNumber
-  );
+  const accessStates = accessStatesByApplication
+    ? (accessStatesByApplication[first.applicationNumber] || {})
+    : getVisitorAccessStateMap_(spreadsheet, first.applicationNumber);
   const overallStatus = getVisitorApplicationOverallStatus_(rows);
   const hasEntry = Object.keys(accessStates).length > 0;
 
@@ -6416,6 +6434,8 @@ function listVisitorApplications_(spreadsheet) {
     lastRow - 1,
     ACCESS.visitorApplicationColumnCount
   ).getValues();
+  const accessStatesByApplication =
+    getVisitorAccessStateMapsByApplication_(spreadsheet);
   const grouped = {};
   values.forEach(function (values, index) {
     const record = visitorApplicationRowToRecord_(
@@ -6436,7 +6456,8 @@ function listVisitorApplications_(spreadsheet) {
       return summarizeVisitorApplication_(
         spreadsheet,
         grouped[applicationNumber],
-        true
+        true,
+        accessStatesByApplication
       );
     })
     .sort(function (left, right) {

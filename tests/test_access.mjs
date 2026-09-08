@@ -129,6 +129,22 @@ assert.match(
 );
 assert.match(backend, /function processVisitorApplicationDecision\(/);
 assert.match(backend, /function listVisitorApplications_\(/);
+assert.match(backend, /function getVisitorAccessStateMapsByApplication_\(/);
+const visitorDecisionBlock = backend.slice(
+  backend.indexOf("function processVisitorApplicationDecision("),
+  backend.indexOf("function processEmployeeAttendance("),
+);
+assert.match(visitorDecisionBlock, /const nextStatus = getVisitorApplicationOverallStatus_\(updatedRows\)/);
+assert.doesNotMatch(visitorDecisionBlock, /formatVisitorApplicationRows_\(/);
+assert.doesNotMatch(
+  visitorDecisionBlock.slice(0, visitorDecisionBlock.indexOf("} catch (error)")),
+  /SpreadsheetApp\.flush\(\)/,
+);
+const visitorListBlock = backend.slice(
+  backend.indexOf("function listVisitorApplications_("),
+  backend.indexOf("function maskVisitorPhone_("),
+);
+assert.match(visitorListBlock, /getVisitorAccessStateMapsByApplication_\(spreadsheet\)/);
 assert.match(backend, /createTemplateFromFile\(\s*'DepartmentAccess'/);
 assert.match(backend, /function getDepartmentAccessConfig\(/);
 assert.match(backend, /function createDepartmentAccessRequest\(/);
