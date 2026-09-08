@@ -160,7 +160,10 @@
     document.getElementById('sheetName').addEventListener('change',selectSheet);
     document.getElementById('owner').addEventListener('change',()=>renderUserOptions());
     document.getElementById('registerModeButton').addEventListener('click',()=>setMode('register'));
-    document.getElementById('editModeButton').addEventListener('click',()=>setMode('edit'));
+    document.getElementById('editModeButton').addEventListener('click',()=>{
+      if(!IS_ADMIN&&window.gilnsOpenCorrectionRequest){window.gilnsOpenCorrectionRequest();return;}
+      setMode('edit');
+    });
 
     function loadConfig(){
       google.script.run.withSuccessHandler((config)=>{

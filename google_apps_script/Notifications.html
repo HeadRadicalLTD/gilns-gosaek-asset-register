@@ -1,0 +1,155 @@
+<style>
+  #gilns-notices{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:10000;width:min(370px,calc(100vw - 32px));font:14px/1.5 Arial,"Malgun Gothic",sans-serif;color:#172033;pointer-events:none}
+  #gilns-notices button,#gilns-notices a{font:inherit;min-height:44px;cursor:pointer}
+  #gilns-notice-toggle{display:block;margin-left:auto;border:0;border-radius:24px;background:#234caa;color:white;padding:10px 17px;box-shadow:0 4px 18px #17203333;pointer-events:auto}
+  #gilns-notice-panel{margin-bottom:8px;border:1px solid #ccd5e5;border-radius:16px;background:#fff;box-shadow:0 8px 28px #17203333;max-height:60vh;overflow:auto;overscroll-behavior:contain;pointer-events:auto}
+  #gilns-notice-panel[hidden]{display:none}
+  #gilns-notice-panel header{display:flex;gap:8px;align-items:center;padding:10px 14px;position:sticky;top:0;background:#fff;z-index:1}
+  #gilns-notice-panel header strong{flex:1}#gilns-notice-panel header button{border:0;border-radius:8px;background:#eef3fb;color:#234caa;padding:6px 10px}
+  #gilns-notice-list{padding:0 12px 10px}#gilns-notice-list a{display:block;border-top:1px solid #e4e8f0;padding:12px 6px;text-decoration:none;color:#172033;overflow-wrap:anywhere}
+  #gilns-notice-list a[data-unread="true"]{background:#f0f5ff;border-left:3px solid #3269e8;padding-left:10px}
+  #gilns-notice-list small{display:block;color:#667085}#gilns-notice-message{padding:0 14px;color:#667085}
+  .gilns-correction{margin:18px 0;padding:20px;border:1px solid #cbd5e1;border-radius:16px;background:white}
+  .gilns-correction h2{font-size:20px;margin:0 0 10px}.gilns-correction p{color:#667085}
+  .gilns-correction input,.gilns-correction textarea{box-sizing:border-box;width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;margin:6px 0;min-height:44px}
+  .gilns-correction button{min-height:44px;padding:9px 14px;border:0;border-radius:10px;background:#234caa;color:white;font:inherit;cursor:pointer;margin:5px 5px 5px 0}
+  .gilns-correction button:disabled{opacity:.5}.gilns-correction [data-correction-results] button{display:block;width:100%;text-align:left;background:#eef3fb;color:#172033}
+  .gilns-correction summary{cursor:pointer;font-weight:bold;padding:10px 0}.gilns-correction article{padding:10px 0;border-top:1px solid #e4e8f0;overflow-wrap:anywhere}
+  body.gilns-has-notices{padding-bottom:76px}
+  @media(max-width:720px){body.gilns-has-notices .gilns-top-button{right:auto;left:14px;min-width:44px;font-size:12px;padding:10px}#gilns-notices{right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));width:min(350px,calc(100vw - 24px))}}
+</style>
+<script>
+(function(){
+  'use strict';
+  window.addEventListener('DOMContentLoaded',function(){
+    const data=document.body.dataset;
+    if(!data.adminToken||!['admin','registrar'].includes(data.userRole))return;
+    const token=data.adminToken, module=data.currentModule||'', base=data.webAppUrl;
+    function call(name,args,success,failure){
+      try{const runner=google.script.run.withSuccessHandler(success).withFailureHandler(failure);runner[name](...args);}
+      catch(error){failure(error);}
+    }
+    function node(tag,text){const el=document.createElement(tag);if(text!=null)el.textContent=text;return el;}
+    function href(destination,recordId){return base+'?module='+encodeURIComponent(destination)+'&adminToken='+encodeURIComponent(token)+(recordId?'&record='+encodeURIComponent(recordId):'');}
+    document.body.classList.add('gilns-has-notices');
+    const root=node('aside');root.id='gilns-notices';root.setAttribute('aria-label','내 알림');
+    const panel=node('section');panel.id='gilns-notice-panel';panel.hidden=true;
+    const head=node('header');head.appendChild(node('strong','알림'));
+    const refresh=node('button','새로고침'),readAll=node('button','모두 읽음'),close=node('button','닫기');
+    [refresh,readAll,close].forEach(function(b){b.type='button';head.appendChild(b);});
+    const message=node('p','알림을 확인하고 있습니다.');message.id='gilns-notice-message';message.setAttribute('role','status');
+    const list=node('div');list.id='gilns-notice-list';panel.append(head,message,list);
+    const toggle=node('button','알림 확인 중');toggle.id='gilns-notice-toggle';toggle.type='button';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',panel.id);
+    root.append(panel,toggle);document.body.appendChild(root);
+    let items=[],loading=false,marking=false,timer,lastLoad=0,seen=new Set();
+    function show(open){panel.hidden=!open;toggle.setAttribute('aria-expanded',String(open));}
+    toggle.addEventListener('click',function(){show(panel.hidden);if(Date.now()-lastLoad>25000)load();});
+    close.addEventListener('click',function(){show(false);toggle.focus();});
+    root.addEventListener('keydown',function(e){if(e.key==='Escape'){show(false);toggle.focus();}});
+    refresh.addEventListener('click',load);
+    function mark(ids,done){
+      if(marking||!ids.length)return;
+      marking=true;readAll.disabled=true;
+      call('markInternalNotificationsRead',[{adminToken:token,ids:ids}],function(result){
+        marking=false;readAll.disabled=false;
+        if(!result||!result.ok){message.textContent='읽음 처리에 실패했습니다. 다시 시도해 주세요.';return;}
+        items.forEach(function(item){if(ids.includes(item.id))item.read=true;});render();if(done)done();
+      },function(){marking=false;readAll.disabled=false;message.textContent='읽음 처리에 실패했습니다. 다시 시도해 주세요.';});
+    }
+    readAll.addEventListener('click',function(){mark(items.filter(i=>!i.read).map(i=>i.id));});
+    function render(){
+      const unread=items.filter(i=>!i.read).length;
+      toggle.textContent=unread?'알림 '+unread+'건':'알림';
+      readAll.disabled=marking||!unread;list.replaceChildren();
+      items.forEach(function(item){
+        const link=node('a');link.href=href(item.module,item.recordId);link.target='_top';link.dataset.unread=String(!item.read);
+        link.append(node('strong',item.title+' · '+item.status),node('small',item.detail),node('small',item.at));
+        link.addEventListener('click',function(e){
+          if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;
+          if(marking){e.preventDefault();return;}
+          if(!item.read){e.preventDefault();mark([item.id],function(){window.top.location.href=link.href;});}
+        });list.appendChild(link);
+      });
+      if(items.some(i=>!i.read&&!seen.has(i.id)))show(true);
+      items.forEach(i=>seen.add(i.id));
+    }
+    function schedule(){clearTimeout(timer);timer=setTimeout(load,45000);}
+    function load(){
+      if(loading||marking||document.hidden){schedule();return;}
+      loading=true;refresh.disabled=true;
+      call('getInternalNotifications',[token],function(result){
+        loading=false;refresh.disabled=false;lastLoad=Date.now();
+        if(!result||!result.ok){message.textContent='알림을 불러오지 못했습니다. 다시 로그인하거나 새로고침해 주세요.';toggle.textContent='알림 확인 필요';schedule();return;}
+        items=result.items||[];
+        message.textContent=(result.unavailable||[]).length?'일부 업무의 알림을 불러오지 못했습니다. 새로고침해 주세요.':items.length?'알림을 누르면 관련 업무로 이동합니다.':'현재 알림이 없습니다.';
+        render();schedule();
+      },function(){loading=false;refresh.disabled=false;message.textContent='알림 연결에 실패했습니다. 새로고침해 주세요.';toggle.textContent='알림 연결 확인';schedule();});
+    }
+    window.gilnsRefreshNotifications=load;
+    document.addEventListener('visibilitychange',function(){if(!document.hidden&&Date.now()-lastLoad>25000)load();});
+    window.addEventListener('pagehide',function(){clearTimeout(timer);});
+    window.addEventListener('pageshow',function(e){if(e.persisted)load();});
+    // Delay the first poll to keep page configuration and registration responsive.
+    timer=setTimeout(load,1500);
+
+    if(!['asset','info'].includes(module))return;
+    const container=document.querySelector('main');if(!container)return;
+    const card=node('section');card.className='gilns-correction';card.id='gilns-correction';
+    card.appendChild(node('h2',(module==='info'?'정보':'실물')+'자산 수정 요청'));
+    const help=node('p','위에서 시트를 선택한 뒤 자산을 검색하고 변경할 내용과 사유를 작성해 주세요. 답변은 오른쪽 아래 알림과 처리 내역에서 확인할 수 있습니다.');card.appendChild(help);
+    const form=node('form');
+    const query=node('input');query.type='search';query.maxLength=100;query.placeholder='자산명·모델명 검색 (2자 이상)';query.setAttribute('aria-label','수정 요청할 자산 검색');
+    const search=node('button','자산 검색');search.type='button';
+    const results=node('div');results.dataset.correctionResults='';
+    const selected=node('p','자산을 먼저 선택해 주세요.');
+    const reason=node('textarea');reason.maxLength=500;reason.required=true;reason.placeholder='변경할 항목, 변경 전·후 내용과 요청 사유';reason.setAttribute('aria-label','수정 요청 내용과 사유');
+    const submit=node('button','관리자에게 수정 요청');submit.type='submit';submit.disabled=true;
+    const feedback=node('p');feedback.setAttribute('role','status');
+    form.append(query,search,results,selected,reason,submit,feedback);
+    if(data.userRole==='registrar')card.appendChild(form);
+    const history=node('details'),summary=node('summary','수정 요청·처리 내역 확인');history.appendChild(summary);
+    const historyList=node('div');history.appendChild(historyList);card.appendChild(history);
+    container.appendChild(card);
+    if(module==='asset'&&data.userRole==='registrar'){
+      const tabs=document.getElementById('editModeButton');
+      if(tabs){const shortcut=node('button','관리자에게 수정 요청');shortcut.type='button';shortcut.className='mode-button';shortcut.addEventListener('click',function(){window.gilnsOpenCorrectionRequest();});tabs.parentElement.appendChild(shortcut);}
+    }
+    let chosen=null,busy=false,sequence=0;
+    function sheet(){const el=document.getElementById('sheetName');return el?el.value:'';}
+    function update(){submit.disabled=busy||!chosen||!reason.value.trim();search.disabled=busy;}
+    reason.addEventListener('input',update);
+    const sheetSelect=document.getElementById('sheetName');
+    if(sheetSelect)sheetSelect.addEventListener('change',function(){sequence++;chosen=null;results.replaceChildren();selected.textContent='자산을 먼저 선택해 주세요.';update();});
+    search.addEventListener('click',function(){
+      if(busy)return;
+      if(!sheet()||query.value.trim().length<2){feedback.textContent='시트를 선택하고 검색어를 2자 이상 입력해 주세요.';return;}
+      const version=++sequence;const selectedSheet=sheet();busy=true;chosen=null;update();feedback.textContent='검색 중입니다.';results.replaceChildren();
+      call('searchAssetCorrectionTargets',[{adminToken:token,kind:module,sheetName:selectedSheet,query:query.value.trim()}],function(response){
+        busy=false;update();if(version!==sequence||sheet()!==selectedSheet)return;
+        feedback.textContent=(response.results||[]).length?'수정할 자산을 선택해 주세요.':'검색 결과가 없습니다.';
+        (response.results||[]).forEach(function(asset){const b=node('button',asset.itemName+' · '+asset.managementNumber);b.type='button';b.addEventListener('click',function(){chosen=asset;selected.textContent='선택: '+asset.itemName+' · '+asset.managementNumber;results.replaceChildren();update();});results.appendChild(b);});
+      },function(error){busy=false;update();feedback.textContent=error.message||'검색에 실패했습니다.';});
+    });
+    query.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();search.click();}});
+    form.addEventListener('submit',function(e){
+      e.preventDefault();if(busy||!chosen||!reason.value.trim())return;
+      busy=true;update();feedback.textContent='수정 요청을 접수하고 있습니다.';
+      call('registerManagementRequest',[{adminToken:token,requestType:module==='info'?'정보자산 수정':'실물자산 수정',targetSheetName:sheet(),targetId:chosen.managementNumber,reason:reason.value.trim()}],function(response){
+        busy=false;if(!response||!response.ok){feedback.textContent='접수 결과를 확인할 수 없습니다. 처리 내역을 확인해 주세요.';update();return;}
+        chosen=null;reason.value='';selected.textContent='자산을 먼저 선택해 주세요.';feedback.textContent=response.requestId+' 수정 요청이 접수됐습니다.';update();history.open=true;loadHistory();load();
+      },function(error){busy=false;update();feedback.textContent=error.message||'수정 요청을 접수하지 못했습니다.';});
+    });
+    function loadHistory(){
+      historyList.textContent='처리 내역을 불러오는 중입니다.';
+      call('getAssetCorrectionRequests',[token,module],function(response){
+        historyList.replaceChildren();const rows=response.requests||[];
+        if(!rows.length){historyList.textContent='수정 요청 내역이 없습니다.';return;}
+        rows.forEach(function(r){const article=node('article');article.append(node('strong',r.targetName+' · '+r.status),node('p',r.reason),node('p',r.note?'답변: '+r.note:'관리자 답변 대기 중'));
+          if(data.userRole==='admin'){const a=node('a','요청 처리하기');a.href=href('requests',r.requestId);a.target='_top';article.appendChild(a);}historyList.appendChild(article);});
+      },function(){historyList.textContent='처리 내역을 불러오지 못했습니다. 다시 열어 주세요.';});
+    }
+    history.addEventListener('toggle',function(){if(history.open)loadHistory();});
+    window.gilnsOpenCorrectionRequest=function(){card.scrollIntoView({behavior:'smooth',block:'start'});query.focus({preventScroll:true});};
+  });
+})();
+</script>

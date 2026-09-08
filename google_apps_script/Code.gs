@@ -340,7 +340,7 @@ const INFO_ASSET_COL = Object.freeze({
 function getSharedBackgroundHtml_() {
   return HtmlService.createHtmlOutputFromFile(
     'SharedBackground'
-  ).getContent();
+  ).getContent() + HtmlService.createHtmlOutputFromFile('Notifications').getContent();
 }
 
 function getCompanyLogoHtml_() {
@@ -695,7 +695,7 @@ function doGet(event) {
     requestTemplate.actorName = sessionInfo.actorName;
 
     return requestTemplate.evaluate()
-      .setTitle('관리 요청')
+      .setTitle('기타 관리 요청')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
@@ -4900,6 +4900,8 @@ function getManagementRequestConfig(adminToken) {
       assetSheets: getSelectableSheetNames_(assetContext.spreadsheet),
       defaultAssetSheet: assetContext.sheet.getName(),
       requestTypes: [
+        '실물자산 수정',
+        '정보자산 수정',
         '실물자산 삭제',
         '정보자산 삭제',
         '반출입기록 정정',
@@ -4926,6 +4928,10 @@ function registerManagementRequest(request) {
       'requestCreate'
     );
     const requestType = cleanText_(source.requestType, 80);
+    if (['실물자산 수정', '정보자산 수정', '실물자산 삭제', '정보자산 삭제',
+      '반출입기록 정정', '기타 정정'].indexOf(requestType) === -1) {
+      throw new Error('지원하지 않는 요청 구분입니다.');
+    }
     let targetId = cleanText_(source.targetId, 100);
     let targetName = cleanText_(source.targetName, 150);
     const targetSheetName = cleanText_(source.targetSheetName, 100);
