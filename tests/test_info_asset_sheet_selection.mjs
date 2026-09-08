@@ -35,7 +35,7 @@ function spreadsheetWithout(missing = []) {
 function environment({ missing = [], sessionDepartment = '고색연구소', existingDepartment = '고색연구소' } = {}) {
   const writes = [];
   const permissions = [];
-  const observed = { syncCalls: 0, idDepartments: [], lockReleased: 0, listLimits: [] };
+  const observed = { syncCalls: 0, syncRows: [], idDepartments: [], lockReleased: 0, listLimits: [] };
   const spreadsheet = spreadsheetWithout(missing);
   const original = Array(24).fill('');
   original[0] = 'GNS-S-L-001';
@@ -90,6 +90,11 @@ function environment({ missing = [], sessionDepartment = '고색연구소', exis
     assert.equal(actualSpreadsheet, spreadsheet);
     assert.equal(actualLedger, ledger);
     observed.syncCalls += 1;
+  };
+  context.syncInformationDepartmentSheetRow_ = (actualSpreadsheet, actualLedger, row, departmentCode) => {
+    assert.equal(actualSpreadsheet, spreadsheet);
+    assert.equal(actualLedger, ledger);
+    observed.syncRows.push({ row, departmentCode });
   };
   context.appendManagedLog_ = () => {};
   context.getSessionFingerprint_ = () => 'session-fingerprint';
@@ -215,7 +220,7 @@ check('per-department listing retains older site assets without changing the leg
   assert.deepEqual(plain(context.listInfoAssets_(ledger, false)), legacy);
 });
 
-check('registration stores the selected canonical site in the integrated ledger before projection sync', () => {
+check('registration stores the selected canonical site then updates only its projection row', () => {
   for (const site of sites) {
     const { context, writes, observed, permissions } = environment({ existingDepartment: site.department });
     const result = context.registerInfoAsset({ ...request, sheetName: site.sheetName });
@@ -225,7 +230,7 @@ check('registration stores the selected canonical site in the integrated ledger 
     assert.equal(writes[0].values[0][5], site.departmentCode);
     assert.equal(writes[0].values[0][6], request.assetName);
     assert.deepEqual(observed.idDepartments, [site.department]);
-    assert.equal(observed.syncCalls, 1);
+    assert.deepEqual(observed.syncRows, [{ row: 10, departmentCode: site.departmentCode }]);
     assert.deepEqual(observed.listLimits, [true]);
     assert.deepEqual(permissions, ['infoRegister']);
     assert.equal(observed.lockReleased, 1);
@@ -241,7 +246,7 @@ check('updates store the selected canonical site and retain the original registr
     assert.equal(writes[0].values[0][4], site.department);
     assert.equal(writes[0].values[0][5], site.departmentCode);
     assert.equal(writes[0].values[0][21], '2026-01-01T00:00:00.000Z');
-    assert.equal(observed.syncCalls, 1);
+    assert.deepEqual(observed.syncRows, [{ row: 9, departmentCode: site.departmentCode }]);
     assert.deepEqual(observed.listLimits, [true]);
     assert.deepEqual(permissions, ['infoManage']);
   }
@@ -275,7 +280,7 @@ check('invalid site requests are rejected by registration and updates before any
       const { context, writes, observed } = environment(options);
       assert.throws(() => context[operation]({ ...request, ...source }), `${operation}: ${JSON.stringify(source)}`);
       assert.deepEqual(writes, [], 'Rejecting a bad selection must not cause a row write, including rollback writes.');
-      assert.equal(observed.syncCalls, 0);
+      assert.deepEqual(observed.syncRows, []);
     }
   }
 });
@@ -284,7 +289,7 @@ check('an explicit-sheet edit cannot move an existing asset into another site', 
   const { context, writes, observed } = environment({ existingDepartment: '고색연구소' });
   assert.throws(() => context.updateInfoAsset({ ...request, sheetName: 'F1-정보' }));
   assert.deepEqual(writes, []);
-  assert.equal(observed.syncCalls, 0);
+  assert.deepEqual(observed.syncRows, []);
 });
 
 check('configuration and write endpoints keep authentication failures ahead of all storage changes', () => {

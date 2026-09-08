@@ -1972,9 +1972,14 @@ function registerAsset(request) {
       });
     });
 
-    syncPhysicalIntegratedSheet_(context.spreadsheet);
-
-    SpreadsheetApp.flush();
+    registrations.forEach(function (registration) {
+      syncPhysicalIntegratedAssetRow_(
+        context.spreadsheet,
+        assetSheet,
+        registration.row,
+        registration.managementNumber
+      );
+    });
 
     auditStartRow = auditSheet
       ? auditSheet.getLastRow() + 1
@@ -2306,7 +2311,12 @@ function updateAsset(request) {
       managementNumber,
       payload
     );
-    syncPhysicalIntegratedSheet_(context.spreadsheet);
+    syncPhysicalIntegratedAssetRow_(
+      context.spreadsheet,
+      context.sheet,
+      row,
+      managementNumber
+    );
     rowUpdated = true;
 
     const newFolderName = makeAssetFolderName_(
@@ -2315,8 +2325,6 @@ function updateAsset(request) {
       payload.itemName
     );
     assetFolder.setName(newFolderName);
-    SpreadsheetApp.flush();
-
     const afterValues = createAssetSnapshot_(
       managementNumber,
       payload,
@@ -2462,6 +2470,70 @@ function syncPhysicalIntegratedSheet_(spreadsheet) {
   target.getRange('A6').setFormula('=COUNTA($A$9:$A$' + lastDataRow + ')');
   target.getRange('D6').setFormula('=COUNTBLANK($J$9:$J$' + lastDataRow + ')');
   target.getRange('G5:G6').clearContent();
+}
+
+function findLedgerRecordRow_(sheet, recordId, firstDataRow) {
+  const lastRow = Math.max(sheet.getLastRow(), firstDataRow - 1);
+  if (lastRow < firstDataRow) return 0;
+  const ids = sheet.getRange(
+    firstDataRow, 1, lastRow - firstDataRow + 1, 1
+  ).getDisplayValues();
+  const matches = ids.reduce(function (rows, values, index) {
+    if (String(values[0] || '').trim().toUpperCase() ===
+        String(recordId || '').trim().toUpperCase()) {
+      rows.push(firstDataRow + index);
+    }
+    return rows;
+  }, []);
+  if (matches.length > 1) {
+    throw new Error('통합 대장에 같은 관리번호가 여러 개입니다.');
+  }
+  return matches[0] || 0;
+}
+
+function updatePhysicalIntegratedSummary_(target, lastDataRow) {
+  const lastRow = Math.max(lastDataRow, APP.firstDataRow);
+  target.getRange('A6').setFormula('=COUNTA($A$9:$A$' + lastRow + ')');
+  target.getRange('D6').setFormula('=COUNTBLANK($J$9:$J$' + lastRow + ')');
+  target.getRange('G5:G6').clearContent();
+}
+
+// 신규·수정 한 건은 통합 시트를 전체 재작성하지 않고 해당 행만 갱신한다.
+// 기존 전체 동기화 함수는 복구·관리용으로 남긴다.
+function syncPhysicalIntegratedAssetRow_(
+  spreadsheet, sourceSheet, sourceRow, managementNumber
+) {
+  const target = spreadsheet.getSheetByName('실물자산(H)');
+  if (!target) {
+    throw new Error('실물자산(H) 통합 시트를 찾을 수 없습니다.');
+  }
+  const sourceRange = sourceSheet.getRange(
+    sourceRow, APP.firstDataColumn, 1, APP.dataColumnCount
+  );
+  const values = sourceRange.getValues();
+  if (String(values[0][0] || '').trim().toUpperCase() !==
+      String(managementNumber || '').trim().toUpperCase()) {
+    throw new Error('실물자산 통합 동기화 대상 번호를 확인하세요.');
+  }
+  const existingRow = findLedgerRecordRow_(
+    target, managementNumber, APP.firstDataRow
+  );
+  const targetRow = existingRow || Math.max(
+    target.getLastRow() + 1, APP.firstDataRow
+  );
+  const targetRange = target.getRange(
+    targetRow, APP.firstDataColumn, 1, APP.dataColumnCount
+  );
+  targetRange.setValues(values);
+  sourceRange.copyTo(
+    targetRange,
+    SpreadsheetApp.CopyPasteType.PASTE_FORMAT,
+    false
+  );
+  applyLedgerRowLayout_(target, targetRow, 1, APP.firstDataRow);
+  updatePhysicalIntegratedSummary_(
+    target, Math.max(target.getLastRow(), targetRow)
+  );
 }
 
 function normalizeManagementNumber_(value) {
@@ -8066,8 +8138,9 @@ function registerInfoAsset(request) {
     targetRange.setValues(values);
     copyInfoAssetRowFormat_(system.ledger, row);
     formatInfoAssetRow_(system.ledger, row);
-    syncInformationDepartmentSheets_(system.spreadsheet, system.ledger);
-    SpreadsheetApp.flush();
+    syncInformationDepartmentSheetRow_(
+      system.spreadsheet, system.ledger, row, departmentCode
+    );
 
     appendManagedLog_(system.log, {
       actor: session.actorName,
@@ -8176,8 +8249,9 @@ function updateInfoAsset(request) {
     didWrite = true;
     targetRange.setValues(values);
     formatInfoAssetRow_(system.ledger, row);
-    syncInformationDepartmentSheets_(system.spreadsheet, system.ledger);
-    SpreadsheetApp.flush();
+    syncInformationDepartmentSheetRow_(
+      system.spreadsheet, system.ledger, row, departmentCode
+    );
     appendManagedLog_(system.log, {
       actor: session.actorName,
       eventType: '정보자산수정',
@@ -8840,6 +8914,50 @@ function syncInformationDepartmentSheets_(spreadsheet, ledger) {
   });
 }
 
+// 신규·수정 한 건은 해당 사업장 시트의 같은 행만 갱신한다.
+// 전체 대장 재작성은 복구 또는 일괄 정리 때만 syncInformationDepartmentSheets_를 사용한다.
+function syncInformationDepartmentSheetRow_(
+  spreadsheet, ledger, sourceRow, departmentCode
+) {
+  const target = spreadsheet.getSheetByName(departmentCode + '-정보');
+  if (!target) {
+    throw new Error('선택한 사업장의 정보자산 시트를 찾을 수 없습니다.');
+  }
+  const values = ledger.getRange(
+    sourceRow, 1, 1, INFO_ASSET.columnCount
+  ).getValues();
+  const assetId = String(values[0][0] || '').trim();
+  if (!assetId || String(values[0][INFO_ASSET_COL.departmentCode - 1] || '') !==
+      departmentCode) {
+    throw new Error('정보자산 사업장 동기화 대상을 확인하세요.');
+  }
+  const existingRow = findLedgerRecordRow_(
+    target, assetId, INFO_ASSET.firstDataRow
+  );
+  const targetRow = existingRow || Math.max(
+    target.getLastRow() + 1, INFO_ASSET.firstDataRow
+  );
+  target.getRange(
+    targetRow, 1, 1, INFO_ASSET.columnCount
+  ).setValues(values);
+  applyLedgerRowLayout_(
+    target,
+    targetRow,
+    1,
+    INFO_ASSET.firstDataRow,
+    existingRow ? 0 : INFO_ASSET.columnCount
+  );
+  target.getRange(targetRow, INFO_ASSET_COL.registeredAt)
+    .setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  target.getRange(targetRow, INFO_ASSET_COL.updatedAt)
+    .setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  target.getRange(targetRow, INFO_ASSET_COL.location)
+    .clearDataValidations()
+    .setBackground('#EAF6F3');
+  formatCompactNumberCell_(target.getRange(targetRow, INFO_ASSET_COL.amount));
+  formatInfoSecurityClassCell_(target, targetRow);
+}
+
 function openManagedSpreadsheetFast_(name, propertyKey) {
   const properties = PropertiesService.getScriptProperties();
   let configuredId = properties.getProperty(propertyKey);
@@ -8949,7 +9067,6 @@ function appendManagedLog_(sheet, event) {
     beforeText: readableAuditValue_(details.before),
     afterText: readableAuditValue_(details.after),
   });
-  SpreadsheetApp.flush();
 }
 
 function formatDateOnly_(value) {
@@ -9007,7 +9124,6 @@ function appendAccessAuditLog_(audit, event) {
     beforeText: readableAuditValue_(details.previousStatus),
     afterText: readableAuditValue_(details.nextStatus || result),
   });
-  SpreadsheetApp.flush();
   return '';
 }
 

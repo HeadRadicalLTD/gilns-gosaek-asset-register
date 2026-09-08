@@ -77,6 +77,8 @@ assert.doesNotThrow(() => new vm.Script(scripts[0]));
   "모든 필수 항목이 확인되어 등록할 수 있습니다.",
   ".getPublicConfig(sheetName, ADMIN_TOKEN)",
   "config.assetSheetUrl",
+  "const maxDimension = 1600;",
+  "'image/jpeg',\n          0.74",
 ].forEach((needle) => {
   assert.ok(
     html.includes(needle),

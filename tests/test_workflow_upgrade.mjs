@@ -85,6 +85,14 @@ const infoRegisterBlock = code.slice(
   code.indexOf('function registerInfoAsset('),
   code.indexOf('function updateInfoAsset('),
 );
+const physicalRegisterBlock = code.slice(
+  code.indexOf('function registerAsset('),
+  code.indexOf('function getAssetForEdit('),
+);
+const physicalUpdateBlock = code.slice(
+  code.indexOf('function updateAsset('),
+  code.indexOf('function getPhysicalAssetSheetMeta_('),
+);
 assert.match(
   infoRegisterBlock,
   /targetRange\.setValues\(values\);[\s\S]*?copyInfoAssetRowFormat_\(system\.ledger, row\);/,
@@ -92,6 +100,14 @@ assert.match(
 assert.ok(accessEntryBlock.includes('targetRange.clearContent()'));
 assert.ok(!accessEntryBlock.includes('clearInfoAssetDataRangeByColumn_'));
 assert.ok(infoRegisterBlock.includes('clearInfoAssetDataRangeByColumn_'));
+assert.match(code, /function syncPhysicalIntegratedAssetRow_\(/);
+assert.match(code, /function syncInformationDepartmentSheetRow_\(/);
+assert.match(physicalRegisterBlock, /syncPhysicalIntegratedAssetRow_\(/);
+assert.equal((physicalRegisterBlock.match(/syncPhysicalIntegratedSheet_\(/g) || []).length, 1);
+assert.match(physicalUpdateBlock, /syncPhysicalIntegratedAssetRow_\(/);
+assert.doesNotMatch(physicalUpdateBlock, /syncPhysicalIntegratedSheet_\(/);
+assert.match(infoRegisterBlock, /syncInformationDepartmentSheetRow_\(/);
+assert.doesNotMatch(infoRegisterBlock, /syncInformationDepartmentSheets_\(/);
 
 [
   'cleanupTestVisitorApplicationsOnce_',
