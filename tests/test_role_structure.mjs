@@ -65,6 +65,27 @@ assert.ok(portal.includes("userRole === 'admin'"));
 assert.ok(requests.includes("관리자에게 요청"));
 assert.ok(audit.includes("읽기 전용"));
 assert.ok(info.includes("정보자산 수정"));
+[
+  'id="adminModeCard"',
+  'id="registerModeButton"',
+  'id="editModeButton"',
+  'id="editLookupCard"',
+  'class="form-section edit-only hidden"',
+  "const nextMode=IS_ADMIN&&mode==='edit'?'edit':'register'",
+  "if(isEdit){runner.updateInfoAsset(request);}else{runner.registerInfoAsset(request);}",
+  '사업장·부서를 선택하세요',
+].forEach((needle) => assert.ok(
+  info.includes(needle),
+  `InfoAssets role/mode separation missing: ${needle}`,
+));
+assert.match(
+  code,
+  /departments:\s*\[\s*'고색연구소',\s*'화성1공장',\s*'화성2공장',\s*'화성2공장\(조립실\)'/,
+);
+assert.match(
+  code,
+  /validationRange\.clearDataValidations\(\);[\s\S]*?range\.setValues\(values\);[\s\S]*?validationRange\.setDataValidation\(validation\);/,
+);
 
 for (const name of [
   "AdminLogin.html",

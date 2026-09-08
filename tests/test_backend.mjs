@@ -44,6 +44,22 @@ assert.match(source, /accessMode === 'self'/);
 assert.match(source, /function registerVisitorSelfEntry\(/);
 assert.match(source, /function getVisitorSelfConfig\(/);
 assert.match(source, /function getAccessSpreadsheetForRead_\(/);
+assert.match(source, /function ensurePhysicalAssetSchemaReady_\(/);
+assert.match(source, /function decodeValidatedImageFile_\(/);
+assert.match(source, /function captureSnapshotToStatus_\(/);
+assert.match(source, /const targetFolder = snapshot\.categoryFolders\[key\]/);
+assert.match(
+  source,
+  /Drive\.Files\.create\([\s\S]*?parents: \[targetFolder\.getId\(\)\]/,
+);
+assert.doesNotMatch(
+  source.match(/function uploadCapturedPhoto[\s\S]*?\n}\n/)[0],
+  /return getCaptureSessionStatus\(/,
+);
+assert.match(
+  source,
+  /function getPublicConfig[\s\S]*?ensurePhysicalAssetSchemaReady_\(context\.spreadsheet\);/,
+);
 assert.match(source, /function getAccessSystemForUse_\(/);
 assert.match(source, /function processEmployeeAttendance\(/);
 assert.match(source, /function registerVisitorGroupEntry\(/);
@@ -124,7 +140,10 @@ vm.runInContext(
     normalizeAccessType_,
     normalizeAccessPayload_,
     makeAccessRowValues_,
+    getVisitorLedgerHeaders_,
+    getVisitorBadgeNumber_,
     getAccessNameFromRow_,
+    findOpenAccessRecordRow_,
     listEmployeeRoster_,
     findEmployeeFromRoster_,
     findOpenEmployeeRecord_,
@@ -148,8 +167,8 @@ assert.equal(api.constantTimeEquals_('same', 'same'), true);
 assert.equal(api.constantTimeEquals_('same', 'different'), false);
 assert.equal(
   api.normalizeMovementPayload_({
-    sheetName: '고색연구소',
-    managementNumber: '52',
+    sheetName: 'L-실물',
+    managementNumber: 'GNS-H-L-052',
     borrower: '홍길동',
     department: '개발팀',
     purpose: '시험',
@@ -157,27 +176,30 @@ assert.equal(
     expectedReturnDate: '2026-08-10',
     handler: '관리자',
   }).managementNumber,
-  52,
+  'GNS-H-L-052',
 );
 assert.throws(
   () => api.normalizeMovementPayload_({
-    sheetName: '고색연구소',
-    managementNumber: '52',
+    sheetName: 'L-실물',
+    managementNumber: 'GNS-H-L-052',
   }),
   /필수항목/,
 );
 
 const infoIdSheet = {
-  getLastRow() { return 4; },
+  getLastRow() { return 11; },
   getRange() {
     return {
       getDisplayValues() {
-        return [['IA-0001'], ['IA-0007'], ['잘못된값']];
+        return [['GNS-S-L-001'], ['GNS-S-L-007'], ['잘못된값']];
       },
     };
   },
 };
-assert.equal(api.getNextInfoAssetId_(infoIdSheet), 'IA-0008');
+assert.equal(
+  api.getNextInfoAssetId_(infoIdSheet, '고색연구소'),
+  'GNS-S-L-008',
+);
 
 const rosterRows = [
   ['E001', '홍길동', '개발팀', '사용'],
@@ -274,16 +296,20 @@ assert.equal(api.getFileExtension_("photo", "image/png"), "png");
 assert.equal(api.pad2_(3), "03");
 assert.equal(api.isHistorySheetName_("등록이력"), true);
 assert.equal(api.isHistorySheetName_("등록 이력"), true);
-assert.equal(api.isHistorySheetName_("로그"), true);
+assert.equal(api.isHistorySheetName_("로그"), false);
 assert.equal(api.isHistorySheetName_("고색연구소"), false);
-assert.equal(api.normalizeManagementNumber_("72"), 72);
+assert.equal(
+  api.normalizeManagementNumber_("gns-h-l-072"),
+  "GNS-H-L-072",
+);
 assert.throws(
   () => api.normalizeManagementNumber_("A72"),
   /관리번호/,
 );
 assert.equal(api.normalizePlaceholder_("-"), "");
 assert.equal(api.normalizePlaceholder_("창고"), "창고");
-assert.match(source, /logSpreadsheetName: '자산관리 로그'/);
+assert.match(source, /logSpreadsheetName: '실물자산 관리 로그'/);
+assert.match(source, /logSpreadsheetName: '정보자산 관리 로그'/);
 assert.match(
   source,
   /captureHoldingFolderName: '촬영사진 임시보관'/,
@@ -294,7 +320,8 @@ assert.match(source, /function finalizeReadOnlyAccess_\(/);
 assert.match(source, /assetSheetUrl:/);
 assert.match(source, /context\.sheet\.getSheetId\(\)/);
 assert.match(source, /spreadsheetName: '출입관리 대장'/);
-assert.match(source, /logSpreadsheetName: '출입관리 로그'/);
+assert.match(source, /visitorLogSpreadsheetName: '외부 방문 로그'/);
+assert.match(source, /departmentLogSpreadsheetName: '부서 출입 로그'/);
 assert.match(source, /function registerAccessEntry\(/);
 assert.match(source, /function completeAccessExit\(/);
 assert.match(source, /function appendAccessAuditLog_\(/);
@@ -356,7 +383,59 @@ assert.equal(
     "V-20260805-TEST",
     new Date("2026-08-05T01:00:00Z"),
   ).length,
-  16,
+  20,
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(api.getVisitorLedgerHeaders_())),
+  [
+    '순번', '방문일자', '성명', '소속', '방문목적',
+    '출입구역', '입실시간', '퇴실시간', '담당자/동행자',
+    '방문증 No.', '회수확인', '기록ID', '상태', '연락처',
+    '차량번호', '등록자 / 등록경로', '방문신청번호', '방문객ID',
+    '반입물품', '비고',
+  ],
+);
+assert.equal(api.getVisitorBadgeNumber_(1), 'V-01');
+assert.equal(api.getVisitorBadgeNumber_(5), 'V-05');
+assert.equal(api.getVisitorBadgeNumber_(6), 'V-01');
+const visitorOpenRows = [[
+  'V-20260812-TEST', '입장중',
+]];
+const visitorOpenSheet = {
+  getLastRow() { return 2; },
+  getRange(_row, column, _height, width) {
+    assert.equal(column, 12);
+    assert.equal(width, 2);
+    return { getDisplayValues() { return visitorOpenRows; } };
+  },
+};
+assert.equal(
+  api.findOpenAccessRecordRow_(
+    visitorOpenSheet,
+    'V-20260812-TEST',
+    'visitor',
+  ),
+  2,
+);
+const employeeOpenSheet = {
+  getLastRow() { return 2; },
+  getRange(_row, column, _height, width) {
+    assert.equal(column, 1);
+    assert.equal(width, 5);
+    return {
+      getDisplayValues() {
+        return [['E-20260812-TEST', '', '', '', '입장중']];
+      },
+    };
+  },
+};
+assert.equal(
+  api.findOpenAccessRecordRow_(
+    employeeOpenSheet,
+    'E-20260812-TEST',
+    'employee',
+  ),
+  2,
 );
 assert.equal(
   api.getAccessNameFromRow_(
@@ -374,14 +453,14 @@ assert.deepEqual(
     api.getSelectableSheetNames_({
       getSheets() {
         return [
-          { getName: () => "고색연구소" },
+          { getName: () => "L-실물" },
           { getName: () => "등록 이력" },
-          { getName: () => "음성공장" },
+          { getName: () => "F1-실물" },
         ];
       },
     }),
   )),
-  ["고색연구소", "음성공장"],
+  ["L-실물", "F1-실물"],
 );
 assert.equal(
   api.findHeaderColumn_({
@@ -421,19 +500,19 @@ assert.match(
 );
 
 const managementValues = [
-  ["50", "T-체크플러그", "M8", "길앤에스"],
-  ["51", "니블", "1/8PT", "오케이"],
-  ["52", "", "", ""],
-  ["53", "", "", ""],
+  ["GNS-H-L-050", "실물자산 (H)", "고색연구소", "L", "50", "T-체크플러그"],
+  ["GNS-H-L-051", "실물자산 (H)", "고색연구소", "L", "51", "니블"],
+  ["GNS-H-L-052", "", "", ""],
+  ["GNS-H-L-053", "", "", ""],
 ];
 const mockSheet = {
   getLastRow() {
-    return 10;
+    return 12;
   },
   getRange(row, column, rowCount, columnCount) {
     return {
       getDisplayValues() {
-        if (row === 7) {
+        if (row === 9) {
           return managementValues
             .slice(0, rowCount)
             .map((values) => [
@@ -442,7 +521,7 @@ const mockSheet = {
             ]);
         }
         return [[
-          "52",
+          "GNS-H-L-052",
           ...Array(columnCount - 1).fill(""),
         ]];
       },
@@ -455,13 +534,13 @@ assert.deepEqual(
     api.getNextAssetPosition_(mockSheet),
   )),
   {
-    managementNumber: 52,
-    row: 9,
-    previousAssetRow: 8,
+    managementNumber: "GNS-H-L-052",
+    row: 11,
+    previousAssetRow: 10,
   },
 );
 assert.doesNotThrow(
-  () => api.assertTargetRowAvailable_(mockSheet, 9, 52),
+  () => api.assertTargetRowAvailable_(mockSheet, 11, "GNS-H-L-052"),
 );
 
 const occupiedSheet = {
@@ -481,15 +560,15 @@ const occupiedSheet = {
 assert.throws(
   () => api.assertTargetRowAvailable_(
     occupiedSheet,
-    10,
-    52,
+    11,
+    "GNS-H-L-052",
   ),
   /기존 내용/,
 );
 
 const prefilledOnlySheet = {
   getLastRow() {
-    return 10;
+    return 12;
   },
   getRange(_row, _column, rowCount, columnCount) {
     return {
@@ -505,9 +584,9 @@ const prefilledOnlySheet = {
   },
 };
 
-assert.equal(api.findAssetRow_(prefilledOnlySheet, 51), 8);
+assert.equal(api.findAssetRow_(prefilledOnlySheet, "GNS-H-L-051"), 10);
 assert.throws(
-  () => api.findAssetRow_(prefilledOnlySheet, 52),
+  () => api.findAssetRow_(prefilledOnlySheet, "GNS-H-L-052"),
   /찾을 수 없습니다/,
 );
 

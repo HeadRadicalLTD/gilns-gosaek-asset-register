@@ -924,6 +924,24 @@
         </div>
       </section>
 
+      <section id="registerCatalogCard" class="card">
+        <div class="card-heading">
+          <div>
+            <h2>기존 품목 검색</h2>
+            <p>전체 자산목록은 공개하지 않고, 품목·모델·구입처만 참고값으로 불러옵니다.</p>
+          </div>
+          <span class="step-badge">02</span>
+        </div>
+        <div class="field full">
+          <label for="registerCatalogQuery">품목 검색</label>
+          <div class="lookup-row">
+            <input id="registerCatalogQuery" type="search" maxlength="100" autocomplete="off" placeholder="품목을 2글자 이상 입력하세요">
+            <button id="registerCatalogSearchButton" class="lookup-button" type="button">품목 검색</button>
+          </div>
+          <div id="registerCatalogResults" class="asset-search-results"></div>
+        </div>
+      </section>
+
       <section class="card">
         <div class="card-heading">
           <div>
@@ -959,8 +977,14 @@
           </div>
 
           <div class="field">
+            <label for="assetCategory">자산구분 <span class="required">*</span></label>
+            <select id="assetCategory" name="assetCategory" required></select>
+            <span id="assetManagementMode" class="field-meta"></span>
+          </div>
+
+          <div class="field">
             <label for="itemName">
-              품목 <span class="required">*</span>
+              자산명(용도) <span class="required">*</span>
             </label>
             <input
               id="itemName"
@@ -971,9 +995,9 @@
             >
           </div>
 
-          <div class="field full">
+          <div class="field">
             <label for="modelMaker">
-              모델명·제작사
+              모델명/제품명
             </label>
             <input
               id="modelMaker"
@@ -984,14 +1008,82 @@
           </div>
 
           <div class="field">
+            <label for="serialNumber">S/N</label>
+            <input
+              id="serialNumber"
+              name="serialNumber"
+              type="text"
+              maxlength="120"
+              placeholder="제품 시리얼 넘버"
+            >
+          </div>
+
+          <div class="field">
             <label for="vendor">
-              구입처 <span class="required">*</span>
+              제조사/공급자 <span class="required">*</span>
             </label>
             <input
               id="vendor"
               name="vendor"
               type="text"
               maxlength="100"
+              required
+            >
+          </div>
+
+          <div class="field">
+            <label for="quantity">수량 <span class="required">*</span></label>
+            <input id="quantity" name="quantity" type="number" inputmode="numeric" min="1" max="999" step="1" value="1" required>
+          </div>
+
+          <div class="field">
+            <label for="manager">관리자 <span class="required">*</span></label>
+            <select
+              id="manager"
+              name="manager"
+              required
+            ></select>
+            <span class="field-meta">선택한 부서의 관리자 후보만 표시됩니다.</span>
+          </div>
+
+          <div class="field">
+            <label for="user">사용자</label>
+            <select id="user" name="user" disabled></select>
+            <span class="field-meta">관리자를 먼저 선택하세요. 미지정도 가능합니다.</span>
+          </div>
+
+          <div class="field">
+            <label for="storageLocation">
+              보관 장소 <span class="required">*</span>
+            </label>
+            <input
+              id="storageLocation"
+              name="storageLocation"
+              type="text"
+              maxlength="100"
+              value="고색연구소"
+              required
+            >
+          </div>
+
+          <div class="field">
+            <label for="assetStatus">사용상태 <span class="required">*</span></label>
+            <select id="assetStatus" name="assetStatus" required></select>
+          </div>
+
+          <div class="field">
+            <label for="priority">중요도 <span class="required">*</span></label>
+            <select id="priority" name="priority" required></select>
+          </div>
+
+          <div class="field">
+            <label for="purchaseDate">
+              구입일자 <span class="required">*</span>
+            </label>
+            <input
+              id="purchaseDate"
+              name="purchaseDate"
+              type="date"
               required
             >
           </div>
@@ -1008,44 +1100,6 @@
               inputmode="numeric"
               autocomplete="off"
               placeholder="예: 59000"
-            >
-          </div>
-
-          <div class="field">
-            <label for="purchaseDate">
-              구입일자 <span class="required">*</span>
-            </label>
-            <input
-              id="purchaseDate"
-              name="purchaseDate"
-              type="date"
-              required
-            >
-          </div>
-
-          <div class="field">
-            <label for="manager">관리자</label>
-            <input
-              id="manager"
-              name="manager"
-              type="text"
-              maxlength="40"
-              readonly
-            >
-            <span class="field-meta">선택한 시트에 따라 자동 설정됩니다.</span>
-          </div>
-
-          <div class="field">
-            <label for="storageLocation">
-              보관 장소 <span class="required">*</span>
-            </label>
-            <input
-              id="storageLocation"
-              name="storageLocation"
-              type="text"
-              maxlength="100"
-              value="고색연구소"
-              required
             >
           </div>
 
@@ -1090,6 +1144,23 @@
             </a>
           </div>
         </div>
+      </section>
+
+      <section class="card">
+        <div class="card-heading">
+          <div>
+            <h2>관리상 확인사항</h2>
+            <p>감사 시 확인하는 관리 기준입니다.</p>
+          </div>
+          <span class="step-badge">04</span>
+        </div>
+        <ul class="hint-list">
+          <li>라이선스·계정은 무단복제 또는 무단공유하지 않습니다.</li>
+          <li>관리자 미지정 자산은 우선 지정합니다.</li>
+          <li>장비별 사용자와 보관장소를 최신 상태로 유지합니다.</li>
+          <li>수리·반출입 시 데이터와 증빙 사진을 보호합니다.</li>
+          <li>자산 현황은 연 1회 이상 재점검합니다.</li>
+        </ul>
       </section>
 
       <section id="photoUploadCard" class="card">
@@ -1351,6 +1422,9 @@
       document
         .getElementById('sheetName')
         .addEventListener('change', handleSheetChange);
+      document.getElementById('manager').addEventListener('change', renderUserOptions);
+      document.getElementById('assetCategory').addEventListener('change', updateAssetManagementMode);
+      document.getElementById('quantity').addEventListener('input', updateAssetManagementMode);
       document
         .getElementById('registerModeButton')
         .addEventListener('click', () => {
@@ -1364,6 +1438,17 @@
       document
         .getElementById('loadAssetButton')
         .addEventListener('click', loadAssetForEdit);
+      document
+        .getElementById('registerCatalogSearchButton')
+        .addEventListener('click', searchRegisterCatalog);
+      document
+        .getElementById('registerCatalogQuery')
+        .addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            searchRegisterCatalog();
+          }
+        });
       document
         .getElementById('editAssetQuery')
         .addEventListener('keydown', (event) => {
@@ -1437,6 +1522,8 @@
         .classList.toggle('active', isEdit);
       document.getElementById('editLookupCard')
         .classList.toggle('hidden', !isEdit);
+      document.getElementById('registerCatalogCard')
+        .classList.toggle('hidden', isEdit);
       document.getElementById('phoneCaptureCard')
         .classList.toggle('hidden', isEdit);
       document.getElementById('photoUploadCard')
@@ -1462,12 +1549,11 @@
       } else {
         document.getElementById('assetForm').reset();
         resetEditPhotos();
+        renderAssetOptions(state.config);
         document.getElementById('author').value =
           state.config.actorName || ACTOR_NAME;
         document.getElementById('storageLocation').value =
           state.config ? state.config.sheetName : '고색연구소';
-        document.getElementById('manager').value =
-          state.config ? state.config.manager : '';
         document.getElementById('purchaseDate').value =
           state.config ? state.config.today : '';
         updateSubmitAvailability();
@@ -1477,6 +1563,48 @@
               state.config.nextManagementNumber
             : '관리번호 확인 중';
       }
+    }
+
+    function searchRegisterCatalog() {
+      const query = valueOf('registerCatalogQuery');
+      if (query.length < 2) {
+        showError('품목 검색어를 2글자 이상 입력하세요.');
+        return;
+      }
+      setBusy(true, '품목을 검색하고 있습니다', '참고 가능한 품목을 불러오는 중입니다.');
+      google.script.run
+        .withSuccessHandler((result) => {
+          setBusy(false);
+          renderRegisterCatalogResults(result.results || []);
+        })
+        .withFailureHandler((error) => {
+          setBusy(false);
+          showError(getErrorMessage(error));
+        })
+        .searchAssetCatalog(valueOf('sheetName'), query, ADMIN_TOKEN);
+    }
+
+    function renderRegisterCatalogResults(results) {
+      const target = document.getElementById('registerCatalogResults');
+      target.innerHTML = '';
+      if (!results.length) {
+        target.innerHTML = '<p class="hint">일치하는 품목이 없습니다.</p>';
+        return;
+      }
+      results.forEach((asset) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'asset-search-result';
+        button.innerHTML = '<strong>' + escapeHtml(asset.itemName || '') + '</strong><span>' + escapeHtml(asset.modelMaker || '') + (asset.vendor ? ' · ' + escapeHtml(asset.vendor) : '') + '</span>';
+        button.addEventListener('click', () => {
+          document.getElementById('itemName').value = asset.itemName || '';
+          document.getElementById('modelMaker').value = asset.modelMaker || '';
+          document.getElementById('vendor').value = asset.vendor || '';
+          target.innerHTML = '<p class="selected-asset">기존 품목의 참고값을 반영했습니다. 등록 시 새 관리번호가 발급됩니다.</p>';
+          updateSubmitAvailability();
+        });
+        target.appendChild(button);
+      });
     }
 
     function loadAssetForEdit() {
@@ -1579,9 +1707,13 @@
 
     function populateAssetForEdit(asset, photos) {
       [
+        'assetCategory',
         'itemName',
         'modelMaker',
+        'serialNumber',
         'vendor',
+        'assetStatus',
+        'priority',
         'purchaseDate',
         'storageLocation',
         'remarks',
@@ -1593,8 +1725,16 @@
         asset.amount === ''
           ? ''
           : Number(asset.amount).toLocaleString('ko-KR');
+      document.getElementById('quantity').value =
+        Math.max(1, Math.min(999, parseInt(asset.quantity, 10) || 1));
       document.getElementById('manager').value =
-        state.config ? state.config.manager : (asset.manager || '');
+        asset.manager || '';
+      renderUserOptions();
+      document.getElementById('user').value = asset.user || '미지정';
+      if (!valueOf('user')) {
+        document.getElementById('user').value = '미지정';
+      }
+      updateAssetManagementMode();
       populateExistingPhotos(photos);
       showSuccessText(
         '관리번호 ' + asset.managementNumber +
@@ -1705,8 +1845,7 @@
 
       document.getElementById('sheetName').value =
         config.sheetName;
-      document.getElementById('manager').value =
-        config.manager || '';
+      renderAssetOptions(config);
       document.getElementById('purchaseDate').value =
         config.today;
       document.getElementById('systemStatus').textContent =
@@ -1724,6 +1863,69 @@
       document.getElementById('statusDot')
         .classList.add('ready');
       updateSubmitAvailability();
+    }
+
+    function renderAssetOptions(config) {
+      const fillSelect = (id, values, selected, emptyLabel) => {
+        const select = document.getElementById(id);
+        select.innerHTML = '';
+        if (emptyLabel) {
+          const option = document.createElement('option');
+          option.value = '';
+          option.textContent = emptyLabel;
+          select.appendChild(option);
+        }
+        (values || []).forEach((value) => {
+          const option = document.createElement('option');
+          option.value = typeof value === 'string' ? value : value.name;
+          option.textContent = typeof value === 'string' ? value : value.name;
+          option.selected = option.value === selected;
+          select.appendChild(option);
+        });
+      };
+      fillSelect('manager', config.managerOptions || [], '', '관리자 선택');
+      fillSelect('assetCategory', config.assetCategories || [], '기타', '자산구분 선택');
+      fillSelect('assetStatus', config.assetStatuses || [], '사용중');
+      fillSelect('priority', config.assetPriorities || [], '중');
+      renderUserOptions();
+      updateAssetManagementMode();
+    }
+
+    function renderUserOptions() {
+      const current = valueOf('user');
+      const manager = valueOf('manager');
+      const select = document.getElementById('user');
+      select.innerHTML = '';
+      const unassigned = document.createElement('option');
+      unassigned.value = '미지정';
+      unassigned.textContent = manager
+        ? '미지정'
+        : '관리자를 먼저 선택하세요';
+      unassigned.selected = !current || current === '미지정' || current === manager;
+      select.appendChild(unassigned);
+      select.disabled = !manager;
+      if (!manager) {
+        return;
+      }
+      state.employees.filter((employee) => employee.name !== manager)
+        .forEach((employee) => {
+          const option = document.createElement('option');
+          option.value = employee.name;
+          option.textContent = employee.name + ' · ' + employee.department;
+          option.selected = employee.name === current;
+          select.appendChild(option);
+        });
+    }
+
+    function updateAssetManagementMode() {
+      const selected = valueOf('assetCategory');
+      const category = (state.config && state.config.assetCategories || [])
+        .find((item) => item.name === selected);
+      const quantity = Number(valueOf('quantity')) || 1;
+      const text = category && category.managementMode === 'bulk'
+        ? '묶음 관리: 관리번호 1개에 수량 ' + quantity + '개를 기록합니다.'
+        : '개별 관리: 관리번호를 ' + quantity + '개 발급하고 공통 증빙사진을 함께 연결합니다.';
+      document.getElementById('assetManagementMode').textContent = text;
     }
 
     function renderAuthorNames() {
@@ -1780,6 +1982,8 @@
         return;
       }
 
+      renderManagerOptionsForSheet(sheetName);
+
       state.ready = false;
       state.editLoaded = false;
       document.getElementById('editAssetQuery').value = '';
@@ -1810,6 +2014,23 @@
           setSystemError(getErrorMessage(error));
         })
         .getPublicConfig(sheetName, ADMIN_TOKEN);
+    }
+
+    function renderManagerOptionsForSheet(sheetName) {
+      const aliases = {
+        'L-실물': '고색연구소',
+        'F1-실물': '화성1공장',
+        'F2-실물': '화성2공장',
+        'F2-A-실물': '화성2공장(조립실)',
+      };
+      const siteName = aliases[sheetName] || sheetName;
+      const map = state.config && state.config.managerOptionsBySite || {};
+      const managers = map[siteName] || [];
+      const select = document.getElementById('manager');
+      select.innerHTML = '<option value="">관리자 선택</option>' +
+        managers.map((name) => '<option value="' + escapeHtml(name) + '">' +
+          escapeHtml(name) + '</option>').join('');
+      renderUserOptions();
     }
 
     function hasAppsScriptBridge() {
@@ -2218,6 +2439,11 @@
       updateSubmitAvailability();
     }
 
+    function isQuantityValid() {
+      const quantity = Number(valueOf('quantity'));
+      return Number.isInteger(quantity) && quantity >= 1 && quantity <= 999;
+    }
+
     function updateSubmitAvailability() {
       const button = document.getElementById('submitButton');
       const summary = document.getElementById('submitSummary');
@@ -2236,12 +2462,19 @@
       });
       const requiredFieldsReady = [
         'sheetName',
+        'assetCategory',
         'itemName',
         'vendor',
+        'quantity',
+        'manager',
+        'assetStatus',
+        'priority',
         'purchaseDate',
         'storageLocation',
       ].every((id) => valueOf(id)) &&
-        getAuthorMatches(valueOf('author')).length === 1;
+        getAuthorMatches(valueOf('author')).length === 1 &&
+        isQuantityValid() &&
+        valueOf('manager') !== valueOf('user');
       const missingProductCount = Math.max(
         0,
         minimum - productCount
@@ -2338,6 +2571,14 @@
         showError('사원 명부 목록에서 작성자를 선택하세요.');
         return;
       }
+      if (!isQuantityValid()) {
+        showError('수량은 1~999 사이의 정수로 입력하세요.');
+        return;
+      }
+      if (valueOf('manager') && valueOf('manager') === valueOf('user')) {
+        showError('관리자와 사용자는 같은 사람으로 지정할 수 없습니다.');
+        return;
+      }
 
       if (state.mode === 'edit') {
         if (!state.editLoaded) {
@@ -2387,8 +2628,14 @@
             sheetName: valueOf('sheetName'),
             author: valueOf('author'),
             itemName: valueOf('itemName'),
+            assetCategory: valueOf('assetCategory'),
             modelMaker: valueOf('modelMaker'),
+            serialNumber: valueOf('serialNumber'),
             vendor: valueOf('vendor'),
+            quantity: valueOf('quantity'),
+            user: valueOf('user'),
+            assetStatus: valueOf('assetStatus'),
+            priority: valueOf('priority'),
             amount: valueOf('amount').replace(/,/g, ''),
             purchaseDate: valueOf('purchaseDate'),
             manager: valueOf('manager'),
@@ -2457,8 +2704,14 @@
           sheetName: valueOf('sheetName'),
           author: valueOf('author'),
           itemName: valueOf('itemName'),
+          assetCategory: valueOf('assetCategory'),
           modelMaker: valueOf('modelMaker'),
+          serialNumber: valueOf('serialNumber'),
           vendor: valueOf('vendor'),
+          quantity: valueOf('quantity'),
+          user: valueOf('user'),
+          assetStatus: valueOf('assetStatus'),
+          priority: valueOf('priority'),
           amount: valueOf('amount').replace(/,/g, ''),
           purchaseDate: valueOf('purchaseDate'),
           manager: valueOf('manager'),
@@ -2561,23 +2814,45 @@
       const success = document.getElementById(
         'successMessage'
       );
+      const registrations = Array.isArray(result.registrations)
+        ? result.registrations
+        : [{
+            managementNumber: result.managementNumber,
+            folderName: result.folderName,
+            folderUrl: result.folderUrl,
+          }];
+      const managementNumbers = Array.isArray(result.managementNumbers)
+        ? result.managementNumbers
+        : registrations.map((item) => item.managementNumber);
+      const validRegistrations = registrations.filter((item) =>
+        item && item.managementNumber != null
+      );
+      const heading = validRegistrations.length > 1
+        ? validRegistrations.length + '개 자산 등록 완료'
+        : '관리번호 ' + String(managementNumbers[0] || '') + ' 등록 완료';
+      const registrationDetails = validRegistrations.map((item) => {
+        const folderLink = item.folderUrl
+          ? '<a href="' + escapeHtml(encodeURI(item.folderUrl)) +
+            '" target="_blank" rel="noopener">사진 폴더 열기</a>'
+          : '';
+        return '<li><strong>' +
+          escapeHtml(String(item.managementNumber)) +
+          '</strong>' +
+          (item.folderName ? ' · ' + escapeHtml(item.folderName) : '') +
+          (folderLink ? ' · ' + folderLink : '') +
+          '</li>';
+      }).join('');
       success.innerHTML =
-        '<strong>관리번호 ' +
-        escapeHtml(String(result.managementNumber)) +
-        '번 등록 완료</strong><br>' +
-        escapeHtml(result.folderName) +
-        '<br><a href="' +
-        encodeURI(result.folderUrl) +
-        '" target="_blank" rel="noopener">사진 폴더 열기</a>';
+        '<strong>' + escapeHtml(heading) + '</strong>' +
+        (registrationDetails ? '<ul class="hint-list">' + registrationDetails + '</ul>' : '');
       success.classList.add('show');
 
       document.getElementById('assetForm').reset();
+      renderAssetOptions(state.config);
       document.getElementById('author').value =
         state.config.actorName || ACTOR_NAME;
       document.getElementById('storageLocation').value =
         state.config.sheetName;
-      document.getElementById('manager').value =
-        state.config.manager || '';
       document.getElementById('purchaseDate').value =
         state.config.today;
 
@@ -2616,9 +2891,15 @@
       phoneButton.textContent = '휴대폰 연결 QR 만들기';
 
       updateFileCount();
+      const numericManagementNumbers = managementNumbers
+        .map((value) => Number(value))
+        .filter((value) => Number.isFinite(value));
+      const nextManagementNumber = result.nextManagementNumber ||
+        (numericManagementNumbers.length
+          ? Math.max.apply(null, numericManagementNumbers) + 1
+          : '확인 중');
       document.getElementById('nextNumber').textContent =
-        '예정 관리번호 ' +
-        (Number(result.managementNumber) + 1);
+        '예정 관리번호 ' + nextManagementNumber;
       success.scrollIntoView({
         behavior: 'smooth',
         block: 'center',

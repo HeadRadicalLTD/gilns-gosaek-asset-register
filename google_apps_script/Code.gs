@@ -10,21 +10,22 @@ const APP = Object.freeze({
   rootFolderName: '길앤에스_자산관리',
   legacyRootFolderName: '길앤에스_고색_자산관리',
   photoFolderName: '비품 사진',
-  spreadsheetName: '자산관리 대장',
-  legacySpreadsheetName: '고색 자산관리 대장',
-  sheetName: '고색연구소',
+  spreadsheetName: '실물자산 관리대장',
+  legacySpreadsheetName: '자산관리 대장',
+  sheetName: 'L-실물',
   legacyHistorySheetName: '등록이력',
-  logSpreadsheetName: '자산관리 로그',
-  legacyLogSpreadsheetName: '고색 자산관리 로그',
-  logSheetName: '로그',
+  logSpreadsheetName: '실물자산 관리 로그',
+  legacyLogSpreadsheetName: '자산관리 로그',
+  logSheetName: '감사로그',
   captureHoldingFolderName: '촬영사진 임시보관',
   capturePropertyPrefix: 'CAPTURE_SESSION_',
   captureExpiryMillis: 4 * 60 * 60 * 1000,
-  headerRow: 6,
-  firstDataRow: 7,
-  firstDataColumn: 2,
-  dataColumnCount: 10,
-  logColumnCount: 21,
+  headerRow: 8,
+  firstDataRow: 9,
+  firstDataColumn: 1,
+  dataColumnCount: 18,
+  legacyNumberMapSheetName: '기존번호 이관대조표',
+  logColumnCount: 11,
   timeZone: 'Asia/Seoul',
   maxFilesPerCategory: 5,
   minProductPhotos: 3,
@@ -33,13 +34,47 @@ const APP = Object.freeze({
 });
 
 const SITE_MANAGERS = Object.freeze({
-  '화성1공장': '김한영',
+  '화성1공장': '전관식',
   '화성2공장': '임현구',
   '화성2공장(조립실)': '임현구',
   '고색연구소': '이장명',
 });
 
+// 자산 책임자는 부서별 지정 후보에서만 선택한다. 사용자는 사원 명부 전체에서
+// 선택하되, 같은 사람을 관리자와 사용자로 함께 지정할 수 없다.
+const ASSET_MANAGER_OPTIONS = Object.freeze({
+  '고색연구소': Object.freeze(['김재웅', '이희용', '오병철', '이장명']),
+  '화성1공장': Object.freeze(['김재웅', '오양택', '전관식']),
+  '화성2공장': Object.freeze(['김재웅', '임현구']),
+  '화성2공장(조립실)': Object.freeze(['김재웅', '임현구']),
+});
+
+const PHYSICAL_ASSET_CATEGORIES = Object.freeze([
+  Object.freeze({ name: '시험/통신장비', managementMode: 'individual' }),
+  Object.freeze({ name: '차량진단장비', managementMode: 'individual' }),
+  Object.freeze({ name: '사무정보기기', managementMode: 'individual' }),
+  Object.freeze({ name: 'PC/모니터', managementMode: 'individual' }),
+  Object.freeze({ name: '공구/측정기', managementMode: 'individual' }),
+  Object.freeze({ name: '가구/집기', managementMode: 'individual' }),
+  Object.freeze({ name: '케이블/어댑터', managementMode: 'bulk' }),
+  Object.freeze({ name: '소모품/부품', managementMode: 'bulk' }),
+  Object.freeze({ name: '기타', managementMode: 'individual' }),
+]);
+
+const PHYSICAL_ASSET_STATUSES = Object.freeze([
+  '사용중', '보관중', '수리대기', '폐기예정', '폐기',
+]);
+const PHYSICAL_ASSET_PRIORITIES = Object.freeze(['상', '중', '하']);
+const PHYSICAL_ASSET_COLUMN_WIDTHS = Object.freeze([
+  140, 120, 105, 420, 620, 160, 300, 65, 95,
+  95, 125, 90, 125, 90, 85, 95, 100, 900,
+]);
+
 const SITE_NAME_ALIASES = Object.freeze({
+  'L-실물': '고색연구소',
+  'F1-실물': '화성1공장',
+  'F2-실물': '화성2공장',
+  'F2-A-실물': '화성2공장(조립실)',
   '1공장': '화성1공장',
   '화성1공장': '화성1공장',
   '2공장': '화성2공장',
@@ -77,6 +112,34 @@ function getSiteManager_(sheetName) {
 
 function getSiteManagerSafe_(siteName) {
   return SITE_MANAGERS[normalizeSiteName_(siteName)] || '';
+}
+
+function getAssetManagerOptions_(siteName) {
+  return (ASSET_MANAGER_OPTIONS[normalizeSiteName_(siteName)] || []).slice();
+}
+
+function getAssetManagerOptionsBySite_() {
+  const result = {};
+  Object.keys(ASSET_MANAGER_OPTIONS).forEach(function (siteName) {
+    result[siteName] = ASSET_MANAGER_OPTIONS[siteName].slice();
+  });
+  return result;
+}
+
+function getPhysicalAssetCategory_(name) {
+  const cleanName = cleanText_(name, 80) || '기타';
+  return PHYSICAL_ASSET_CATEGORIES.filter(function (category) {
+    return category.name === cleanName;
+  })[0] || { name: cleanName, managementMode: 'individual' };
+}
+
+function getPhysicalAssetHeaders_() {
+  return [
+    '관리번호', '자산구분', '자산유형', '자산명(용도)', '모델명/제품명',
+    'S/N', '제조사/공급자', '수량', '사용자', '관리자', '부서명',
+    '부서코드', '보관장소', '사용상태', '중요도', '구입일자',
+    '금액(천원)', '비고',
+  ];
 }
 
 function isSiteManagerFor_(session, siteName) {
@@ -130,22 +193,49 @@ const ACCESS = Object.freeze({
   employeeSheetName: '사원 출입대장',
   employeeRosterSheetName: '사원 명부',
   departmentAccessSheetName: '부서 출입 신청대장',
-  managementRequestSheetName: '관리 요청',
-  logSpreadsheetName: '출입관리 로그',
-  logSpreadsheetPropertyKey: 'ACCESS_LOG_SPREADSHEET_ID',
-  logSheetName: '로그',
+  visitorLogSpreadsheetName: '외부 방문 로그',
+  visitorLogSpreadsheetPropertyKey: 'VISITOR_LOG_SPREADSHEET_ID',
+  departmentLogSpreadsheetName: '부서 출입 로그',
+  departmentLogSpreadsheetPropertyKey: 'DEPARTMENT_ACCESS_LOG_SPREADSHEET_ID',
+  readableLogSheetName: '감사로그',
   visitorApplicationColumnCount: 24,
-  visitorColumnCount: 16,
+  visitorColumnCount: 20,
   employeeColumnCount: 11,
   departmentAccessColumnCount: 16,
-  logColumnCount: 10,
-  managementRequestColumnCount: 12,
   maxOpenRecords: 100,
   maxVisitorApplications: 100,
   maxVisitorsPerApplication: 20,
   visitorRetentionYears: 5,
   visitorConsentVersion: '2026-08-11-v2',
   visitorSecurityVersion: '2026-08-07-v1',
+});
+
+const MANAGEMENT_REQUEST = Object.freeze({
+  spreadsheetName: '관리 요청 대장',
+  spreadsheetPropertyKey: 'MANAGEMENT_REQUEST_SPREADSHEET_ID',
+  sheetName: '현재 현황',
+  auditSheetName: '감사로그',
+  descriptionSheetName: '항목 설명',
+  checklistSheetName: '점검표',
+  columnCount: 12,
+});
+
+const AUDIT_INDEX = Object.freeze({
+  spreadsheetName: '통합 감사색인',
+  spreadsheetPropertyKey: 'INTEGRATED_AUDIT_INDEX_SPREADSHEET_ID',
+  sheetName: '통합 색인',
+  descriptionSheetName: '항목 설명',
+  checklistSheetName: '점검표',
+});
+
+const MANAGED_SPREADSHEET_IDS = Object.freeze({
+  AUDIT_LOG_SPREADSHEET_ID: '19MiBtxpIaDhu0BQFtBXg_bKnVvG0phOYDJMWX3AXUcI',
+  INFO_ASSET_LOG_SPREADSHEET_ID: '1N455GhBr09J23h_qIAFfXWciJDMHNPcE76EpTckKeAo',
+  VISITOR_LOG_SPREADSHEET_ID: '1nvoZ5bEQpn49-ahJe7bR2QQGhL5z3MSlFfTbI-TqoUQ',
+  DEPARTMENT_ACCESS_LOG_SPREADSHEET_ID: '1QmS8sc4e8keqtVZFT33cw0fih2NKwq-lJoob0jgcX9E',
+  MOVEMENT_LOG_SPREADSHEET_ID: '1QvblwFD_qv8qEwn5eZdq2R3uDot6HGo2TJ6gWkYQrMg',
+  MANAGEMENT_REQUEST_SPREADSHEET_ID: '1STDLaYl7UEIxRct1VNDrueqN4RGlFalhe5kW_mAaiHo',
+  INTEGRATED_AUDIT_INDEX_SPREADSHEET_ID: '1O0lNXbS1qCcLAEUAGr3Y_6NAERE31rbA93rKZb607HA',
 });
 
 const ADMIN = Object.freeze({
@@ -189,23 +279,62 @@ const MOVEMENT = Object.freeze({
   spreadsheetName: '물품 반출입 대장',
   spreadsheetPropertyKey: 'MOVEMENT_SPREADSHEET_ID',
   sheetName: '물품 반출입 대장',
-  logSheetName: '반출입 로그',
+  logSpreadsheetName: '물품 반출입 로그',
+  logSpreadsheetPropertyKey: 'MOVEMENT_LOG_SPREADSHEET_ID',
+  logSheetName: '감사로그',
   columnCount: 16,
-  logColumnCount: 10,
   maxOpenRecords: 100,
 });
 
 const INFO_ASSET = Object.freeze({
   spreadsheetName: '정보자산 관리대장',
   spreadsheetPropertyKey: 'INFO_ASSET_SPREADSHEET_ID',
-  sheetName: '정보자산 대장',
-  logSheetName: '정보자산 로그',
-  columnCount: 18,
-  logColumnCount: 10,
+  sheetName: '정보자산(S)',
+  headerRow: 8,
+  firstDataRow: 9,
+  logSpreadsheetName: '정보자산 관리 로그',
+  logSpreadsheetPropertyKey: 'INFO_ASSET_LOG_SPREADSHEET_ID',
+  logSheetName: '감사로그',
+  columnCount: 24,
   maxRecords: 200,
   securityClasses: Object.freeze([
     '공개', '사내한', '대외비', '고객기밀',
   ]),
+});
+
+const INFO_ASSET_HEADERS = Object.freeze([
+  '관리번호', '자산분류', '보안등급', '자산구분', '부서명', '부서코드',
+  '품목', '수량', '제조사·서비스 제공사', '모델·버전', 'S/N', '구입처',
+  '금액(천원)', '구입일', '관리자', '사용자',
+  '설치·보관 위치·접속주소', '상태', '도입일', '만료일·갱신일',
+  '개인정보 포함 여부', '등록시각', '최종수정시각', '비고',
+]);
+
+const INFO_ASSET_COL = Object.freeze({
+  assetId: 1,
+  category: 2,
+  securityClass: 3,
+  assetType: 4,
+  department: 5,
+  departmentCode: 6,
+  assetName: 7,
+  quantity: 8,
+  provider: 9,
+  modelVersion: 10,
+  serialNumber: 11,
+  purchasePlace: 12,
+  amount: 13,
+  purchaseDate: 14,
+  owner: 15,
+  user: 16,
+  location: 17,
+  status: 18,
+  introducedDate: 19,
+  expiryDate: 20,
+  personalData: 21,
+  registeredAt: 22,
+  updatedAt: 23,
+  remarks: 24,
 });
 
 function getSharedBackgroundHtml_() {
@@ -259,7 +388,7 @@ function warmPublicPages() {
     requestedModule: '',
     invalidToken: false,
   });
-  return true;
+  return { ok: true };
 }
 
 function doGet(event) {
@@ -945,7 +1074,12 @@ function adminRenameSystemNames(adminToken) {
   context.audit.spreadsheet.setName(APP.logSpreadsheetName);
   const accessSystem = getAccessSystemForUse_();
   accessSystem.spreadsheet.setName(ACCESS.spreadsheetName);
-  accessSystem.log.spreadsheet.setName(ACCESS.logSpreadsheetName);
+  accessSystem.log.visitorSpreadsheet.setName(
+    ACCESS.visitorLogSpreadsheetName
+  );
+  accessSystem.log.departmentSpreadsheet.setName(
+    ACCESS.departmentLogSpreadsheetName
+  );
   const movementSystem = ensureMovementSystem_();
   movementSystem.spreadsheet.setName(MOVEMENT.spreadsheetName);
   const infoSystem = ensureInfoAssetSystem_();
@@ -1113,6 +1247,7 @@ function getPublicConfig(selectedSheetName, adminToken) {
       false,
       selectedSheetName
     );
+    ensurePhysicalAssetSchemaReady_(context.spreadsheet);
     const nextAsset = getNextAssetPosition_(context.sheet);
     const sheetNames = getSelectableSheetNames_(
       context.spreadsheet
@@ -1135,6 +1270,13 @@ function getPublicConfig(selectedSheetName, adminToken) {
       photoFolderName: context.photoRoot.getName(),
       sheetName: context.sheet.getName(),
       manager: getSiteManager_(context.sheet.getName()),
+      managerOptions: getAssetManagerOptions_(context.sheet.getName()),
+      managerOptionsBySite: getAssetManagerOptionsBySite_(),
+      assetCategories: PHYSICAL_ASSET_CATEGORIES.map(function (item) {
+        return { name: item.name, managementMode: item.managementMode };
+      }),
+      assetStatuses: PHYSICAL_ASSET_STATUSES.slice(),
+      assetPriorities: PHYSICAL_ASSET_PRIORITIES.slice(),
       assetSheetUrl:
         context.spreadsheet.getUrl() +
         '#gid=' + context.sheet.getSheetId(),
@@ -1288,7 +1430,8 @@ function uploadCapturedPhoto(request) {
 
     const file = normalizedFiles[0];
 
-    const fileBytes = validateImageFile_(file);
+    const decodedBytes = decodeValidatedImageFile_(file);
+    const fileBytes = decodedBytes.length;
 
     if (fileBytes > APP.maxFileBytes) {
       throw new Error('사진 한 장은 8MB를 넘을 수 없습니다.');
@@ -1317,10 +1460,7 @@ function uploadCapturedPhoto(request) {
       );
     }
 
-    const targetFolder = getCaptureCategoryFolder_(
-      snapshot.folder,
-      key
-    );
+    const targetFolder = snapshot.categoryFolders[key];
     const sequence = snapshot.counts[key] + 1;
     const extension = getFileExtension_(
       file.name,
@@ -1329,25 +1469,25 @@ function uploadCapturedPhoto(request) {
     const fileName = CATEGORY_MAP[key].filePrefix +
       '_' + pad2_(sequence) + '.' + extension;
     const blob = Utilities.newBlob(
-      Utilities.base64Decode(file.base64),
+      decodedBytes,
       file.mimeType,
       fileName
     );
-    const driveFile = targetFolder.createFile(blob);
-
-    driveFile.setDescription(
-      '휴대폰 QR 촬영\n' +
-      Utilities.formatDate(
-        new Date(),
-        APP.timeZone,
-        'yyyy-MM-dd HH:mm:ss'
-      )
+    Drive.Files.create(
+      {
+        name: fileName,
+        description: '휴대폰 QR 촬영\n' + Utilities.formatDate(
+          new Date(), APP.timeZone, 'yyyy-MM-dd HH:mm:ss'
+        ),
+        parents: [targetFolder.getId()],
+      },
+      blob,
+      { fields: 'id' }
     );
 
-    return getCaptureSessionStatus(
-      source.sessionId,
-      source.token
-    );
+    snapshot.counts[key] += 1;
+    snapshot.totalBytes += fileBytes;
+    return captureSnapshotToStatus_(snapshot);
   } finally {
     if (hasLock) {
       lock.releaseLock();
@@ -1357,6 +1497,11 @@ function uploadCapturedPhoto(request) {
 
 function getCaptureSessionStatus(sessionId, token) {
   const snapshot = getCaptureSnapshot_(sessionId, token);
+
+  return captureSnapshotToStatus_(snapshot);
+}
+
+function captureSnapshotToStatus_(snapshot) {
 
   return {
     ok: true,
@@ -1473,6 +1618,7 @@ function getCaptureSnapshot_(sessionId, token) {
   const metadata = getCaptureMetadata_(sessionId, token);
   const folder = DriveApp.getFolderById(metadata.folderId);
   const files = {};
+  const categoryFolders = {};
   const counts = emptyCategoryCounts_();
   let totalBytes = 0;
 
@@ -1481,6 +1627,7 @@ function getCaptureSnapshot_(sessionId, token) {
       folder,
       key
     );
+    categoryFolders[key] = categoryFolder;
     const iterator = categoryFolder.getFiles();
     const items = [];
 
@@ -1501,6 +1648,7 @@ function getCaptureSnapshot_(sessionId, token) {
     metadata: metadata,
     folder: folder,
     files: files,
+    categoryFolders: categoryFolders,
     counts: counts,
     totalBytes: totalBytes,
   };
@@ -1709,9 +1857,12 @@ function emptyCategoryCounts_() {
 function registerAsset(request) {
   const lock = LockService.getScriptLock();
   let hasLock = false;
-  let assetFolder = null;
   let assetSheet = null;
-  let assetRow = null;
+  let assetSpreadsheet = null;
+  let auditSheet = null;
+  let auditStartRow = null;
+  const createdRows = [];
+  const createdFolders = [];
   let capturedSnapshot = null;
 
   try {
@@ -1743,67 +1894,117 @@ function registerAsset(request) {
       true,
       payload.sheetName
     );
-    const nextAsset = getNextAssetPosition_(context.sheet);
-    assertTargetRowAvailable_(
-      context.sheet,
-      nextAsset.row,
-      nextAsset.managementNumber
+    ensurePhysicalAssetSchemaReady_(context.spreadsheet);
+    assetSheet = context.sheet;
+    assetSpreadsheet = context.spreadsheet;
+    auditSheet = context.audit && context.audit.sheet;
+
+    const category = getPhysicalAssetCategory_(payload.assetCategory);
+    const requestedQuantity = getAssetQuantityNumber_(payload.quantity);
+    const registeredCount = category.managementMode === 'individual'
+      ? requestedQuantity
+      : 1;
+    const rowPayload = Object.assign({}, payload, {
+      quantity: category.managementMode === 'individual'
+        ? '1EA'
+        : payload.quantity,
+    });
+    const registrationPlan = getNextAssetPositions_(
+      assetSheet,
+      registeredCount
     );
 
-    const folderName = makeAssetFolderName_(
-      nextAsset.managementNumber,
-      payload.vendor,
-      payload.itemName
-    );
-
-    assetFolder = context.photoRoot.createFolder(folderName);
-
-    const categoryFolders = createCategoryFolders_(assetFolder);
-    const fileCounts = saveFiles_(
-      categoryFolders,
-      payload.files,
-      payload.author,
-      nextAsset.managementNumber,
-      payload.itemName
-    );
-    const capturedCounts = copyCapturedFiles_(
-      categoryFolders,
-      capturedSnapshot,
-      fileCounts,
-      payload.author,
-      nextAsset.managementNumber,
-      payload.itemName
-    );
-
-    Object.keys(CATEGORY_MAP).forEach(function (key) {
-      fileCounts[key] += capturedCounts[key];
+    registrationPlan.forEach(function (nextAsset) {
+      assertTargetRowAvailable_(
+        assetSheet,
+        nextAsset.row,
+        nextAsset.managementNumber
+      );
     });
 
-    assetSheet = context.sheet;
-    assetRow = nextAsset.row;
-    writeAssetRow_(assetSheet, nextAsset, payload);
+    const batchId = Utilities.getUuid();
+    const registrations = [];
+
+    registrationPlan.forEach(function (nextAsset, index) {
+      const folderName = makeAssetFolderName_(
+        nextAsset.managementNumber,
+        payload.vendor,
+        payload.itemName
+      );
+      const assetFolder = context.photoRoot.createFolder(folderName);
+      createdFolders.push(assetFolder);
+
+      const categoryFolders = createCategoryFolders_(assetFolder);
+      const fileCounts = saveFiles_(
+        categoryFolders,
+        payload.files,
+        payload.author,
+        nextAsset.managementNumber,
+        payload.itemName
+      );
+      const capturedCounts = copyCapturedFiles_(
+        categoryFolders,
+        capturedSnapshot,
+        fileCounts,
+        payload.author,
+        nextAsset.managementNumber,
+        payload.itemName
+      );
+
+      Object.keys(CATEGORY_MAP).forEach(function (key) {
+        fileCounts[key] += capturedCounts[key];
+      });
+
+      // 행 쓰기 도중 서식 처리에서 실패해도 해당 행을 정리할 수 있도록
+      // 쓰기 직전에 롤백 대상으로 등록한다.
+      createdRows.push(nextAsset.row);
+      writeAssetRow_(assetSheet, nextAsset, rowPayload);
+
+      registrations.push({
+        managementNumber: nextAsset.managementNumber,
+        sheetName: assetSheet.getName(),
+        row: nextAsset.row,
+        folderName: assetFolder.getName(),
+        folderUrl: assetFolder.getUrl(),
+        fileCounts: fileCounts,
+        logId: '',
+        batchSequence: index + 1,
+      });
+    });
+
+    syncPhysicalIntegratedSheet_(context.spreadsheet);
 
     SpreadsheetApp.flush();
 
-    const afterValues = createAssetSnapshot_(
-      nextAsset.managementNumber,
-      payload,
-      assetFolder,
-      fileCounts
-    );
-    const logId = appendAuditLog_(
-      context.audit,
-      {
+    auditStartRow = auditSheet
+      ? auditSheet.getLastRow() + 1
+      : null;
+    registrations.forEach(function (registration) {
+      const afterValues = createAssetSnapshot_(
+        registration.managementNumber,
+        rowPayload,
+        createdFolders[registration.batchSequence - 1],
+        registration.fileCounts
+      );
+      afterValues.batchId = batchId;
+      afterValues.managementMode = category.managementMode;
+      afterValues.requestedQuantity = requestedQuantity;
+      afterValues.batchSequence = registration.batchSequence;
+      afterValues.registeredCount = registeredCount;
+
+      registration.logId = appendAuditLog_(context.audit, {
         eventType: '신규등록',
         author: payload.author,
         sheetName: context.sheet.getName(),
-        row: nextAsset.row,
-        managementNumber: nextAsset.managementNumber,
-        reason: '',
+        row: registration.row,
+        managementNumber: registration.managementNumber,
+        reason: registeredCount > 1
+          ? '일괄등록 ' + registration.batchSequence + '/' + registeredCount
+          : '',
         beforeValues: null,
         afterValues: afterValues,
-      }
-    );
+      });
+    });
 
     if (capturedSnapshot) {
       try {
@@ -1813,44 +2014,62 @@ function registerAsset(request) {
       }
     }
 
+    const firstRegistration = registrations[0];
     return {
       ok: true,
-      managementNumber: nextAsset.managementNumber,
+      managementNumber: firstRegistration.managementNumber,
+      managementNumbers: registrations.map(function (registration) {
+        return registration.managementNumber;
+      }),
+      registrations: registrations,
+      managementMode: category.managementMode,
+      requestedQuantity: requestedQuantity,
+      registeredCount: registeredCount,
+      batchId: batchId,
       sheetName: context.sheet.getName(),
-      row: nextAsset.row,
-      folderName: assetFolder.getName(),
-      folderUrl: assetFolder.getUrl(),
-      logId: logId,
+      row: firstRegistration.row,
+      folderName: firstRegistration.folderName,
+      folderUrl: firstRegistration.folderUrl,
+      logId: firstRegistration.logId,
       registeredAt: Utilities.formatDate(
         new Date(),
         APP.timeZone,
         'yyyy-MM-dd HH:mm:ss'
       ),
-      fileCounts: fileCounts,
+      fileCounts: firstRegistration.fileCounts,
     };
   } catch (error) {
-    if (assetSheet && assetRow) {
+    if (auditSheet && auditStartRow) {
       try {
-        assetSheet
-          .getRange(
-            assetRow,
-            APP.firstDataColumn,
-            1,
-            APP.dataColumnCount
-          )
-          .clearContent();
+        rollbackAuditLogSuffix_(auditSheet, auditStartRow);
+      } catch (auditRollbackError) {
+        console.error(auditRollbackError);
+      }
+    }
+
+    if (assetSheet && createdRows.length) {
+      try {
+        rollbackRegisteredAssetRows_(assetSheet, createdRows);
       } catch (sheetRollbackError) {
         console.error(sheetRollbackError);
       }
     }
 
-    if (assetFolder) {
+    if (assetSpreadsheet && createdRows.length) {
       try {
-        assetFolder.setTrashed(true);
-      } catch (rollbackError) {
-        console.error(rollbackError);
+        syncPhysicalIntegratedSheet_(assetSpreadsheet);
+      } catch (syncRollbackError) {
+        console.error(syncRollbackError);
       }
     }
+
+    createdFolders.slice().reverse().forEach(function (assetFolder) {
+      try {
+        assetFolder.setTrashed(true);
+      } catch (folderRollbackError) {
+        console.error(folderRollbackError);
+      }
+    });
 
     throw new Error(safeErrorMessage_(error));
   } finally {
@@ -1874,7 +2093,7 @@ function getAssetForEdit(sheetName, managementNumber, adminToken) {
     cleanNumber
   );
   const asset = readAssetRecord_(context.sheet, row);
-  asset.manager = getSiteManager_(context.sheet.getName());
+  asset.manager = asset.manager || getSiteManager_(context.sheet.getName());
   const assetFolder = findAssetFolder_(
     context.photoRoot,
     cleanNumber
@@ -1914,20 +2133,22 @@ function searchAssetsForEdit(sheetName, query, adminToken) {
     if (results.length >= 30) {
       return;
     }
-    const managementNumber = String(row[0] || '').trim();
-    const itemName = String(row[1] || '').trim();
-    const modelMaker = normalizePlaceholder_(row[2]);
-    const vendor = String(row[3] || '').trim();
-    const storageLocation = String(row[8] || '').trim();
-    const haystack = [itemName, modelMaker]
+    const managementNumber = String(row[0] || '').trim().toUpperCase();
+    const itemName = String(row[3] || '').trim();
+    const modelMaker = normalizePlaceholder_(row[4]);
+    const serialNumber = normalizePlaceholder_(row[5]);
+    const vendor = String(row[6] || '').trim();
+    const storageLocation = String(row[12] || '').trim();
+    const haystack = [itemName, modelMaker, serialNumber]
       .join(' ')
       .toLowerCase();
 
-    if (/^\d+$/.test(managementNumber) && haystack.indexOf(keyword) !== -1) {
+    if (/^GNS-H-(L|F1|F2|F2-A)-\d{3}$/.test(managementNumber) && haystack.indexOf(keyword) !== -1) {
       results.push({
-        managementNumber: Number(managementNumber),
+        managementNumber: managementNumber,
         itemName: itemName,
         modelMaker: modelMaker,
+        serialNumber: serialNumber,
         vendor: vendor,
         storageLocation: storageLocation,
         row: APP.firstDataRow + index,
@@ -1939,6 +2160,24 @@ function searchAssetsForEdit(sheetName, query, adminToken) {
     ok: true,
     sheetName: sheet.getName(),
     results: results,
+  };
+}
+
+function searchAssetCatalog(sheetName, query, adminToken) {
+  requireSessionInfo_(adminToken, 'assetRegister');
+  const keyword = cleanText_(query, 100).toLowerCase();
+  if (keyword.length < 2) return { ok: true, results: [] };
+  const result = searchAssetsForEdit(sheetName, keyword, adminToken);
+  return {
+    ok: true,
+    results: (result.results || []).slice(0, 10).map(function (item) {
+      return {
+        itemName: item.itemName,
+        modelMaker: item.modelMaker,
+        serialNumber: item.serialNumber,
+        vendor: item.vendor,
+      };
+    }),
   };
 }
 
@@ -2018,6 +2257,7 @@ function updateAsset(request) {
       true,
       payload.sheetName
     );
+    ensurePhysicalAssetSchemaReady_(context.spreadsheet);
     const row = findAssetRow_(
       context.sheet,
       managementNumber
@@ -2066,6 +2306,7 @@ function updateAsset(request) {
       managementNumber,
       payload
     );
+    syncPhysicalIntegratedSheet_(context.spreadsheet);
     rowUpdated = true;
 
     const newFolderName = makeAssetFolderName_(
@@ -2143,14 +2384,94 @@ function updateAsset(request) {
   }
 }
 
-function normalizeManagementNumber_(value) {
-  const text = String(value == null ? '' : value).trim();
+function getPhysicalAssetSheetMeta_(sheetName) {
+  const map = {
+    'L-실물': { code: 'L', department: '고색연구소' },
+    'F1-실물': { code: 'F1', department: '화성1공장' },
+    'F2-실물': { code: 'F2', department: '화성2공장' },
+    'F2-A-실물': { code: 'F2-A', department: '화성2공장 조립실' },
+  };
+  const meta = map[String(sheetName || '').trim()];
+  if (!meta) {
+    throw new Error('실물자산 부서 시트를 선택하세요.');
+  }
+  return meta;
+}
 
-  if (!/^\d+$/.test(text) || Number(text) < 1) {
+function syncPhysicalIntegratedSheet_(spreadsheet) {
+  const target = spreadsheet.getSheetByName('실물자산(H)');
+  if (!target) {
+    throw new Error('실물자산(H) 통합 시트를 찾을 수 없습니다.');
+  }
+  const sourceRows = [];
+  getSelectableSheetNames_(spreadsheet).forEach(function (sheetName) {
+    const source = spreadsheet.getSheetByName(sheetName);
+    const lastRow = Math.max(source.getLastRow(), APP.firstDataRow - 1);
+    if (lastRow < APP.firstDataRow) return;
+    const values = source.getRange(
+      APP.firstDataRow,
+      APP.firstDataColumn,
+      lastRow - APP.firstDataRow + 1,
+      APP.dataColumnCount
+    ).getValues();
+    values.forEach(function (row, index) {
+      if (String(row[0] || '').trim()) {
+        sourceRows.push({
+          values: row,
+          sourceRange: source.getRange(
+            APP.firstDataRow + index,
+            APP.firstDataColumn,
+            1,
+            APP.dataColumnCount
+          ),
+        });
+      }
+    });
+  });
+  const currentLastRow = Math.max(target.getLastRow(), APP.firstDataRow);
+  target.getRange(
+    APP.firstDataRow,
+    APP.firstDataColumn,
+    currentLastRow - APP.firstDataRow + 1,
+    APP.dataColumnCount
+  ).clearContent();
+  if (sourceRows.length) {
+    target.getRange(
+      APP.firstDataRow,
+      APP.firstDataColumn,
+      sourceRows.length,
+      APP.dataColumnCount
+    ).setValues(sourceRows.map(function (entry) { return entry.values; }));
+    sourceRows.forEach(function (entry, index) {
+      entry.sourceRange.copyTo(
+        target.getRange(
+          APP.firstDataRow + index,
+          APP.firstDataColumn,
+          1,
+          APP.dataColumnCount
+        ),
+        SpreadsheetApp.CopyPasteType.PASTE_FORMAT,
+        false
+      );
+    });
+    applyLedgerRowLayout_(
+      target, APP.firstDataRow, sourceRows.length, APP.firstDataRow
+    );
+  }
+  const lastDataRow = Math.max(APP.firstDataRow, APP.firstDataRow + sourceRows.length - 1);
+  target.getRange('A6').setFormula('=COUNTA($A$9:$A$' + lastDataRow + ')');
+  target.getRange('D6').setFormula('=COUNTBLANK($J$9:$J$' + lastDataRow + ')');
+  target.getRange('G5:G6').clearContent();
+}
+
+function normalizeManagementNumber_(value) {
+  const text = String(value == null ? '' : value).trim().toUpperCase();
+
+  if (!/^GNS-H-(L|F1|F2|F2-A)-\d{3}$/.test(text)) {
     throw new Error('관리번호를 정확히 입력하세요.');
   }
 
-  return Number(text);
+  return text;
 }
 
 function findAssetRow_(sheet, managementNumber) {
@@ -2178,7 +2499,7 @@ function findAssetRow_(sheet, managementNumber) {
 
     if (
       hasAssetData &&
-      Number(String(row[0] || '').trim()) ===
+      String(row[0] || '').trim().toUpperCase() ===
         managementNumber
     ) {
       matches.push(APP.firstDataRow + index);
@@ -2205,26 +2526,32 @@ function readAssetRecord_(sheet, row) {
   );
   const values = range.getValues()[0];
   const displays = range.getDisplayValues()[0];
-  const purchaseDate = values[5] instanceof Date
+  const purchaseDate = values[15] instanceof Date
     ? Utilities.formatDate(
-        values[5],
+        values[15],
         APP.timeZone,
         'yyyy-MM-dd'
       )
-    : String(displays[5] || '').trim();
-  const sheetAmount = values[4];
+    : String(displays[15] || '').trim();
+  const sheetAmount = values[16];
 
   return {
-    managementNumber: Number(displays[0]),
-    itemName: String(displays[1] || '').trim(),
-    modelMaker: normalizePlaceholder_(displays[2]),
-    vendor: String(displays[3] || '').trim(),
+    managementNumber: String(displays[0] || '').trim(),
+    assetCategory: String(displays[1] || '기타').trim(),
+    itemName: String(displays[3] || '').trim(),
+    modelMaker: normalizePlaceholder_(displays[4]),
+    serialNumber: normalizePlaceholder_(displays[5]),
+    vendor: String(displays[6] || '').trim(),
+    quantity: String(displays[7] || '1EA').trim(),
+    user: normalizePlaceholder_(displays[8]) || '미지정',
     amount: amountFromSheetUnit_(sheetAmount),
     purchaseDate: purchaseDate,
-    manager: normalizePlaceholder_(displays[6]),
-    partNumber: normalizePlaceholder_(displays[7]),
-    storageLocation: String(displays[8] || '').trim(),
-    remarks: normalizePlaceholder_(displays[9]),
+    manager: normalizePlaceholder_(displays[9]),
+    assetStatus: String(displays[13] || '사용중').trim(),
+    priority: String(displays[14] || '중').trim(),
+    partNumber: '',
+    storageLocation: String(displays[12] || '').trim(),
+    remarks: normalizePlaceholder_(displays[17]),
   };
 }
 
@@ -2253,6 +2580,9 @@ function writeExistingAssetRow_(
     0
   ));
 
+  const sheetMeta = getPhysicalAssetSheetMeta_(
+    typeof sheet.getName === 'function' ? sheet.getName() : APP.sheetName
+  );
   sheet.getRange(
     row,
     APP.firstDataColumn,
@@ -2260,21 +2590,17 @@ function writeExistingAssetRow_(
     APP.dataColumnCount
   ).setValues([[
     managementNumber,
-    payload.itemName,
-    payload.modelMaker || '-',
-    payload.vendor,
+    payload.assetCategory, '실물자산 (H)', payload.itemName,
+    payload.modelMaker || '', payload.serialNumber || '', payload.vendor,
+    payload.quantity, payload.user || '미지정', payload.manager || '',
+    sheetMeta.department, sheetMeta.code, payload.storageLocation,
+    payload.assetStatus, payload.priority, purchaseDate,
     amountToSheetUnit_(payload.amount),
-    purchaseDate,
-    payload.manager || '-',
-    '',
-    payload.storageLocation,
     payload.remarks || '',
   ]]);
-  sheet.getRange(row, 7).setNumberFormat('yyyy-mm-dd');
-  sheet
-    .getRange(row, APP.firstDataColumn + 4)
-    .setNumberFormat('#,##0.###')
-    .setHorizontalAlignment('right');
+  sheet.getRange(row, 16).setNumberFormat('yyyy-mm-dd');
+  formatCompactNumberCell_(sheet.getRange(row, 17));
+  applyLedgerRowLayout_(sheet, row, 1, APP.firstDataRow);
 }
 
 function findAssetFolder_(photoRoot, managementNumber) {
@@ -2495,6 +2821,14 @@ function getContext_(createHistory, selectedSheetName) {
   }
 
   const photoRoot = DriveApp.getFolderById(photoRootId);
+  const spreadsheetFile = DriveApp.getFileById(spreadsheetId);
+  if (
+    spreadsheetFile.isTrashed() ||
+    spreadsheetFile.getName() !== APP.spreadsheetName
+  ) {
+    properties.deleteProperty('SPREADSHEET_ID');
+    throw new Error('시스템 연결이 필요합니다.');
+  }
   const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
 
   if (
@@ -2539,6 +2873,259 @@ function getContextWithAutoDiscovery_(
     discoverAndConfigureSystem_();
     return getContext_(createHistory, selectedSheetName);
   }
+}
+
+// 기존 구조 또는 과도기 구조의 대장을 운영용 18열 구조로 안전하게 이관한다.
+// 기존번호는 운영 대장에 남기지 않고 별도 이관대조표에 먼저 보존한다.
+function ensurePhysicalAssetSchemaReady_(spreadsheet) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'physical-asset-schema-v151-' + spreadsheet.getId();
+  if (cache.get(cacheKey) === '1') return;
+
+  const expectedHeaders = getPhysicalAssetHeaders_();
+  const sheetNames = getSelectableSheetNames_(spreadsheet)
+    .concat(['실물자산(H)'])
+    .filter(function (name, index, names) {
+      return names.indexOf(name) === index && spreadsheet.getSheetByName(name);
+    });
+  const schemaIsCurrent = sheetNames.length > 0 && sheetNames.every(
+    function (sheetName) {
+      const sheet = spreadsheet.getSheetByName(sheetName);
+      if (sheet.getMaxColumns() < expectedHeaders.length) return false;
+      const headers = sheet.getRange(
+        APP.headerRow, 1, 1, expectedHeaders.length
+      ).getDisplayValues()[0].map(function (header) {
+        return String(header || '').trim();
+      });
+      return headers.join('|') === expectedHeaders.join('|');
+    }
+  );
+
+  // 정상 대장은 읽기만 합니다. 구조가 다를 때만 전체 이관·서식을 실행합니다.
+  if (!schemaIsCurrent) {
+    ensurePhysicalAssetSchema_(spreadsheet);
+  }
+  cache.put(cacheKey, '1', 21600);
+}
+
+function ensurePhysicalAssetSchema_(spreadsheet) {
+  const expectedHeaders = getPhysicalAssetHeaders_();
+  const sheetNames = getSelectableSheetNames_(spreadsheet)
+    .concat(['실물자산(H)'])
+    .filter(function (name, index, names) {
+      return names.indexOf(name) === index && spreadsheet.getSheetByName(name);
+    });
+
+  sheetNames.forEach(function (sheetName) {
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    if (sheet.getMaxColumns() < expectedHeaders.length) {
+      sheet.insertColumnsAfter(
+        sheet.getMaxColumns(), expectedHeaders.length - sheet.getMaxColumns()
+      );
+    }
+    const inspectionWidth = Math.min(
+      Math.max(sheet.getLastColumn(), expectedHeaders.length),
+      sheet.getMaxColumns()
+    );
+    const currentHeaders = sheet.getRange(
+      APP.headerRow, 1, 1, inspectionWidth
+    ).getDisplayValues()[0].map(function (header) {
+      return String(header || '').trim();
+    });
+    const schemaIsCurrent = currentHeaders.slice(0, expectedHeaders.length)
+      .join('|') === expectedHeaders.join('|');
+    const lastRow = Math.max(sheet.getLastRow(), APP.firstDataRow - 1);
+
+    if (!schemaIsCurrent && lastRow >= APP.firstDataRow) {
+      const dataRowCount = lastRow - APP.firstDataRow + 1;
+      const values = sheet.getRange(
+        APP.firstDataRow, 1, dataRowCount, inspectionWidth
+      ).getValues();
+      const headerIndexes = {};
+      currentHeaders.forEach(function (header, index) {
+        if (header && headerIndexes[header] == null) headerIndexes[header] = index;
+      });
+      const migrated = values.map(function (row) {
+        return expectedHeaders.map(function (header) {
+          if (header === 'S/N' && headerIndexes[header] == null) return '';
+          const sourceIndex = headerIndexes[header];
+          return sourceIndex == null ? '' : row[sourceIndex];
+        });
+      });
+      sheet.getRange(
+        APP.firstDataRow, 1, migrated.length, expectedHeaders.length
+      ).setValues(migrated);
+    }
+
+    sheet.getRange(APP.headerRow, 1, 1, expectedHeaders.length)
+      .setValues([expectedHeaders]);
+    formatPhysicalAssetLedger_(sheet, lastRow);
+  });
+
+  const integrated = spreadsheet.getSheetByName('실물자산(H)');
+  if (integrated) {
+    const lastDataRow = Math.max(APP.firstDataRow, integrated.getLastRow());
+    integrated.getRange('D6').setFormula(
+      '=COUNTBLANK($J$9:$J$' + lastDataRow + ')'
+    );
+    integrated.getRange('G5:G6').clearContent();
+  }
+}
+
+function archivePhysicalAssetLegacyNumbers_(spreadsheet, entries) {
+  if (!entries.length) return;
+
+  const headers = [
+    '관리번호', '기존번호', '부서명', '부서코드', '자산명(용도)',
+  ];
+  let sheet = spreadsheet.getSheetByName(APP.legacyNumberMapSheetName);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(APP.legacyNumberMapSheetName);
+  }
+
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, headers.length)
+      .setValues([headers])
+      .setBackground('#44546A')
+      .setFontColor('#FFFFFF')
+      .setFontWeight('bold')
+      .setHorizontalAlignment('center');
+    sheet.setFrozenRows(1);
+  } else {
+    const currentHeaders = sheet.getRange(1, 1, 1, headers.length)
+      .getDisplayValues()[0];
+    if (currentHeaders.join('|') !== headers.join('|')) {
+      throw new Error('기존번호 이관대조표의 헤더를 확인하세요.');
+    }
+  }
+
+  const existingKeys = {};
+  if (sheet.getLastRow() >= 2) {
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, 2)
+      .getDisplayValues()
+      .forEach(function (row) {
+        existingKeys[[row[0], row[1]].join('|')] = true;
+      });
+  }
+
+  const additions = entries.filter(function (entry) {
+    const key = [
+      entry.managementNumber,
+      entry.legacyNumber,
+    ].join('|');
+    if (existingKeys[key]) return false;
+    existingKeys[key] = true;
+    return true;
+  }).map(function (entry) {
+    return [
+      entry.managementNumber,
+      entry.legacyNumber,
+      entry.department,
+      entry.departmentCode,
+      entry.itemName,
+    ];
+  });
+
+  if (additions.length) {
+    const startRow = sheet.getLastRow() + 1;
+    sheet.getRange(startRow, 1, additions.length, headers.length)
+      .setValues(additions)
+      .setBorder(true, true, true, true, true, true,
+        '#C7D2E0', SpreadsheetApp.BorderStyle.SOLID);
+  }
+  protectSheetForHumans_(sheet, '기존번호 이관대조표 변경 금지');
+}
+
+function formatPhysicalAssetLedger_(sheet, lastRow) {
+  PHYSICAL_ASSET_COLUMN_WIDTHS.forEach(function (width, index) {
+    sheet.setColumnWidth(index + 1, width);
+  });
+  sheet.setRowHeight(APP.headerRow, 42);
+  sheet.getRange(APP.headerRow, 1, 1, APP.dataColumnCount)
+    .setBackground('#2F75B5')
+    .setFontColor('#FFFFFF')
+    .setFontFamily('Malgun Gothic')
+    .setFontSize(11)
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center')
+    .setVerticalAlignment('middle')
+    .setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP)
+    .setBorder(true, true, true, true, true, true,
+      '#FFFFFF', SpreadsheetApp.BorderStyle.SOLID);
+
+  const dataRowCount = Math.max(lastRow - APP.firstDataRow + 1, 0);
+  if (!dataRowCount) return;
+
+  sheet.setRowHeights(APP.firstDataRow, dataRowCount, 30);
+  sheet.getRange(
+    APP.firstDataRow, 1, dataRowCount, APP.dataColumnCount
+  )
+    .setFontFamily('Malgun Gothic')
+    .setFontSize(10)
+    .setVerticalAlignment('middle')
+    .setHorizontalAlignment('center')
+    .setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP)
+    .setBorder(true, true, true, true, true, true,
+      '#C7D2E0', SpreadsheetApp.BorderStyle.SOLID);
+  [4, 5, 6, 7, 13, 18].forEach(function (column) {
+    sheet.getRange(APP.firstDataRow, column, dataRowCount, 1)
+      .setHorizontalAlignment('left')
+      .setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
+  });
+  sheet.getRange(APP.firstDataRow, 17, dataRowCount, 1)
+    .setHorizontalAlignment('right')
+    .setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
+
+  const sourceBackgrounds = sheet.getRange(
+    APP.firstDataRow, 16, dataRowCount, 1
+  ).getBackgrounds();
+  const trailingBackgrounds = sourceBackgrounds.map(function (row) {
+    return [row[0], row[0]];
+  });
+  sheet.getRange(APP.firstDataRow, 17, dataRowCount, 2)
+    .setBackgrounds(trailingBackgrounds)
+    .setFontFamily('Malgun Gothic')
+    .setFontSize(10)
+    .setVerticalAlignment('middle')
+    .setBorder(true, true, true, true, true, true,
+      '#C7D2E0', SpreadsheetApp.BorderStyle.SOLID);
+  formatCompactNumberColumn_(
+    sheet, APP.firstDataRow, dataRowCount, 17
+  );
+  sheet.getRange(APP.firstDataRow, 18, dataRowCount, 1)
+    .setNumberFormat('@')
+    .setHorizontalAlignment('left')
+    .setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
+
+  const managedStatusLabels = [
+    '수리대기', '폐기예정', '폐기', '보관중',
+    '미설치', '관리자없음', '임시 작성',
+  ];
+  const retainedRules = sheet.getConditionalFormatRules().filter(function (rule) {
+    const condition = rule.getBooleanCondition();
+    if (!condition) return true;
+    return !condition.getCriteriaValues().some(function (value) {
+      return managedStatusLabels.indexOf(String(value || '')) >= 0;
+    });
+  });
+  const statusRange = sheet.getRange(APP.firstDataRow, 14, dataRowCount, 1);
+  [
+    ['수리대기', '#FCE8D5', '#8A4B08'],
+    ['폐기예정', '#FDE2E2', '#9B1C1C'],
+    ['폐기', '#E7E9ED', '#4A5568'],
+    ['보관중', '#FFF6D8', '#735C00'],
+  ].forEach(function (style) {
+    retainedRules.push(
+      SpreadsheetApp.newConditionalFormatRule()
+        .whenTextEqualTo(style[0])
+        .setBackground(style[1])
+        .setFontColor(style[2])
+        .setBold(true)
+        .setRanges([statusRange])
+        .build()
+    );
+  });
+  sheet.setConditionalFormatRules(retainedRules);
 }
 
 function adminUnhideAllColumnsAndClearPartNumbers(adminToken) {
@@ -2821,14 +3408,14 @@ function getSelectableSheetNames_(spreadsheet) {
       return sheet.getName();
     })
     .filter(function (sheetName) {
-      return !isHistorySheetName_(sheetName);
+      return /^(L|F1|F2|F2-A)-실물$/.test(sheetName);
     });
 }
 
 function getSelectableSheet_(spreadsheet, sheetName) {
   const cleanName = cleanText_(sheetName, 100);
 
-  if (!cleanName || isHistorySheetName_(cleanName)) {
+  if (!cleanName || !/^(L|F1|F2|F2-A)-실물$/.test(cleanName)) {
     throw new Error('등록할 자산 관리 시트를 선택하세요.');
   }
 
@@ -2913,7 +3500,7 @@ function createDepartmentAccessRequest(request) {
       session.department, targetDepartment, visitDate, purpose,
       '승인 대기', '', '', '', '', '', now, '',
     ]]);
-    formatDepartmentAccessRow_(sheet, row);
+    formatDepartmentAccessRow_(sheet, row, true);
     appendAccessAuditLog_(system.log, {
       eventType: '부서출입신청',
       author: session.actorName,
@@ -3106,7 +3693,10 @@ function departmentAccessRowToRecord_(values, row, session) {
   };
 }
 
-function formatDepartmentAccessRow_(sheet, row) {
+function formatDepartmentAccessRow_(sheet, row, isNew) {
+  applyLedgerRowLayout_(
+    sheet, row, 1, 2, isNew ? ACCESS.departmentAccessColumnCount : 0
+  );
   sheet.getRange(row, 1, 1, ACCESS.departmentAccessColumnCount)
     .setVerticalAlignment('middle')
     .setBorder(true, true, true, true, true, true, '#000000',
@@ -3124,7 +3714,14 @@ function getAccessPublicConfig(accessType, adminToken) {
       type === 'visitor' ? 'visitorManage' : 'employeeEntry'
     );
     const userRole = session.role;
-    const spreadsheet = getAccessSpreadsheetForRead_();
+    const system = getAccessSystemForUse_();
+    const spreadsheet = system.spreadsheet;
+    if (type === 'visitor') {
+      syncVisitorLedgerFromApplications_(
+        spreadsheet,
+        system.log.visitor
+      );
+    }
     const sheet = getAccessSheet_(spreadsheet, type);
     const employeeRoster = type === 'employee'
       ? ensureEmployeeRosterSheet_(spreadsheet)
@@ -3262,7 +3859,12 @@ function registerVisitorGroupEntry(request) {
 
 function getVisitorSelfConfig() {
   try {
-    const spreadsheet = getAccessSpreadsheetForRead_();
+    const system = getAccessSystemForUse_();
+    const spreadsheet = system.spreadsheet;
+    syncVisitorLedgerFromApplications_(
+      spreadsheet,
+      system.log.visitor
+    );
     getAccessSheet_(spreadsheet, 'visitor');
     ensureVisitorApplicationSheet_(spreadsheet);
 
@@ -3404,7 +4006,7 @@ function createVisitorApplication(request) {
     sheet.getRange(startRow, 12, rows.length, 1)
       .setNumberFormat('@');
     targetRange.setValues(rows);
-    formatVisitorApplicationRows_(sheet, startRow, rows.length);
+    formatVisitorApplicationRows_(sheet, startRow, rows.length, true);
     SpreadsheetApp.flush();
 
     const representative = payload.visitors.filter(
@@ -3714,7 +4316,7 @@ function registerApprovedVisitorEntry(request) {
     const entryAt = new Date();
     const payload = normalizeAccessPayload_({
       accessType: 'visitor',
-      processedBy: application.name + ' (방문객 직접입력)',
+      processedBy: '방문객 직접입력',
       name: application.name,
       organization: application.organization,
       phone: application.phone,
@@ -3727,6 +4329,8 @@ function registerApprovedVisitorEntry(request) {
       remarks: '보안수칙 동의 ' + ACCESS.visitorSecurityVersion,
     });
     const ledger = getAccessSheet_(system.spreadsheet, 'visitor');
+    payload.sequence = getNextVisitorSequence_(ledger);
+    payload.badgeNumber = getVisitorBadgeNumber_(payload.sequence);
     const recordId = makeAccessRecordId_('visitor', entryAt);
     const ledgerRow = Math.max(ledger.getLastRow() + 1, 2);
     const values = makeAccessRowValues_(payload, recordId, entryAt);
@@ -3737,7 +4341,7 @@ function registerApprovedVisitorEntry(request) {
       1,
       ACCESS.visitorColumnCount
     );
-    ledger.getRange(ledgerRow, 8).setNumberFormat('@');
+    ledger.getRange(ledgerRow, 14).setNumberFormat('@');
     ledgerRange.setValues([values]);
     formatAccessDataRow_(
       ledger,
@@ -4108,17 +4712,17 @@ function completeAccessExit(request) {
   let originalValues = null;
 
   try {
-    const session = requireSessionInfo_(
-      request && request.adminToken,
-      'employeeExit'
-    );
-    lock.waitLock(30000);
-    hasLock = true;
-
     const source = request || {};
     const accessType = normalizeAccessType_(
       source.accessType
     );
+    const session = requireSessionInfo_(
+      source.adminToken,
+      accessType === 'visitor' ? 'visitorManage' : 'employeeExit'
+    );
+    lock.waitLock(30000);
+    hasLock = true;
+
     const recordId = cleanText_(source.recordId, 80);
     const processedBy = session.actorName;
 
@@ -4134,20 +4738,42 @@ function completeAccessExit(request) {
     );
     const row = findOpenAccessRecordRow_(
       sheet,
-      recordId
+      recordId,
+      accessType
     );
     const columnCount = getAccessColumnCount_(accessType);
     const values = sheet
       .getRange(row, 1, 1, columnCount)
       .getValues()[0];
-    const exitAt = new Date();
 
-    targetRange = sheet.getRange(row, 4, 1, 2);
-    originalValues = targetRange.getValues();
-    targetRange.setValues([[exitAt, '퇴장완료']]);
-    sheet.getRange(row, 4).setNumberFormat(
-      'yyyy-mm-dd hh:mm:ss'
-    );
+    if (
+      accessType === 'visitor' &&
+      session.role !== 'admin' &&
+      cleanText_(values[8], 80) !== cleanText_(session.actorName, 80)
+    ) {
+      throw new Error(
+        '본인을 방문 대상으로 지정한 방문객만 퇴장 처리할 수 있습니다.'
+      );
+    }
+
+    const exitAt = new Date();
+    if (accessType === 'visitor') {
+      targetRange = sheet.getRange(row, 8, 1, 6);
+      originalValues = targetRange.getValues();
+      const exitValues = originalValues[0].slice();
+      exitValues[0] = exitAt;
+      exitValues[3] = '회수완료';
+      exitValues[5] = '퇴장완료';
+      targetRange.setValues([exitValues]);
+      sheet.getRange(row, 8).setNumberFormat('hh:mm:ss');
+    } else {
+      targetRange = sheet.getRange(row, 4, 1, 2);
+      originalValues = targetRange.getValues();
+      targetRange.setValues([[exitAt, '퇴장완료']]);
+      sheet.getRange(row, 4).setNumberFormat(
+        'yyyy-mm-dd hh:mm:ss'
+      );
+    }
     SpreadsheetApp.flush();
 
     appendAccessAuditLog_(system.log, {
@@ -4192,8 +4818,8 @@ function completeAccessExit(request) {
 function getManagementRequestConfig(adminToken) {
   try {
     const session = requireSessionInfo_(adminToken, 'requestCreate');
-    const system = getAccessSystemForUse_();
-    const sheet = ensureManagementRequestSheet_(system.spreadsheet);
+    const system = ensureManagementRequestSystem_();
+    const sheet = system.sheet;
     const assetContext = getContextWithAutoDiscovery_(false);
     return {
       ok: true,
@@ -4262,8 +4888,8 @@ function registerManagementRequest(request) {
     }
     lock.waitLock(30000);
     hasLock = true;
-    const system = getAccessSystemForUse_();
-    const sheet = ensureManagementRequestSheet_(system.spreadsheet);
+    const system = ensureManagementRequestSystem_();
+    const sheet = system.sheet;
     const now = new Date();
     const requestId = 'REQ-' + Utilities.formatDate(
       now,
@@ -4272,11 +4898,14 @@ function registerManagementRequest(request) {
     ) + '-' + Utilities.getUuid().replace(/-/g, '')
       .slice(0, 8).toUpperCase();
     const row = sheet.getLastRow() + 1;
+    applyLedgerRowLayout_(
+      sheet, row, 1, 2, MANAGEMENT_REQUEST.columnCount
+    );
     targetRange = sheet.getRange(
       row,
       1,
       1,
-      ACCESS.managementRequestColumnCount
+      MANAGEMENT_REQUEST.columnCount
     );
     targetRange.setValues([[
       requestId,
@@ -4299,10 +4928,9 @@ function registerManagementRequest(request) {
     );
     sheet.getRange(row, 2).setNumberFormat('yyyy-mm-dd hh:mm:ss');
     SpreadsheetApp.flush();
-    appendAccessAuditLog_(system.log, {
+    appendManagementRequestAuditLog_(system.log, {
       author: session.actorName,
       eventType: '관리요청접수',
-      accessType: 'management',
       recordId: requestId,
       name: targetId,
       details: {
@@ -4344,7 +4972,7 @@ function searchInfoAssetsForRequest(query, adminToken) {
   return {
     ok: true,
     results: listInfoAssets_(system.ledger).filter(function (item) {
-      return [item.assetId, item.assetName, item.category, item.identifier]
+      return [item.assetId, item.assetName, item.category]
         .join(' ').toLowerCase().indexOf(keyword) !== -1;
     }).slice(0, 30).map(function (item) {
       return {
@@ -4353,6 +4981,30 @@ function searchInfoAssetsForRequest(query, adminToken) {
         modelMaker: item.category,
       };
     }),
+  };
+}
+
+function searchInfoAssetCatalog(query, adminToken) {
+  requireSessionInfo_(adminToken, 'infoRegister');
+  const keyword = cleanText_(query, 100).toLowerCase();
+  if (keyword.length < 2) return { ok: true, results: [] };
+  const system = ensureInfoAssetSystem_();
+  return {
+    ok: true,
+    results: listInfoAssets_(system.ledger)
+      .filter(function (item) {
+        return [item.assetName, item.category, item.modelVersion, item.provider]
+          .join(' ').toLowerCase().indexOf(keyword) !== -1;
+      })
+      .slice(0, 10)
+      .map(function (item) {
+        return {
+          assetName: item.assetName,
+          category: item.category,
+          modelVersion: item.modelVersion,
+          provider: item.provider,
+        };
+      }),
   };
 }
 
@@ -4367,11 +5019,11 @@ function executeManagementDeletion(request) {
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
-    const accessSystem = getAccessSystemForUse_();
-    const requestSheet = ensureManagementRequestSheet_(accessSystem.spreadsheet);
+    const managementSystem = ensureManagementRequestSystem_();
+    const requestSheet = managementSystem.sheet;
     const requestRow = findManagementRequestRow_(requestSheet, requestId);
     const requestValues = requestSheet.getRange(
-      requestRow, 1, 1, ACCESS.managementRequestColumnCount
+      requestRow, 1, 1, MANAGEMENT_REQUEST.columnCount
     ).getValues()[0];
     const requestType = String(requestValues[4] || '');
     const targetId = String(requestValues[5] || '');
@@ -4436,10 +5088,9 @@ function executeManagementDeletion(request) {
       '삭제 실행 완료 · 백업 ' + backupFile.getUrl(),
     ]]);
     requestSheet.getRange(requestRow, 11).setNumberFormat('yyyy-mm-dd hh:mm:ss');
-    appendAccessAuditLog_(accessSystem.log, {
+    appendManagementRequestAuditLog_(managementSystem.log, {
       author: session.actorName,
       eventType: '관리요청삭제실행',
-      accessType: 'management',
       recordId: requestId,
       name: targetId,
       details: { requestType: requestType, backupUrl: backupFile.getUrl() },
@@ -4478,8 +5129,8 @@ function processManagementRequest(request) {
     }
     lock.waitLock(30000);
     hasLock = true;
-    const system = getAccessSystemForUse_();
-    const sheet = ensureManagementRequestSheet_(system.spreadsheet);
+    const system = ensureManagementRequestSystem_();
+    const sheet = system.sheet;
     const row = findManagementRequestRow_(sheet, requestId);
     targetRange = sheet.getRange(row, 9, 1, 4);
     originalValues = targetRange.getValues();
@@ -4496,10 +5147,9 @@ function processManagementRequest(request) {
     ]]);
     sheet.getRange(row, 11).setNumberFormat('yyyy-mm-dd hh:mm:ss');
     SpreadsheetApp.flush();
-    appendAccessAuditLog_(system.log, {
+    appendManagementRequestAuditLog_(system.log, {
       author: session.actorName,
       eventType: '관리요청' + status,
-      accessType: 'management',
       recordId: requestId,
       name: String(sheet.getRange(row, 6).getDisplayValue() || ''),
       details: {
@@ -4531,17 +5181,17 @@ function processManagementRequest(request) {
 
 function ensureManagementRequestSheet_(spreadsheet) {
   let sheet = spreadsheet.getSheetByName(
-    ACCESS.managementRequestSheetName
+    MANAGEMENT_REQUEST.sheetName
   );
   if (!sheet) {
-    sheet = spreadsheet.insertSheet(ACCESS.managementRequestSheetName);
+    sheet = spreadsheet.insertSheet(MANAGEMENT_REQUEST.sheetName);
   }
   if (sheet.getLastRow() === 0) {
     sheet.getRange(
       1,
       1,
       1,
-      ACCESS.managementRequestColumnCount
+      MANAGEMENT_REQUEST.columnCount
     ).setValues([[
       '요청번호', '요청일시', '요청자', '요청자권한',
       '요청구분', '대상번호', '대상명', '요청사유',
@@ -4549,12 +5199,138 @@ function ensureManagementRequestSheet_(spreadsheet) {
     ]]);
     styleManagedHeader_(
       sheet,
-      ACCESS.managementRequestColumnCount,
+      MANAGEMENT_REQUEST.columnCount,
       '#FDE7D3'
     );
     protectSheetForHumans_(sheet, '프로그램 전용 관리 요청 기록');
   }
   return sheet;
+}
+
+function ensureManagementRequestSystem_() {
+  const assetContext = getContextWithAutoDiscovery_(false, APP.sheetName);
+  const root = getRootFolderFromPhoto_(assetContext.photoRoot);
+  const spreadsheet = openOrCreateManagedSpreadsheet_(
+    root,
+    MANAGEMENT_REQUEST.spreadsheetName,
+    MANAGEMENT_REQUEST.spreadsheetPropertyKey
+  );
+  spreadsheet.setSpreadsheetTimeZone(APP.timeZone);
+  const sheet = ensureManagementRequestSheet_(spreadsheet);
+  const log = ensureReadableAuditSheet_(
+    spreadsheet,
+    MANAGEMENT_REQUEST.auditSheetName,
+    '#C4510A'
+  );
+  ensureManagementRequestReferenceSheets_(spreadsheet);
+  migrateLegacyManagementRequests_(sheet);
+  return { spreadsheet: spreadsheet, sheet: sheet, log: log };
+}
+
+function ensureManagementRequestReferenceSheets_(spreadsheet) {
+  let description = spreadsheet.getSheetByName(
+    MANAGEMENT_REQUEST.descriptionSheetName
+  );
+  if (!description) {
+    description = spreadsheet.insertSheet(
+      MANAGEMENT_REQUEST.descriptionSheetName
+    );
+  }
+  if (description.getLastRow() === 0) {
+    const rows = [
+      ['항목명', '설명', '작성 기준', '개인정보 여부'],
+      ['요청번호', '관리 요청의 고유번호', '시스템 자동 생성', '아니오'],
+      ['요청일시', '관리 요청이 접수된 시각', '시스템 자동 기록', '아니오'],
+      ['요청자', '요청을 등록한 내부 담당자', '실명', '예'],
+      ['요청자권한', '요청 당시의 사용자 권한', '관리자 또는 등록자', '아니오'],
+      ['요청구분', '삭제·정정 등 요청 업무', '화면에서 선택', '아니오'],
+      ['대상번호', '처리 대상의 관리번호', '대장과 일치', '아니오'],
+      ['대상명', '처리 대상의 명칭', '대장과 일치', '아니오'],
+      ['요청사유', '요청이 필요한 이유', '구체적인 문장으로 작성', '아니오'],
+      ['상태', '현재 처리 단계', '처리 대기·처리 완료·반려', '아니오'],
+      ['처리자', '요청을 최종 처리한 관리자', '실명', '예'],
+      ['처리일시', '요청을 최종 처리한 시각', '시스템 자동 기록', '아니오'],
+      ['처리메모', '승인·반려 또는 실행 결과', '감사자가 이해할 수 있게 작성', '아니오'],
+    ];
+    description.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+    styleManagedHeader_(description, rows[0].length, '#FDE7D3');
+    description.setFrozenRows(1);
+  }
+
+  let checklist = spreadsheet.getSheetByName(
+    MANAGEMENT_REQUEST.checklistSheetName
+  );
+  if (!checklist) {
+    checklist = spreadsheet.insertSheet(
+      MANAGEMENT_REQUEST.checklistSheetName
+    );
+  }
+  if (checklist.getLastRow() === 0) {
+    const rows = [
+      ['점검 항목', '확인 기준', '점검 결과', '비고'],
+      ['요청번호 중복', '같은 요청번호가 두 번 이상 없어야 함', '', ''],
+      ['미처리 요청', '처리 대기 건의 사유와 대상이 명확해야 함', '', ''],
+      ['처리 책임', '완료·반려 건에 처리자와 처리일시가 있어야 함', '', ''],
+      ['감사로그 연결', '접수와 처리 결과가 감사로그에 남아야 함', '', ''],
+      ['원본 보존', '이관 전 원본이 보존 폴더에 있어야 함', '', ''],
+    ];
+    checklist.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+    styleManagedHeader_(checklist, rows[0].length, '#FDE7D3');
+    checklist.setFrozenRows(1);
+  }
+}
+
+function migrateLegacyManagementRequests_(targetSheet) {
+  const properties = PropertiesService.getScriptProperties();
+  const key = 'MANAGEMENT_REQUEST_MIGRATION_V1_' +
+    targetSheet.getParent().getId();
+  if (properties.getProperty(key) === '1') return;
+  const accessSpreadsheet = getAccessSpreadsheetForRead_();
+  const legacySheet = accessSpreadsheet.getSheetByName('관리 요청');
+  if (legacySheet && legacySheet.getLastRow() > 1 &&
+      targetSheet.getLastRow() <= 1) {
+    const values = legacySheet.getRange(
+      2,
+      1,
+      legacySheet.getLastRow() - 1,
+      MANAGEMENT_REQUEST.columnCount
+    ).getValues().filter(function (row) {
+      return String(row[0] || '').trim() !== '';
+    });
+    if (values.length) {
+      targetSheet.getRange(
+        2,
+        1,
+        values.length,
+        MANAGEMENT_REQUEST.columnCount
+      ).setValues(values);
+      targetSheet.getRange(2, 2, values.length, 1)
+        .setNumberFormat('yyyy-mm-dd hh:mm:ss');
+      targetSheet.getRange(2, 11, values.length, 1)
+        .setNumberFormat('yyyy-mm-dd hh:mm:ss');
+    }
+  }
+  properties.setProperty(key, '1');
+}
+
+function appendManagementRequestAuditLog_(sheet, event) {
+  const details = event.details || {};
+  const eventType = String(event.eventType || '관리 요청 처리');
+  const result = eventType.indexOf('반려') !== -1
+    ? '반려'
+    : (eventType.indexOf('접수') !== -1 ? '접수 완료' : '처리 완료');
+  appendReadableAuditLog_(sheet, {
+    actor: event.author || '시스템',
+    business: '관리 요청',
+    recordId: event.recordId || '',
+    target: event.name || details.targetName || '',
+    action: eventType,
+    summary: readableAuditSummary_(eventType, details),
+    result: result,
+    reason: details.reason || details.note || '',
+    beforeText: readableAuditValue_(details.before),
+    afterText: readableAuditValue_(details.after),
+  });
 }
 
 function findManagementRequestRow_(sheet, requestId) {
@@ -4588,7 +5364,7 @@ function listManagementRequests_(sheet, requesterName) {
     2,
     1,
     lastRow - 1,
-    ACCESS.managementRequestColumnCount
+    MANAGEMENT_REQUEST.columnCount
   ).getValues()
     .filter(function (row) {
       return String(row[0] || '') &&
@@ -4621,15 +5397,20 @@ function getAuditLogConfig(adminToken) {
     const accessSystem = getAccessSystemForUse_();
     const movementSystem = ensureMovementSystem_();
     const infoSystem = ensureInfoAssetSystem_();
+    const managementSystem = ensureManagementRequestSystem_();
+    const indexSystem = ensureIntegratedAuditIndexSystem_();
     return {
       ok: true,
       actorName: session.actorName,
       userRole: session.role,
       logs: [
-        readAuditSheet_('실물자산 로그', assetContext.audit.sheet),
-        readAuditSheet_('출입·관리요청 로그', accessSystem.log.sheet),
+        readAuditSheet_('실물자산 관리 로그', assetContext.audit.sheet),
+        readAuditSheet_('정보자산 관리 로그', infoSystem.log),
+        readAuditSheet_('외부 방문 로그', accessSystem.log.visitor),
+        readAuditSheet_('부서 출입 로그', accessSystem.log.department),
         readAuditSheet_('물품 반출입 로그', movementSystem.log),
-        readAuditSheet_('정보자산 로그', infoSystem.log),
+        readAuditSheet_('관리 요청 처리 로그', managementSystem.log),
+        readAuditSheet_('통합 감사색인', indexSystem.sheet),
       ],
     };
   } catch (error) {
@@ -4640,15 +5421,16 @@ function getAuditLogConfig(adminToken) {
 function readAuditSheet_(name, sheet) {
   const lastRow = sheet.getLastRow();
   const lastColumn = sheet.getLastColumn();
-  if (lastRow < 1 || lastColumn < 1) {
+  const headerRow = getReadableAuditHeaderRow_(sheet);
+  if (!headerRow || lastRow < headerRow || lastColumn < 1) {
     return { name: name, headers: [], rows: [] };
   }
-  const headers = sheet.getRange(1, 1, 1, lastColumn)
+  const headers = sheet.getRange(headerRow, 1, 1, lastColumn)
     .getDisplayValues()[0]
     .map(function (value) {
       return String(value || '');
     });
-  const count = Math.min(Math.max(lastRow - 1, 0), 100);
+  const count = Math.min(Math.max(lastRow - headerRow, 0), 100);
   const rows = count
     ? sheet.getRange(lastRow - count + 1, 1, count, lastColumn)
       .getDisplayValues()
@@ -4661,6 +5443,217 @@ function readAuditSheet_(name, sheet) {
       })
     : [];
   return { name: name, headers: headers, rows: rows };
+}
+
+function getReadableAuditHeaderRow_(sheet) {
+  if (!sheet || sheet.getLastRow() < 1) return 0;
+  if (String(sheet.getRange(1, 1).getDisplayValue() || '') === '처리일시') {
+    return 1;
+  }
+  if (sheet.getMaxRows() >= 5 &&
+      String(sheet.getRange(5, 1).getDisplayValue() || '') === '처리일시') {
+    return 5;
+  }
+  return 0;
+}
+
+function ensureReadableAuditSheet_(spreadsheet, sheetName, headerColor) {
+  let sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    const sheets = spreadsheet.getSheets();
+    if (sheets.length === 1 && sheets[0].getLastRow() === 0) {
+      sheet = sheets[0];
+      sheet.setName(sheetName);
+    } else {
+      sheet = spreadsheet.insertSheet(sheetName);
+    }
+  }
+  const headers = [
+    '처리일시', '처리자', '업무', '대상번호', '대상',
+    '처리유형', '처리내용', '결과', '사유·비고',
+    '변경 전', '변경 후',
+  ];
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    styleManagedHeader_(sheet, headers.length, headerColor || '#16324F');
+    sheet.getRange(1, 1, 1, headers.length).setFontColor('#FFFFFF');
+    sheet.setFrozenRows(1);
+    [145, 90, 110, 135, 180, 120, 300, 100, 240, 260, 260]
+      .forEach(function (width, index) {
+        sheet.setColumnWidth(index + 1, width);
+      });
+  }
+  return sheet;
+}
+
+function appendReadableAuditLog_(sheet, record) {
+  const firstDataRow = (getReadableAuditHeaderRow_(sheet) || 1) + 1;
+  const row = Math.max(sheet.getLastRow() + 1, firstDataRow);
+  applyLedgerRowLayout_(sheet, row, 1, firstDataRow, 11);
+  sheet.getRange(row, 1, 1, 11).setValues([[
+    new Date(),
+    cleanText_(record.actor, 80) || '시스템',
+    cleanText_(record.business, 80),
+    cleanText_(record.recordId, 120),
+    cleanText_(record.target, 200),
+    cleanText_(record.action, 100),
+    cleanText_(record.summary, 500),
+    cleanText_(record.result, 80),
+    cleanText_(record.reason, 500),
+    cleanText_(record.beforeText, 500),
+    cleanText_(record.afterText, 500),
+  ]]);
+  sheet.getRange(row, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  sheet.getRange(row, 1, 1, 11)
+    .setVerticalAlignment('middle')
+    .setWrap(true)
+    .setBorder(
+      true, true, true, true, true, true,
+      '#D9DEE8',
+      SpreadsheetApp.BorderStyle.SOLID
+    );
+  if (!record.skipIntegratedIndex) {
+    try {
+      appendIntegratedAuditIndexRow_(record);
+    } catch (error) {
+      console.warn(error);
+    }
+  }
+}
+
+function ensureIntegratedAuditIndexSystem_() {
+  const assetContext = getContextWithAutoDiscovery_(false, APP.sheetName);
+  const root = getRootFolderFromPhoto_(assetContext.photoRoot);
+  const spreadsheet = openOrCreateManagedSpreadsheet_(
+    root,
+    AUDIT_INDEX.spreadsheetName,
+    AUDIT_INDEX.spreadsheetPropertyKey
+  );
+  spreadsheet.setSpreadsheetTimeZone(APP.timeZone);
+  const sheet = ensureReadableAuditSheet_(
+    spreadsheet,
+    AUDIT_INDEX.sheetName,
+    '#263856'
+  );
+  ensureAuditIndexReferenceSheets_(spreadsheet);
+  return { spreadsheet: spreadsheet, sheet: sheet };
+}
+
+function appendIntegratedAuditIndexRow_(record) {
+  const system = ensureIntegratedAuditIndexSystem_();
+  const indexedRecord = {};
+  Object.keys(record || {}).forEach(function (key) {
+    indexedRecord[key] = record[key];
+  });
+  indexedRecord.skipIntegratedIndex = true;
+  appendReadableAuditLog_(system.sheet, indexedRecord);
+}
+
+function ensureAuditIndexReferenceSheets_(spreadsheet) {
+  let description = spreadsheet.getSheetByName(
+    AUDIT_INDEX.descriptionSheetName
+  );
+  if (!description) {
+    description = spreadsheet.insertSheet(AUDIT_INDEX.descriptionSheetName);
+  }
+  if (description.getLastRow() === 0) {
+    const rows = [
+      ['항목명', '설명', '감사 확인 방법'],
+      ['처리일시', '업무가 처리된 시각', '기간별 정렬·검색'],
+      ['처리자', '업무를 수행한 내부 담당자', '담당자별 처리 이력 확인'],
+      ['업무', '실물자산·정보자산·외부 방문 등 업무 구분', '업무별 필터'],
+      ['대상번호', '대장과 연결되는 관리번호 또는 신청번호', '원 대장과 대조'],
+      ['대상', '처리한 자산·방문자·요청의 명칭', '개인정보 마스킹 확인'],
+      ['처리유형', '등록·수정·승인·반려·입장·퇴장 등', '업무 절차와 대조'],
+      ['처리내용', '감사자가 바로 이해할 수 있는 처리 요약', '기술 원문 없이 확인'],
+      ['결과', '처리 완료·승인·반려·취소 등 최종 결과', '상태 일치 확인'],
+      ['사유·비고', '수정·반려·예외 처리의 사유', '빈 사유 여부 확인'],
+      ['변경 전·후', '수정 전후 핵심 값의 문장형 요약', '변경 내용 대조'],
+    ];
+    description.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+    styleManagedHeader_(description, rows[0].length, '#DDE7F3');
+    description.setFrozenRows(1);
+  }
+  let checklist = spreadsheet.getSheetByName(AUDIT_INDEX.checklistSheetName);
+  if (!checklist) {
+    checklist = spreadsheet.insertSheet(AUDIT_INDEX.checklistSheetName);
+  }
+  if (checklist.getLastRow() === 0) {
+    const rows = [
+      ['점검 항목', '확인 기준', '점검 결과', '비고'],
+      ['업무별 누락', '모든 운영 업무가 통합 색인에 포함되어야 함', '', ''],
+      ['처리자 확인', '내부 처리자 이름이 확인되어야 함', '', ''],
+      ['개인정보 마스킹', '외부 방문자의 이름·연락처·차량번호가 마스킹되어야 함', '', ''],
+      ['기술 필드 제외', '로그ID·해시·JSON 원문이 표시되지 않아야 함', '', ''],
+      ['원 대장 대조', '대상번호와 최종 결과가 운영 대장과 일치해야 함', '', ''],
+    ];
+    checklist.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+    styleManagedHeader_(checklist, rows[0].length, '#DDE7F3');
+    checklist.setFrozenRows(1);
+  }
+}
+
+function readableAuditSummary_(eventType, details) {
+  const source = details || {};
+  const labels = {
+    requestType: '요청구분',
+    targetName: '대상명',
+    note: '처리메모',
+    reason: '사유',
+    status: '상태',
+    category: '자산분류',
+    assetName: '품명',
+    department: '사업장·부서',
+    user: '사용자',
+    owner: '담당자',
+    visitPurpose: '방문목적',
+    hostName: '방문대상',
+    organization: '소속회사',
+    purpose: '목적',
+    destination: '반출 장소',
+  };
+  const ignored = {
+    before: true,
+    after: true,
+    previousStatus: true,
+    nextStatus: true,
+    sessionFingerprint: true,
+    hash: true,
+    previousHash: true,
+    currentHash: true,
+    logId: true,
+    visitorId: true,
+    backupUrl: true,
+  };
+  const parts = [];
+  Object.keys(labels).forEach(function (key) {
+    if (ignored[key]) return;
+    const value = readableAuditValue_(source[key]);
+    if (value) parts.push(labels[key] + ': ' + value);
+  });
+  return parts.length
+    ? parts.join(' · ')
+    : String(eventType || '업무 처리') + ' 기록';
+}
+
+function readableAuditValue_(value) {
+  if (value == null || value === '') return '';
+  if (value instanceof Date) return formatDateTime_(value);
+  if (Array.isArray(value)) {
+    return value.map(readableAuditValue_).filter(Boolean).join(' / ').slice(0, 500);
+  }
+  if (typeof value === 'object') {
+    return Object.keys(value).filter(function (key) {
+      return [
+        'logId', 'hash', 'previousHash', 'currentHash',
+        'sessionFingerprint', 'visitorId', 'rawJson',
+      ].indexOf(key) === -1;
+    }).map(function (key) {
+      const text = readableAuditValue_(value[key]);
+      return text ? key + ': ' + text : '';
+    }).filter(Boolean).join(' · ').slice(0, 500);
+  }
+  return String(value).replace(/\s+/g, ' ').trim().slice(0, 500);
 }
 
 function normalizeVisitorApplicationRequest_(request) {
@@ -4864,7 +5857,11 @@ function getEmployeeRosterNameMapCached_(spreadsheet) {
   return nameMap;
 }
 
-function formatVisitorApplicationRows_(sheet, startRow, rowCount) {
+function formatVisitorApplicationRows_(sheet, startRow, rowCount, isNew) {
+  applyLedgerRowLayout_(
+    sheet, startRow, rowCount, 2,
+    isNew ? ACCESS.visitorApplicationColumnCount : 0
+  );
   sheet.getRange(
     startRow,
     1,
@@ -5015,24 +6012,258 @@ function getVisitorAccessStateMap_(spreadsheet, applicationNumber) {
     ACCESS.visitorColumnCount
   ).getValues();
   values.forEach(function (row) {
-    if (String(row[13] || '') !== applicationNumber) {
+    if (String(row[16] || '') !== applicationNumber) {
       return;
     }
-    const visitorId = String(row[14] || '');
+    const visitorId = String(row[17] || '');
     const current = states[visitorId];
-    const entryTime = row[2] instanceof Date
-      ? row[2].getTime()
+    const entryTime = row[6] instanceof Date
+      ? row[6].getTime()
       : 0;
     if (!current || entryTime >= current.entryTime) {
       states[visitorId] = {
         entryTime: entryTime,
-        status: String(row[4] || '') === '입장중'
+        status: String(row[12] || '') === '입장중'
           ? '입장'
           : '퇴장',
       };
     }
   });
   return states;
+}
+
+function syncVisitorLedgerFromApplications_(spreadsheet, logSheet) {
+  const applicationSheet = ensureVisitorApplicationSheet_(spreadsheet);
+  const ledger = getAccessSheet_(spreadsheet, 'visitor');
+  const applicationLastRow = applicationSheet.getLastRow();
+  if (applicationLastRow < 2) {
+    return {
+      added: 0,
+      repaired: 0,
+      sourceEntries: 0,
+      todaySourceEntries: 0,
+      todayLinkedEntries: 0,
+      todayExitTimeEntries: 0,
+    };
+  }
+
+  const applications = applicationSheet.getRange(
+    2,
+    1,
+    applicationLastRow - 1,
+    ACCESS.visitorApplicationColumnCount
+  ).getValues().map(function (row, index) {
+    return visitorApplicationRowToRecord_(row, index + 2);
+  }).filter(function (record) {
+    return record.latestEntryAt instanceof Date &&
+      !Number.isNaN(record.latestEntryAt.getTime());
+  });
+  if (!applications.length) {
+    return {
+      added: 0,
+      repaired: 0,
+      sourceEntries: 0,
+      todaySourceEntries: 0,
+      todayLinkedEntries: 0,
+      todayExitTimeEntries: 0,
+    };
+  }
+
+  const auditSnapshots = getVisitorAuditSnapshots_(logSheet);
+  const ledgerLastRow = ledger.getLastRow();
+  const ledgerRows = ledgerLastRow >= 2
+    ? ledger.getRange(
+        2, 1, ledgerLastRow - 1, ACCESS.visitorColumnCount
+      ).getValues()
+    : [];
+  const existingByKey = {};
+  const linkedKeys = {};
+  ledgerRows.forEach(function (row, index) {
+    const applicationNumber = String(row[16] || '');
+    const visitorId = String(row[17] || '');
+    if (applicationNumber && visitorId) {
+      existingByKey[applicationNumber + '\u0001' + visitorId] = {
+        row: index + 2,
+        values: row,
+      };
+      linkedKeys[applicationNumber + '\u0001' + visitorId] = true;
+    }
+  });
+
+  let nextSequence = getNextVisitorSequence_(ledger);
+  let repaired = 0;
+  const additions = [];
+  applications.forEach(function (application) {
+    const key = application.applicationNumber + '\u0001' +
+      application.visitorId;
+    const snapshot = auditSnapshots[key] || {};
+    const existing = existingByKey[key];
+
+    if (existing) {
+      if (
+        snapshot.exitedAt instanceof Date &&
+        (!existing.values[7] || existing.values[12] !== '퇴장완료')
+      ) {
+        const repairValues = existing.values.slice(7, 13);
+        repairValues[0] = snapshot.exitedAt;
+        repairValues[3] = '회수완료';
+        repairValues[5] = '퇴장완료';
+        ledger.getRange(existing.row, 8, 1, 6)
+          .setValues([repairValues]);
+        ledger.getRange(existing.row, 8).setNumberFormat('hh:mm:ss');
+        repaired += 1;
+      }
+      return;
+    }
+
+    const entryAt = snapshot.enteredAt instanceof Date
+      ? snapshot.enteredAt
+      : application.latestEntryAt;
+    const payload = normalizeAccessPayload_({
+      accessType: 'visitor',
+      processedBy: '방문객 직접입력',
+      name: application.name,
+      organization: application.organization,
+      phone: application.phone,
+      visitPurpose: application.visitPurpose,
+      hostName: application.hostName,
+      vehicleNumber: application.vehicleNumber,
+      carryItems: application.carryItems,
+      applicationNumber: application.applicationNumber,
+      visitorId: application.visitorId,
+      remarks: '보안수칙 동의 ' + ACCESS.visitorSecurityVersion,
+    });
+    payload.sequence = nextSequence;
+    payload.badgeNumber = getVisitorBadgeNumber_(nextSequence);
+    const recordId = snapshot.recordId ||
+      makeAccessRecordId_('visitor', entryAt);
+    const values = makeAccessRowValues_(payload, recordId, entryAt);
+    if (snapshot.exitedAt instanceof Date) {
+      values[7] = snapshot.exitedAt;
+      values[10] = '회수완료';
+      values[12] = '퇴장완료';
+    }
+    additions.push(values);
+    linkedKeys[key] = true;
+    nextSequence += 1;
+  });
+
+  if (additions.length) {
+    const startRow = Math.max(ledger.getLastRow() + 1, 2);
+    ledger.getRange(
+      startRow,
+      1,
+      additions.length,
+      ACCESS.visitorColumnCount
+    ).setValues(additions);
+    additions.forEach(function (_row, index) {
+      formatAccessDataRow_(
+        ledger,
+        startRow + index,
+        ACCESS.visitorColumnCount
+      );
+    });
+  }
+  if (additions.length || repaired) SpreadsheetApp.flush();
+  const today = Utilities.formatDate(new Date(), APP.timeZone, 'yyyy-MM-dd');
+  const todayApplications = applications.filter(function (application) {
+    return formatDateOnly_(application.latestEntryAt) === today;
+  });
+  const finalByKey = {};
+  const finalLastRow = ledger.getLastRow();
+  if (finalLastRow >= 2) {
+    ledger.getRange(
+      2, 1, finalLastRow - 1, ACCESS.visitorColumnCount
+    ).getValues().forEach(function (row) {
+      const applicationNumber = String(row[16] || '');
+      const visitorId = String(row[17] || '');
+      if (applicationNumber && visitorId) {
+        finalByKey[applicationNumber + '\u0001' + visitorId] = row;
+      }
+    });
+  }
+  return {
+    added: additions.length,
+    repaired: repaired,
+    sourceEntries: applications.length,
+    todaySourceEntries: todayApplications.length,
+    todayLinkedEntries: todayApplications.filter(function (application) {
+      return linkedKeys[
+        application.applicationNumber + '\u0001' + application.visitorId
+      ] === true;
+    }).length,
+    todayExitTimeEntries: todayApplications.filter(function (application) {
+      const row = finalByKey[
+        application.applicationNumber + '\u0001' + application.visitorId
+      ];
+      return row && row[7] instanceof Date &&
+        !Number.isNaN(row[7].getTime()) && row[12] === '퇴장완료';
+    }).length,
+  };
+}
+
+function getVisitorAuditSnapshots_(logSheet) {
+  const snapshots = {};
+  if (!logSheet || logSheet.getLastRow() < 2) return snapshots;
+  if (String(logSheet.getRange(1, 1).getDisplayValue() || '') === '처리일시') {
+    return snapshots;
+  }
+  const rows = logSheet.getRange(
+    2, 1, logSheet.getLastRow() - 1, 10
+  ).getValues();
+  const exits = {};
+
+  rows.forEach(function (row) {
+    const eventType = String(row[3] || '');
+    const recordId = String(row[5] || '');
+    let details = {};
+    try {
+      details = JSON.parse(String(row[7] || '{}')) || {};
+    } catch (error) {
+      details = {};
+    }
+    if (eventType === '승인방문객입장') {
+      const applicationNumber = String(details.applicationNumber || '');
+      const visitorId = String(details.visitorId || '');
+      if (!applicationNumber || !visitorId) return;
+      const key = applicationNumber + '\u0001' + visitorId;
+      const enteredAt = coerceAccessDateTime_(details.enteredAt) || row[1];
+      const current = snapshots[key];
+      if (
+        !current ||
+        (enteredAt instanceof Date &&
+          enteredAt.getTime() >= current.enteredAt.getTime())
+      ) {
+        snapshots[key] = {
+          recordId: recordId,
+          enteredAt: enteredAt,
+          exitedAt: null,
+        };
+      }
+    } else if (eventType === '퇴장처리' && recordId) {
+      exits[recordId] = coerceAccessDateTime_(details.exitedAt) || row[1];
+    }
+  });
+  Object.keys(snapshots).forEach(function (key) {
+    const recordId = snapshots[key].recordId;
+    if (exits[recordId] instanceof Date) {
+      snapshots[key].exitedAt = exits[recordId];
+    }
+  });
+  return snapshots;
+}
+
+function coerceAccessDateTime_(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value;
+  }
+  const text = String(value || '').trim();
+  if (!text) return null;
+  const parsed = new Date(
+    text.replace(' ', 'T') +
+      (/Z$|[+-]\d\d:\d\d$/.test(text) ? '' : '+09:00')
+  );
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function hasVisitorApplicationEntry_(spreadsheet, applicationNumber) {
@@ -5308,27 +6539,43 @@ function ensureAccessSystem_() {
     ACCESS.spreadsheetName,
     ACCESS.spreadsheetPropertyKey
   );
-  const logSpreadsheet = openOrCreateManagedSpreadsheet_(
+  const visitorLogSpreadsheet = openOrCreateManagedSpreadsheet_(
     root,
-    ACCESS.logSpreadsheetName,
-    ACCESS.logSpreadsheetPropertyKey
+    ACCESS.visitorLogSpreadsheetName,
+    ACCESS.visitorLogSpreadsheetPropertyKey
+  );
+  const departmentLogSpreadsheet = openOrCreateManagedSpreadsheet_(
+    root,
+    ACCESS.departmentLogSpreadsheetName,
+    ACCESS.departmentLogSpreadsheetPropertyKey
   );
 
   spreadsheet.setSpreadsheetTimeZone(APP.timeZone);
-  logSpreadsheet.setSpreadsheetTimeZone(APP.timeZone);
+  visitorLogSpreadsheet.setSpreadsheetTimeZone(APP.timeZone);
+  departmentLogSpreadsheet.setSpreadsheetTimeZone(APP.timeZone);
 
   ensureVisitorApplicationSheet_(spreadsheet);
   ensureAccessLedgerSheet_(spreadsheet, 'visitor');
   ensureAccessLedgerSheet_(spreadsheet, 'employee');
   ensureEmployeeRosterSheet_(spreadsheet);
-  ensureManagementRequestSheet_(spreadsheet);
-  const logSheet = ensureAccessLogSheet_(logSpreadsheet);
+  const visitorLogSheet = ensureReadableAuditSheet_(
+    visitorLogSpreadsheet,
+    ACCESS.readableLogSheetName,
+    '#13795B'
+  );
+  const departmentLogSheet = ensureReadableAuditSheet_(
+    departmentLogSpreadsheet,
+    ACCESS.readableLogSheetName,
+    '#D97706'
+  );
 
   return {
     spreadsheet: spreadsheet,
     log: {
-      spreadsheet: logSpreadsheet,
-      sheet: logSheet,
+      visitorSpreadsheet: visitorLogSpreadsheet,
+      visitor: visitorLogSheet,
+      departmentSpreadsheet: departmentLogSpreadsheet,
+      department: departmentLogSheet,
     },
   };
 }
@@ -5358,33 +6605,44 @@ function getAccessSystemForUse_() {
   const spreadsheetId = properties.getProperty(
     ACCESS.spreadsheetPropertyKey
   );
-  const logSpreadsheetId = properties.getProperty(
-    ACCESS.logSpreadsheetPropertyKey
+  const visitorLogSpreadsheetId = properties.getProperty(
+    ACCESS.visitorLogSpreadsheetPropertyKey
+  );
+  const departmentLogSpreadsheetId = properties.getProperty(
+    ACCESS.departmentLogSpreadsheetPropertyKey
   );
 
-  if (spreadsheetId && logSpreadsheetId) {
+  if (spreadsheetId && visitorLogSpreadsheetId &&
+      departmentLogSpreadsheetId) {
     try {
       const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-      const logSpreadsheet = SpreadsheetApp.openById(
-        logSpreadsheetId
+      const visitorLogSpreadsheet = SpreadsheetApp.openById(
+        visitorLogSpreadsheetId
+      );
+      const departmentLogSpreadsheet = SpreadsheetApp.openById(
+        departmentLogSpreadsheetId
       );
       ensureVisitorApplicationSheet_(spreadsheet);
       ensureAccessLedgerSheet_(spreadsheet, 'visitor');
       ensureAccessLedgerSheet_(spreadsheet, 'employee');
-      ensureManagementRequestSheet_(spreadsheet);
-      const logSheet = logSpreadsheet.getSheetByName(
-        ACCESS.logSheetName
+      const visitorLogSheet = visitorLogSpreadsheet.getSheetByName(
+        ACCESS.readableLogSheetName
+      );
+      const departmentLogSheet = departmentLogSpreadsheet.getSheetByName(
+        ACCESS.readableLogSheetName
       );
 
-      if (!logSheet) {
-        throw new Error('출입관리 로그 시트를 찾을 수 없습니다.');
+      if (!visitorLogSheet || !departmentLogSheet) {
+        throw new Error('업무별 출입 감사로그 시트를 찾을 수 없습니다.');
       }
 
       return {
         spreadsheet: spreadsheet,
         log: {
-          spreadsheet: logSpreadsheet,
-          sheet: logSheet,
+          visitorSpreadsheet: visitorLogSpreadsheet,
+          visitor: visitorLogSheet,
+          departmentSpreadsheet: departmentLogSpreadsheet,
+          department: departmentLogSheet,
         },
       };
     } catch (error) {
@@ -5401,7 +6659,12 @@ function openOrCreateManagedSpreadsheet_(
   propertyKey
 ) {
   const properties = PropertiesService.getScriptProperties();
-  const configuredId = properties.getProperty(propertyKey);
+  let configuredId = properties.getProperty(propertyKey);
+  const pinnedId = MANAGED_SPREADSHEET_IDS[propertyKey];
+  if (pinnedId && configuredId !== pinnedId) {
+    configuredId = pinnedId;
+    properties.setProperty(propertyKey, pinnedId);
+  }
   let spreadsheet = null;
 
   if (configuredId) {
@@ -5562,7 +6825,7 @@ function ensureAccessLedgerSheet_(spreadsheet, accessType) {
     : ACCESS.employeeSheetName;
   let sheet = spreadsheet.getSheetByName(sheetName);
   const cache = CacheService.getScriptCache();
-  const cacheKey = 'access-ledger-schema-v92-' +
+  const cacheKey = 'access-ledger-schema-v95-' +
     spreadsheet.getId() + '-' + accessType;
   if (sheet && cache.get(cacheKey) === '1') return sheet;
 
@@ -5581,18 +6844,23 @@ function ensureAccessLedgerSheet_(spreadsheet, accessType) {
   }
 
   const headers = accessType === 'visitor'
-    ? [[
-        '기록ID', '방문일자', '입장시각', '퇴장시각',
-        '상태', '성명', '소속', '연락처', '방문목적',
-        '방문대상', '차량번호', '처리자', '비고',
-        '방문신청번호', '방문객ID', '반입물품',
-      ]]
+    ? [getVisitorLedgerHeaders_()]
     : [[
         '기록ID', '출입일자', '입장시각', '퇴장시각',
         '상태', '사번', '성명', '부서', '출입목적',
         '처리자', '비고',
       ]];
   const columnCount = headers[0].length;
+
+  if (accessType === 'visitor') {
+    sheet.getRange(
+      1,
+      1,
+      sheet.getMaxRows(),
+      Math.max(sheet.getLastColumn(), columnCount)
+    ).clearDataValidations();
+    migrateVisitorLedgerSchema_(sheet, headers[0]);
+  }
 
   sheet.getRange(1, 1, 1, columnCount)
     .setValues(headers)
@@ -5609,12 +6877,138 @@ function ensureAccessLedgerSheet_(spreadsheet, accessType) {
   sheet.setFrozenRows(1);
   setAccessColumnWidths_(sheet, accessType);
 
+  if (accessType === 'visitor') {
+    applyVisitorLedgerValidation_(sheet);
+  }
+
   protectSheetForHumans_(
     sheet,
     '출입관리 프로그램 전용 기록'
   );
   cache.put(cacheKey, '1', 21600);
   return sheet;
+}
+
+function getVisitorLedgerHeaders_() {
+  return [
+    '순번', '방문일자', '성명', '소속', '방문목적',
+    '출입구역', '입실시간', '퇴실시간', '담당자/동행자',
+    '방문증 No.', '회수확인', '기록ID', '상태', '연락처',
+    '차량번호', '등록자 / 등록경로', '방문신청번호', '방문객ID',
+    '반입물품', '비고',
+  ];
+}
+
+function migrateVisitorLedgerSchema_(sheet, targetHeaders) {
+  const currentWidth = Math.max(
+    sheet.getLastColumn(),
+    targetHeaders.length
+  );
+  const currentHeaders = sheet.getRange(
+    1, 1, 1, currentWidth
+  ).getDisplayValues()[0].map(function (value) {
+    return String(value || '').trim();
+  });
+
+  if (
+    currentHeaders.slice(0, targetHeaders.length).join('\u0001') ===
+      targetHeaders.join('\u0001')
+  ) {
+    return;
+  }
+
+  const lastRow = sheet.getLastRow();
+  const existingRows = lastRow >= 2
+    ? sheet.getRange(2, 1, lastRow - 1, currentWidth).getValues()
+    : [];
+  const headerIndex = {};
+  currentHeaders.forEach(function (header, index) {
+    if (header && headerIndex[header] == null) {
+      headerIndex[header] = index;
+    }
+  });
+  const pick = function (row, names) {
+    for (let index = 0; index < names.length; index += 1) {
+      if (headerIndex[names[index]] != null) {
+        return row[headerIndex[names[index]]];
+      }
+    }
+    return '';
+  };
+  const migratedRows = existingRows.filter(function (row) {
+    return row.some(function (value) {
+      return String(value == null ? '' : value).trim() !== '';
+    });
+  }).map(function (row, index) {
+    const entryAt = pick(row, ['입실시간', '입장시각', '입장시간']);
+    return [
+      pick(row, ['순번']) || index + 1,
+      pick(row, ['방문일자']) || entryAt,
+      pick(row, ['성명']),
+      pick(row, ['소속', '소속회사']),
+      pick(row, ['방문목적']),
+      pick(row, ['출입구역']),
+      entryAt,
+      pick(row, ['퇴실시간', '퇴장시각', '퇴장시간']),
+      pick(row, ['담당자/동행자', '방문대상']),
+      pick(row, ['방문증 No.', '방문증No.', '방문증번호']),
+      pick(row, ['회수확인']),
+      pick(row, ['기록ID']),
+      pick(row, ['상태']),
+      pick(row, ['연락처']),
+      pick(row, ['차량번호']),
+      pick(row, ['등록자 / 등록경로', '처리자']),
+      pick(row, ['방문신청번호']),
+      pick(row, ['방문객ID']),
+      pick(row, ['반입물품']),
+      pick(row, ['비고']),
+    ];
+  });
+
+  sheet.getRange(
+    1,
+    1,
+    Math.max(lastRow, 1),
+    currentWidth
+  ).clearContent();
+  sheet.getRange(1, 1, 1, targetHeaders.length)
+    .setValues([targetHeaders]);
+  if (migratedRows.length) {
+    sheet.getRange(
+      2, 1, migratedRows.length, targetHeaders.length
+    ).setValues(migratedRows);
+    for (let index = 0; index < migratedRows.length; index += 1) {
+      formatAccessDataRow_(
+        sheet,
+        index + 2,
+        targetHeaders.length
+      );
+    }
+  }
+  SpreadsheetApp.flush();
+}
+
+function applyVisitorLedgerValidation_(sheet) {
+  const rowCount = Math.max(sheet.getMaxRows() - 1, 1);
+  const badgeRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(
+      ['V-01', 'V-02', 'V-03', 'V-04', 'V-05'],
+      true
+    )
+    .setAllowInvalid(false)
+    .build();
+  const recoveryRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['회수완료'], true)
+    .setAllowInvalid(false)
+    .build();
+  const statusRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['입장중', '퇴장완료'], true)
+    .setAllowInvalid(false)
+    .build();
+
+  sheet.getRange(2, 10, rowCount, 1).setDataValidation(badgeRule);
+  sheet.getRange(2, 11, rowCount, 1).setDataValidation(recoveryRule);
+  sheet.getRange(2, 13, rowCount, 1).setDataValidation(statusRule);
 }
 
 function ensureEmployeeRosterSheet_(spreadsheet) {
@@ -5747,8 +7141,9 @@ function findOpenEmployeeRecord_(sheet, employeeNumber) {
 
 function setAccessColumnWidths_(sheet, accessType) {
   const widths = accessType === 'visitor'
-    ? [170, 95, 145, 145, 85, 100, 130, 120,
-        220, 110, 110, 100, 240, 170, 170, 220]
+    ? [55, 95, 110, 130, 220, 100, 90, 90,
+        130, 95, 90, 170, 85, 120, 110, 170,
+        170, 170, 220, 240]
     : [170, 95, 145, 145, 85, 90, 100, 130,
         220, 100, 240];
 
@@ -5758,68 +7153,36 @@ function setAccessColumnWidths_(sheet, accessType) {
 }
 
 function ensureAccessLogSheet_(spreadsheet) {
-  let sheet = spreadsheet.getSheetByName(
-    ACCESS.logSheetName
+  return ensureReadableAuditSheet_(
+    spreadsheet,
+    ACCESS.readableLogSheetName,
+    '#16324F'
   );
-
-  if (!sheet) {
-    const sheets = spreadsheet.getSheets();
-
-    if (
-      sheets.length === 1 &&
-      sheets[0].getLastRow() === 0
-    ) {
-      sheet = sheets[0];
-      sheet.setName(ACCESS.logSheetName);
-    } else {
-      sheet = spreadsheet.insertSheet(ACCESS.logSheetName);
-    }
-  }
-
-  if (sheet.getLastRow() === 0) {
-    sheet.getRange(1, 1, 1, ACCESS.logColumnCount)
-      .setValues([[
-        '로그ID', '처리시각', '처리자', '처리유형',
-        '출입구분', '기록ID', '성명', '상세내용',
-        '이전해시', '현재해시',
-      ]])
-      .setFontWeight('bold')
-      .setBackground('#E8EAED')
-      .setFontColor('#202124');
-    sheet.setFrozenRows(1);
-    sheet.setColumnWidth(1, 230);
-    sheet.setColumnWidth(2, 150);
-    sheet.setColumnWidth(8, 420);
-    sheet.setColumnWidth(9, 300);
-    sheet.setColumnWidth(10, 300);
-  }
-
-  protectSheetForHumans_(
-    sheet,
-    '출입관리 감사로그 프로그램 전용 기록'
-  );
-  return sheet;
 }
 
 function makeAccessRowValues_(payload, recordId, entryAt) {
   if (payload.accessType === 'visitor') {
     return [
-      recordId,
+      payload.sequence || '',
       entryAt,
-      entryAt,
-      '',
-      '입장중',
       payload.name,
       payload.organization,
-      payload.phone,
       payload.visitPurpose,
+      payload.accessArea || '수원지점',
+      entryAt,
+      '',
       payload.hostName,
+      payload.badgeNumber || '',
+      '',
+      recordId,
+      '입장중',
+      payload.phone,
       payload.vehicleNumber,
       payload.processedBy,
-      payload.remarks,
       payload.applicationNumber,
       payload.visitorId,
       payload.carryItems,
+      payload.remarks,
     ];
   }
 
@@ -5838,7 +7201,27 @@ function makeAccessRowValues_(payload, recordId, entryAt) {
   ];
 }
 
+function getNextVisitorSequence_(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 1;
+  const values = sheet.getRange(2, 1, lastRow - 1, 1)
+    .getDisplayValues();
+  const maximum = values.reduce(function (current, row) {
+    const value = Number(String(row[0] || '').trim());
+    return Number.isFinite(value)
+      ? Math.max(current, value)
+      : current;
+  }, 0);
+  return maximum + 1;
+}
+
+function getVisitorBadgeNumber_(sequence) {
+  const normalized = Math.max(Number(sequence) || 1, 1);
+  return 'V-' + String(((normalized - 1) % 5) + 1).padStart(2, '0');
+}
+
 function formatAccessDataRow_(sheet, row, columnCount) {
+  applyLedgerRowLayout_(sheet, row, 1, 2, columnCount);
   const range = sheet.getRange(row, 1, 1, columnCount);
 
   range
@@ -5848,14 +7231,19 @@ function formatAccessDataRow_(sheet, row, columnCount) {
       '#000000',
       SpreadsheetApp.BorderStyle.SOLID
     );
-  sheet.getRange(row, 2).setNumberFormat('yyyy-mm-dd');
-  sheet.getRange(row, 3, 1, 2).setNumberFormat(
-    'yyyy-mm-dd hh:mm:ss'
-  );
-  sheet.getRange(row, 1, 1, 5)
-    .setHorizontalAlignment('center');
   if (columnCount === ACCESS.visitorColumnCount) {
-    sheet.getRange(row, 8).setNumberFormat('@');
+    sheet.getRange(row, 2).setNumberFormat('yyyy-mm-dd');
+    sheet.getRange(row, 7, 1, 2).setNumberFormat('hh:mm:ss');
+    sheet.getRange(row, 1, 1, 2).setHorizontalAlignment('center');
+    sheet.getRange(row, 6, 1, 8).setHorizontalAlignment('center');
+    sheet.getRange(row, 14).setNumberFormat('@');
+  } else {
+    sheet.getRange(row, 2).setNumberFormat('yyyy-mm-dd');
+    sheet.getRange(row, 3, 1, 2).setNumberFormat(
+      'yyyy-mm-dd hh:mm:ss'
+    );
+    sheet.getRange(row, 1, 1, 5)
+      .setHorizontalAlignment('center');
   }
 }
 
@@ -5880,20 +7268,24 @@ function getAccessColumnCount_(accessType) {
     : ACCESS.employeeColumnCount;
 }
 
-function findOpenAccessRecordRow_(sheet, recordId) {
+function findOpenAccessRecordRow_(sheet, recordId, accessType) {
   const lastRow = sheet.getLastRow();
 
   if (lastRow < 2) {
     throw new Error('입장 중인 기록을 찾을 수 없습니다.');
   }
 
+  const isVisitor = accessType === 'visitor';
+  const firstColumn = isVisitor ? 12 : 1;
+  const readWidth = isVisitor ? 2 : 5;
+  const statusIndex = isVisitor ? 1 : 4;
   const values = sheet
-    .getRange(2, 1, lastRow - 1, 5)
+    .getRange(2, firstColumn, lastRow - 1, readWidth)
     .getDisplayValues();
   const matches = [];
 
   values.forEach(function (row, index) {
-    if (row[0] === recordId && row[4] === '입장중') {
+    if (row[0] === recordId && row[statusIndex] === '입장중') {
       matches.push(index + 2);
     }
   });
@@ -5923,23 +7315,32 @@ function listOpenAccessRecords_(sheet, accessType) {
 
   return values
     .filter(function (row) {
-      return String(row[4] || '') === '입장중';
+      return String(
+        row[accessType === 'visitor' ? 12 : 4] || ''
+      ) === '입장중';
     })
     .slice(-ACCESS.maxOpenRecords)
     .reverse()
     .map(function (row) {
       return {
-        recordId: String(row[0] || ''),
-        enteredAt: formatAccessDateTime_(row[2]),
+        recordId: String(
+          row[accessType === 'visitor' ? 11 : 0] || ''
+        ),
+        enteredAt: formatAccessDateTime_(
+          row[accessType === 'visitor' ? 6 : 2]
+        ),
         name: getAccessNameFromRow_(row, accessType),
         organization: accessType === 'visitor'
-          ? String(row[6] || '')
+          ? String(row[3] || '')
           : String(row[7] || ''),
         identifier: accessType === 'visitor'
-          ? '방문대상 ' + String(row[9] || '')
+          ? '방문대상 ' + String(row[8] || '')
           : String(row[5] || ''),
-        purpose: accessType === 'visitor'
+        hostName: accessType === 'visitor'
           ? String(row[8] || '')
+          : '',
+        purpose: accessType === 'visitor'
+          ? String(row[4] || '')
           : String(row[8] || ''),
       };
     });
@@ -5947,7 +7348,7 @@ function listOpenAccessRecords_(sheet, accessType) {
 
 function getAccessNameFromRow_(row, accessType) {
   return String(
-    accessType === 'visitor' ? row[5] : row[6]
+    accessType === 'visitor' ? row[2] : row[6]
   );
 }
 
@@ -6071,7 +7472,7 @@ function registerAssetCheckout(request) {
       MOVEMENT.columnCount
     );
     targetRange.setValues(values);
-    formatMovementRow_(system.ledger, row);
+    formatMovementRow_(system.ledger, row, true);
     SpreadsheetApp.flush();
 
     appendManagedLog_(system.log, {
@@ -6293,7 +7694,7 @@ function returnCheckedOutAsset(request) {
 function normalizeMovementPayload_(request) {
   const payload = {
     sheetName: cleanText_(request.sheetName, 100),
-    managementNumber: Number(request.managementNumber),
+    managementNumber: normalizeManagementNumber_(request.managementNumber),
     borrower: cleanText_(request.borrower, 80),
     department: cleanText_(request.department, 100),
     purpose: cleanText_(request.purpose, 200),
@@ -6305,10 +7706,6 @@ function normalizeMovementPayload_(request) {
 
   if (!payload.sheetName) {
     throw new Error('자산 시트를 선택하세요.');
-  }
-  if (!Number.isInteger(payload.managementNumber) ||
-      payload.managementNumber < 1) {
-    throw new Error('관리번호를 정확히 입력하세요.');
   }
   ['borrower', 'department', 'purpose', 'destination',
     'expectedReturnDate', 'handler'].forEach(function (key) {
@@ -6328,8 +7725,15 @@ function ensureMovementSystem_() {
     MOVEMENT.spreadsheetName,
     MOVEMENT.spreadsheetPropertyKey
   );
+  const logSpreadsheet = openManagedSpreadsheetFast_(
+    MOVEMENT.logSpreadsheetName,
+    MOVEMENT.logSpreadsheetPropertyKey
+  );
   let ledger = spreadsheet.getSheetByName(MOVEMENT.sheetName);
-  let log = spreadsheet.getSheetByName(MOVEMENT.logSheetName);
+  let log = logSpreadsheet.getSheetByName(MOVEMENT.logSheetName);
+
+  spreadsheet.setSpreadsheetTimeZone(APP.timeZone);
+  logSpreadsheet.setSpreadsheetTimeZone(APP.timeZone);
 
   if (!ledger) {
     const sheets = spreadsheet.getSheets();
@@ -6355,11 +7759,22 @@ function ensureMovementSystem_() {
   ledger.getRange(1, 13).setValue('신청·반출처리자');
 
   if (!log) {
-    log = spreadsheet.insertSheet(MOVEMENT.logSheetName);
+    const sheets = logSpreadsheet.getSheets();
+    if (sheets.length === 1 && sheets[0].getLastRow() === 0) {
+      log = sheets[0];
+      log.setName(MOVEMENT.logSheetName);
+    } else {
+      log = logSpreadsheet.insertSheet(MOVEMENT.logSheetName);
+    }
   }
   ensureManagedLogSheet_(log, '물품 반출입 변경 불가 로그');
 
-  return { spreadsheet: spreadsheet, ledger: ledger, log: log };
+  return {
+    spreadsheet: spreadsheet,
+    ledger: ledger,
+    logSpreadsheet: logSpreadsheet,
+    log: log,
+  };
 }
 
 function listOpenMovementRecords_(sheet) {
@@ -6432,7 +7847,8 @@ function findOpenMovementByAsset_(sheet, sheetName, managementNumber) {
       String(entry.values[11] || '')
     ) >= 0 &&
       String(entry.values[1] || '') === sheetName &&
-      Number(entry.values[2]) === Number(managementNumber);
+      String(entry.values[2] || '').toUpperCase() ===
+        String(managementNumber || '').toUpperCase();
   });
 
   if (matches.length > 1) {
@@ -6481,7 +7897,10 @@ function readMovementRows_(sheet) {
     });
 }
 
-function formatMovementRow_(sheet, row) {
+function formatMovementRow_(sheet, row, isNew) {
+  applyLedgerRowLayout_(
+    sheet, row, 1, 2, isNew ? MOVEMENT.columnCount : 0
+  );
   sheet.getRange(row, 1, 1, MOVEMENT.columnCount)
     .setVerticalAlignment('middle')
     .setBorder(
@@ -6508,6 +7927,12 @@ function getInfoAssetConfig(adminToken) {
         '소프트웨어·라이선스', '클라우드·SaaS',
         '계정·권한', '데이터·문서', '기타',
       ],
+      departments: [
+        '고색연구소', '화성1공장',
+        '화성2공장', '화성2공장(조립실)',
+      ],
+      defaultDepartment: session.department || '',
+      managerOptionsByDepartment: getAssetManagerOptionsBySite_(),
       securityClasses: INFO_ASSET.securityClasses.slice(),
       statuses: ['사용중', '예비', '점검중', '폐기예정', '폐기'],
       records: userRole === 'admin'
@@ -6534,29 +7959,49 @@ function registerInfoAsset(request) {
     lock.waitLock(30000);
     hasLock = true;
     const payload = normalizeInfoAssetPayload_(source);
+    if (!payload.department) {
+      payload.department = cleanText_(session.department, 100);
+    }
+    if (!payload.department) {
+      throw new Error('등록자의 사업장·부서 정보를 확인하세요.');
+    }
+    validateInfoAssetOwner_(payload);
     const system = ensureInfoAssetSystem_();
-    const assetId = getNextInfoAssetId_(system.ledger);
+    const assetId = getNextInfoAssetId_(
+      system.ledger,
+      payload.department
+    );
     const now = new Date();
-    const row = system.ledger.getLastRow() + 1;
+    const row = Math.max(
+      system.ledger.getLastRow() + 1,
+      INFO_ASSET.firstDataRow
+    );
+    const departmentCode = getDepartmentCode_(payload.department);
     const values = [[
       assetId,
       payload.category,
+      payload.securityClass,
+      '정보자산 (S)',
+      payload.department,
+      departmentCode,
       payload.assetName,
+      payload.quantity,
       payload.provider,
       payload.modelVersion,
-      payload.identifier,
+      payload.serialNumber,
+      payload.purchasePlace,
+      payload.amount,
+      payload.purchaseDate,
       payload.owner,
-      payload.department,
+      payload.user,
       payload.location,
-      payload.securityClass,
       payload.status,
       payload.introducedDate,
       payload.expiryDate,
-      payload.networkIdentifier,
       payload.personalData,
+      now,
+      now,
       payload.remarks,
-      now,
-      now,
     ]];
 
     targetRange = system.ledger.getRange(
@@ -6566,7 +8011,9 @@ function registerInfoAsset(request) {
       INFO_ASSET.columnCount
     );
     targetRange.setValues(values);
+    copyInfoAssetRowFormat_(system.ledger, row);
     formatInfoAssetRow_(system.ledger, row);
+    syncInformationDepartmentSheets_(system.spreadsheet, system.ledger);
     SpreadsheetApp.flush();
 
     appendManagedLog_(system.log, {
@@ -6588,7 +8035,11 @@ function registerInfoAsset(request) {
   } catch (error) {
     if (targetRange) {
       try {
-        targetRange.clearContent();
+        clearInfoAssetDataRangeByColumn_(
+          targetRange.getSheet(),
+          targetRange.getRow(),
+          targetRange.getNumRows()
+        );
       } catch (rollbackError) {
         console.error(rollbackError);
       }
@@ -6629,30 +8080,44 @@ function updateInfoAsset(request) {
       INFO_ASSET.columnCount
     );
     originalValues = targetRange.getValues();
-    const createdAt = originalValues[0][16] || new Date();
+    if (!payload.department) {
+      payload.department = String(
+        originalValues[0][INFO_ASSET_COL.department - 1] || ''
+      );
+    }
+    validateInfoAssetOwner_(payload);
+    const createdAt = originalValues[0][INFO_ASSET_COL.registeredAt - 1] || new Date();
     const now = new Date();
+    const departmentCode = getDepartmentCode_(payload.department);
     const values = [[
       assetId,
       payload.category,
+      payload.securityClass,
+      '정보자산 (S)',
+      payload.department,
+      departmentCode,
       payload.assetName,
+      payload.quantity,
       payload.provider,
       payload.modelVersion,
-      payload.identifier,
+      payload.serialNumber,
+      payload.purchasePlace,
+      payload.amount,
+      payload.purchaseDate,
       payload.owner,
-      payload.department,
+      payload.user,
       payload.location,
-      payload.securityClass,
       payload.status,
       payload.introducedDate,
       payload.expiryDate,
-      payload.networkIdentifier,
       payload.personalData,
-      payload.remarks,
       createdAt,
       now,
+      payload.remarks,
     ]];
     targetRange.setValues(values);
     formatInfoAssetRow_(system.ledger, row);
+    syncInformationDepartmentSheets_(system.spreadsheet, system.ledger);
     SpreadsheetApp.flush();
     appendManagedLog_(system.log, {
       actor: session.actorName,
@@ -6690,19 +8155,24 @@ function updateInfoAsset(request) {
 }
 
 function findInfoAssetRow_(sheet, assetId) {
-  if (!/^IA-\d+$/.test(assetId)) {
+  if (!/^GNS-S-(L|F1|F2|F2-A)-\d{3}$/.test(assetId)) {
     throw new Error('올바른 정보자산 ID를 입력하세요.');
   }
   const lastRow = sheet.getLastRow();
-  if (lastRow < 2) {
+  if (lastRow < INFO_ASSET.firstDataRow) {
     throw new Error('정보자산을 찾을 수 없습니다.');
   }
-  const values = sheet.getRange(2, 1, lastRow - 1, 1)
+  const values = sheet.getRange(
+    INFO_ASSET.firstDataRow,
+    1,
+    lastRow - INFO_ASSET.firstDataRow + 1,
+    1
+  )
     .getDisplayValues();
   const matches = [];
   values.forEach(function (row, index) {
     if (String(row[0] || '').toUpperCase() === assetId) {
-      matches.push(index + 2);
+      matches.push(index + INFO_ASSET.firstDataRow);
     }
   });
   if (matches.length !== 1) {
@@ -6718,32 +8188,39 @@ function normalizeInfoAssetPayload_(request) {
   const payload = {
     category: cleanText_(request.category, 80),
     assetName: cleanText_(request.assetName, 150),
+    quantity: cleanText_(request.quantity, 30) || '1EA',
     provider: cleanText_(request.provider, 150),
+    purchasePlace: cleanText_(request.purchasePlace, 150),
+    amount: cleanText_(request.amount, 50),
+    purchaseDate: cleanText_(request.purchaseDate, 20),
     modelVersion: cleanText_(request.modelVersion, 150),
-    identifier: cleanText_(request.identifier, 150),
+    serialNumber: cleanText_(request.serialNumber, 120),
     owner: cleanText_(request.owner, 80),
+    user: cleanText_(request.user, 80),
     department: cleanText_(request.department, 100),
     location: cleanText_(request.location, 250),
     securityClass: cleanText_(request.securityClass, 30),
     status: cleanText_(request.status, 30),
     introducedDate: cleanText_(request.introducedDate, 20),
     expiryDate: cleanText_(request.expiryDate, 20),
-    networkIdentifier: cleanText_(request.networkIdentifier, 150),
     personalData: cleanText_(request.personalData, 20),
     remarks: cleanText_(request.remarks, 500),
   };
 
-  ['category', 'assetName', 'owner', 'department',
-    'securityClass', 'status'].forEach(function (key) {
-    if (!payload[key]) {
-      throw new Error('정보자산 필수항목을 모두 입력하세요.');
-    }
-  });
-  if (INFO_ASSET.securityClasses.indexOf(payload.securityClass) === -1) {
+  if (payload.securityClass &&
+      INFO_ASSET.securityClasses.indexOf(payload.securityClass) === -1) {
     throw new Error('보안등급은 공개·사내한·대외비·고객기밀 중에서 선택하세요.');
   }
+  validateInfoAssetOwner_(payload);
 
   return payload;
+}
+
+function validateInfoAssetOwner_(payload) {
+  if (payload.owner && payload.department &&
+      getAssetManagerOptions_(payload.department).indexOf(payload.owner) === -1) {
+    throw new Error('선택한 사업장·부서의 담당자 목록에서 선택하세요.');
+  }
 }
 
 function ensureInfoAssetSystem_() {
@@ -6752,7 +8229,18 @@ function ensureInfoAssetSystem_() {
     INFO_ASSET.spreadsheetPropertyKey
   );
   let ledger = spreadsheet.getSheetByName(INFO_ASSET.sheetName);
-  let log = spreadsheet.getSheetByName(INFO_ASSET.logSheetName);
+  const logSpreadsheet = openManagedSpreadsheetFast_(
+    INFO_ASSET.logSpreadsheetName,
+    INFO_ASSET.logSpreadsheetPropertyKey
+  );
+  let log = logSpreadsheet.getSheetByName(INFO_ASSET.logSheetName);
+
+  if (spreadsheet.getSpreadsheetTimeZone() !== APP.timeZone) {
+    spreadsheet.setSpreadsheetTimeZone(APP.timeZone);
+  }
+  if (logSpreadsheet.getSpreadsheetTimeZone() !== APP.timeZone) {
+    logSpreadsheet.setSpreadsheetTimeZone(APP.timeZone);
+  }
 
   if (!ledger) {
     const sheets = spreadsheet.getSheets();
@@ -6764,80 +8252,252 @@ function ensureInfoAssetSystem_() {
     }
   }
   if (ledger.getLastRow() === 0) {
-    ledger.getRange(1, 1, 1, INFO_ASSET.columnCount)
-      .setValues([[
-        '자산ID', '분류', '자산명', '제조사·서비스',
-        '모델·버전', '식별번호', '담당자', '부서',
-        '위치·접속주소', '보안등급', '상태', '도입일',
-        '만료일', 'IP·MAC', '개인정보포함', '비고',
-        '등록시각', '최종수정시각',
-      ]]);
-    styleManagedHeader_(ledger, INFO_ASSET.columnCount, '#DDD5F5');
+    ledger.getRange(INFO_ASSET.headerRow, 1, 1, INFO_ASSET.columnCount)
+      .setValues([INFO_ASSET_HEADERS.slice()]);
+    ledger.getRange(INFO_ASSET.headerRow, 1, 1, INFO_ASSET.columnCount)
+      .setFontWeight('bold').setBackground('#6D5BD0').setFontColor('#FFFFFF');
     protectSheetForHumans_(ledger, '정보자산 프로그램 전용 기록');
   }
 
   if (!log) {
-    log = spreadsheet.insertSheet(INFO_ASSET.logSheetName);
+    const sheets = logSpreadsheet.getSheets();
+    if (sheets.length === 1 && sheets[0].getLastRow() === 0) {
+      log = sheets[0];
+      log.setName(INFO_ASSET.logSheetName);
+    } else {
+      log = logSpreadsheet.insertSheet(INFO_ASSET.logSheetName);
+    }
   }
   ensureManagedLogSheet_(log, '정보자산 변경 불가 로그');
+  ensureInfoAssetLeanSchema_(spreadsheet, ledger, log);
   ensureInfoAssetSecurityClasses_(spreadsheet, ledger, log);
+  ensureInfoAssetFreeTextLocation_(spreadsheet, ledger);
 
-  return { spreadsheet: spreadsheet, ledger: ledger, log: log };
+  return {
+    spreadsheet: spreadsheet,
+    ledger: ledger,
+    logSpreadsheet: logSpreadsheet,
+    log: log,
+  };
 }
 
-function ensureInfoAssetSecurityClasses_(spreadsheet, ledger, log) {
+function ensureInfoAssetLeanSchema_(spreadsheet, ledger, log) {
   const properties = PropertiesService.getScriptProperties();
-  const propertyKey = 'INFO_SECURITY_CLASS_V2_' + spreadsheet.getId();
+  const propertyKey = 'INFO_ASSET_SCHEMA_V4_' + spreadsheet.getId();
   if (properties.getProperty(propertyKey) === '1') return;
-  const lastRow = ledger.getLastRow();
-  let migratedCount = 0;
-  if (lastRow >= 2) {
-    const range = ledger.getRange(2, 10, lastRow - 1, 1);
-    const values = range.getValues().map(function (row) {
-      const current = String(row[0] || '').trim();
-      if (current === '사내') {
-        migratedCount += 1;
-        return ['사내한'];
-      }
-      if (current === '기밀') {
-        migratedCount += 1;
-        return ['고객기밀'];
-      }
-      return [current];
+  const targetSheets = [ledger].concat(
+    ['L-정보', 'F1-정보', 'F2-정보', 'F2-A-정보']
+      .map(function (sheetName) {
+        return spreadsheet.getSheetByName(sheetName);
+      })
+      .filter(Boolean)
+  );
+  const changedSheets = [];
+
+  targetSheets.forEach(function (targetSheet) {
+    const headerWidth = Math.min(
+      Math.max(targetSheet.getLastColumn(), 1),
+      targetSheet.getMaxColumns()
+    );
+    const headers = targetSheet.getRange(
+      INFO_ASSET.headerRow,
+      1,
+      1,
+      headerWidth
+    ).getDisplayValues()[0].map(function (value) {
+      return String(value || '').trim();
     });
-    range.setValues(values);
-  }
-  const validation = SpreadsheetApp.newDataValidation()
-    .requireValueInList(INFO_ASSET.securityClasses.slice(), true)
-    .setAllowInvalid(false)
-    .setHelpText('공개·사내한·대외비·고객기밀 중에서 선택하세요.')
-    .build();
-  ledger.getRange(2, 10, Math.max(ledger.getMaxRows() - 1, 1), 1)
-    .setDataValidation(validation);
-  ledger.getRange(1, 10)
-    .setNote('허용값: 공개 / 사내한 / 대외비 / 고객기밀');
-  if (migratedCount > 0) {
+    const schemaIsCurrent = headers.slice(0, INFO_ASSET.columnCount)
+      .join('|') === INFO_ASSET_HEADERS.join('|');
+    const lastRow = Math.max(
+      targetSheet.getLastRow(), INFO_ASSET.firstDataRow - 1
+    );
+    let migrated = [];
+    if (!schemaIsCurrent && lastRow >= INFO_ASSET.firstDataRow) {
+      const dataRowCount = lastRow - INFO_ASSET.firstDataRow + 1;
+      const values = targetSheet.getRange(
+        INFO_ASSET.firstDataRow, 1, dataRowCount, headerWidth
+      ).getValues();
+      const headerIndexes = {};
+      headers.forEach(function (header, index) {
+        if (header && headerIndexes[header] == null) headerIndexes[header] = index;
+      });
+      migrated = values.map(function (row) {
+        return INFO_ASSET_HEADERS.map(function (header) {
+          if (header === 'S/N' && headerIndexes[header] == null) return '';
+          const sourceIndex = headerIndexes[header];
+          return sourceIndex == null ? '' : row[sourceIndex];
+        });
+      });
+    }
+    if (targetSheet.getMaxColumns() < INFO_ASSET.columnCount) {
+      targetSheet.insertColumnsAfter(
+        targetSheet.getMaxColumns(),
+        INFO_ASSET.columnCount - targetSheet.getMaxColumns()
+      );
+    }
+    targetSheet.getRange(
+      INFO_ASSET.headerRow,
+      1,
+      1,
+      INFO_ASSET.columnCount
+    ).setValues([INFO_ASSET_HEADERS.slice()]);
+    if (!schemaIsCurrent && migrated.length) {
+      targetSheet.getRange(
+        INFO_ASSET.firstDataRow,
+        1,
+        migrated.length,
+        INFO_ASSET.columnCount
+      ).setValues(migrated);
+    }
+    formatInfoAssetLedger_(targetSheet, lastRow);
+    if (!schemaIsCurrent) changedSheets.push(targetSheet.getName());
+  });
+
+  if (changedSheets.length) {
     appendManagedLog_(log, {
       actor: '시스템',
-      eventType: '보안등급체계변경',
-      recordId: 'INFO-CLASS-V2',
+      eventType: '정보자산항목정리',
+      recordId: 'INFO-SCHEMA-V4',
       target: INFO_ASSET.sheetName,
       details: {
-        migratedCount: migratedCount,
-        securityClasses: INFO_ASSET.securityClasses.slice(),
+        addedField: 'S/N',
+        finalField: '비고',
+        leadingFields: ['자산분류', '보안등급', '자산구분'],
+        sheets: changedSheets,
       },
     });
   }
   properties.setProperty(propertyKey, '1');
 }
 
+function ensureInfoAssetSecurityClasses_(spreadsheet, ledger, log) {
+  const properties = PropertiesService.getScriptProperties();
+  const propertyKey = 'INFO_SECURITY_CLASS_V7_' + spreadsheet.getId();
+  if (properties.getProperty(propertyKey) === '1') return;
+  let migratedCount = 0;
+  const validation = SpreadsheetApp.newDataValidation()
+    .requireValueInList(INFO_ASSET.securityClasses.slice(), true)
+    .setAllowInvalid(false)
+    .setHelpText('공개·사내한·대외비·고객기밀 중에서 선택하세요.')
+    .build();
+
+  const targetSheets = [ledger].concat(
+    ['L-정보', 'F1-정보', 'F2-정보', 'F2-A-정보']
+      .map(function (sheetName) {
+        return spreadsheet.getSheetByName(sheetName);
+      })
+      .filter(Boolean)
+  );
+
+  targetSheets.forEach(function (targetSheet) {
+    const lastRow = targetSheet.getLastRow();
+    const validationRange = targetSheet.getRange(
+      INFO_ASSET.firstDataRow,
+      INFO_ASSET_COL.securityClass,
+      Math.max(targetSheet.getMaxRows() - INFO_ASSET.firstDataRow + 1, 1),
+      1
+    );
+    // 기존 목록 검증이 새 등급값 쓰기를 막지 않도록 먼저 해제한 뒤
+    // 값을 이관하고 최종 검증 규칙을 다시 적용한다.
+    validationRange.clearDataValidations();
+    if (lastRow >= INFO_ASSET.firstDataRow) {
+      const range = targetSheet.getRange(
+        INFO_ASSET.firstDataRow,
+        INFO_ASSET_COL.securityClass,
+        lastRow - INFO_ASSET.firstDataRow + 1,
+        1
+      );
+      const values = range.getValues().map(function (row) {
+        const current = String(row[0] || '').trim();
+        if (current === '일반') {
+          migratedCount += 1;
+          return ['공개'];
+        }
+        if (current === '사내') {
+          migratedCount += 1;
+          return ['사내한'];
+        }
+        if (current === '기밀' || current === '중요기밀') {
+          migratedCount += 1;
+          return ['고객기밀'];
+        }
+        return [current];
+      });
+      range.setValues(values);
+    }
+    validationRange.setDataValidation(validation);
+    targetSheet.getRange(INFO_ASSET.headerRow, INFO_ASSET_COL.securityClass)
+      .setValue('보안등급')
+      .setNote('허용값: 공개 / 사내한 / 대외비 / 고객기밀');
+    if (lastRow >= INFO_ASSET.firstDataRow) {
+      for (let row = INFO_ASSET.firstDataRow; row <= lastRow; row += 1) {
+        formatInfoSecurityClassCell_(targetSheet, row);
+      }
+    }
+  });
+
+  if (migratedCount > 0) {
+    appendManagedLog_(log, {
+      actor: '시스템',
+      eventType: '보안등급체계변경',
+      recordId: 'INFO-CLASS-V4',
+      target: INFO_ASSET.sheetName,
+      details: {
+        migratedCount: migratedCount,
+        securityClasses: INFO_ASSET.securityClasses.slice(),
+        sheets: targetSheets.map(function (targetSheet) {
+          return targetSheet.getName();
+        }),
+      },
+    });
+  }
+  properties.setProperty(propertyKey, '1');
+}
+
+function ensureInfoAssetFreeTextLocation_(spreadsheet, ledger) {
+  const properties = PropertiesService.getScriptProperties();
+  const propertyKey = 'INFO_LOCATION_FREE_TEXT_V1_' + spreadsheet.getId();
+  if (properties.getProperty(propertyKey) === '1') return;
+  const targetSheets = [ledger].concat(
+    ['L-정보', 'F1-정보', 'F2-정보', 'F2-A-정보']
+      .map(function (sheetName) {
+        return spreadsheet.getSheetByName(sheetName);
+      })
+      .filter(Boolean)
+  );
+  targetSheets.forEach(function (targetSheet) {
+    targetSheet.getRange(
+      INFO_ASSET.firstDataRow,
+      INFO_ASSET_COL.location,
+      Math.max(targetSheet.getMaxRows() - INFO_ASSET.firstDataRow + 1, 1),
+      1
+    ).clearDataValidations();
+    const lastRow = targetSheet.getLastRow();
+    if (lastRow >= INFO_ASSET.firstDataRow) {
+      targetSheet.getRange(
+        INFO_ASSET.firstDataRow,
+        INFO_ASSET_COL.location,
+        lastRow - INFO_ASSET.firstDataRow + 1,
+        1
+      ).setBackground('#EAF6F3');
+    }
+  });
+  properties.setProperty(propertyKey, '1');
+}
+
 function listInfoAssets_(sheet) {
   const lastRow = sheet.getLastRow();
-  if (lastRow < 2) {
+  if (lastRow < INFO_ASSET.firstDataRow) {
     return [];
   }
 
-  return sheet.getRange(2, 1, lastRow - 1, INFO_ASSET.columnCount)
+  return sheet.getRange(
+    INFO_ASSET.firstDataRow,
+    1,
+    lastRow - INFO_ASSET.firstDataRow + 1,
+    INFO_ASSET.columnCount
+  )
     .getValues()
     .filter(function (row) {
       return String(row[0] || '') !== '';
@@ -6847,58 +8507,289 @@ function listInfoAssets_(sheet) {
     .map(function (row) {
       return {
         assetId: String(row[0] || ''),
-        category: String(row[1] || ''),
-        assetName: String(row[2] || ''),
-        provider: String(row[3] || ''),
-        modelVersion: String(row[4] || ''),
-        identifier: String(row[5] || ''),
-        owner: String(row[6] || ''),
-        department: String(row[7] || ''),
-        location: String(row[8] || ''),
-        securityClass: String(row[9] || ''),
-        status: String(row[10] || ''),
-        introducedDate: formatDateOnly_(row[11]),
-        expiryDate: formatDateOnly_(row[12]),
-        networkIdentifier: String(row[13] || ''),
-        personalData: String(row[14] || ''),
-        remarks: String(row[15] || ''),
+        assetType: String(row[INFO_ASSET_COL.assetType - 1] || ''),
+        category: String(row[INFO_ASSET_COL.category - 1] || ''),
+        assetName: String(row[INFO_ASSET_COL.assetName - 1] || ''),
+        provider: String(row[INFO_ASSET_COL.provider - 1] || ''),
+        modelVersion: String(row[INFO_ASSET_COL.modelVersion - 1] || ''),
+        serialNumber: String(row[INFO_ASSET_COL.serialNumber - 1] || ''),
+        owner: String(row[INFO_ASSET_COL.owner - 1] || ''),
+        user: String(row[INFO_ASSET_COL.user - 1] || ''),
+        department: String(row[INFO_ASSET_COL.department - 1] || ''),
+        departmentCode: String(row[INFO_ASSET_COL.departmentCode - 1] || ''),
+        quantity: String(row[INFO_ASSET_COL.quantity - 1] || ''),
+        purchasePlace: String(row[INFO_ASSET_COL.purchasePlace - 1] || ''),
+        amount: String(row[INFO_ASSET_COL.amount - 1] || ''),
+        purchaseDate: formatDateOnly_(row[INFO_ASSET_COL.purchaseDate - 1]),
+        location: String(row[INFO_ASSET_COL.location - 1] || ''),
+        securityClass: String(row[INFO_ASSET_COL.securityClass - 1] || ''),
+        status: String(row[INFO_ASSET_COL.status - 1] || ''),
+        introducedDate: formatDateOnly_(row[INFO_ASSET_COL.introducedDate - 1]),
+        expiryDate: formatDateOnly_(row[INFO_ASSET_COL.expiryDate - 1]),
+        personalData: String(row[INFO_ASSET_COL.personalData - 1] || ''),
+        remarks: String(row[INFO_ASSET_COL.remarks - 1] || ''),
+        registeredAt: formatDateTime_(row[INFO_ASSET_COL.registeredAt - 1]),
+        updatedAt: formatDateTime_(row[INFO_ASSET_COL.updatedAt - 1]),
       };
     });
 }
 
-function getNextInfoAssetId_(sheet) {
+function getNextInfoAssetId_(sheet, department) {
+  const code = getDepartmentCode_(department);
   const lastRow = sheet.getLastRow();
-  if (lastRow < 2) {
-    return 'IA-0001';
+  if (lastRow < INFO_ASSET.firstDataRow) {
+    return 'GNS-S-' + code + '-001';
   }
-  const values = sheet.getRange(2, 1, lastRow - 1, 1)
+  const values = sheet.getRange(
+    INFO_ASSET.firstDataRow,
+    1,
+    lastRow - INFO_ASSET.firstDataRow + 1,
+    1
+  )
     .getDisplayValues();
   const maxNumber = values.reduce(function (max, row) {
-    const match = String(row[0] || '').match(/^IA-(\d+)$/);
+    const match = String(row[0] || '').match(
+      new RegExp('^GNS-S-' + code.replace('-', '\\-') + '-(\\d{3})$')
+    );
     return match ? Math.max(max, Number(match[1])) : max;
   }, 0);
-  return 'IA-' + String(maxNumber + 1).padStart(4, '0');
+  return 'GNS-S-' + code + '-' + String(maxNumber + 1).padStart(3, '0');
 }
 
 function formatInfoAssetRow_(sheet, row) {
-  sheet.getRange(row, 1, 1, INFO_ASSET.columnCount)
+  applyLedgerRowLayout_(sheet, row, 1, INFO_ASSET.firstDataRow);
+  // Google Sheets의 표(Table) 안에서는 여러 열을 한 번에 서식 지정하면
+  // "단일 열에서 선택" 오류가 날 수 있어 열별로 적용한다.
+  for (let column = 1; column <= INFO_ASSET.columnCount; column += 1) {
+    sheet.getRange(row, column)
+      .setVerticalAlignment('middle')
+      .setBorder(
+        true, true, true, true, false, false,
+        '#000000',
+        SpreadsheetApp.BorderStyle.SOLID
+      );
+  }
+  sheet.getRange(row, INFO_ASSET_COL.registeredAt)
+    .setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  sheet.getRange(row, INFO_ASSET_COL.updatedAt)
+    .setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  sheet.getRange(row, INFO_ASSET_COL.location)
+    .clearDataValidations()
+    .setBackground('#EAF6F3');
+  formatCompactNumberCell_(sheet.getRange(row, INFO_ASSET_COL.amount));
+  formatInfoSecurityClassCell_(sheet, row);
+}
+
+function copyInfoAssetRowFormat_(sheet, row) {
+  const sourceRow = row > INFO_ASSET.firstDataRow
+    ? row - 1
+    : INFO_ASSET.firstDataRow;
+  for (let column = 1; column <= INFO_ASSET.columnCount; column += 1) {
+    if (sourceRow < row) {
+      sheet.getRange(sourceRow, column).copyTo(
+        sheet.getRange(row, column),
+        SpreadsheetApp.CopyPasteType.PASTE_FORMAT,
+        false
+      );
+    } else {
+      sheet.getRange(row, column)
+        .setBackground('#EAF6F5')
+        .setFontColor('#172033')
+        .setFontFamily('Malgun Gothic')
+        .setFontSize(10);
+    }
+  }
+}
+
+function formatInfoAssetLedger_(sheet, lastRow) {
+  const widths = [
+    140, 110, 100, 110, 125, 90, 200, 70, 180, 300, 150, 180,
+    100, 100, 100, 100, 300, 90, 110, 120, 120, 150, 150, 500,
+  ];
+  widths.forEach(function (width, index) {
+    sheet.setColumnWidth(index + 1, width);
+  });
+  sheet.setRowHeight(INFO_ASSET.headerRow, 42);
+  sheet.getRange(INFO_ASSET.headerRow, 1, 1, INFO_ASSET.columnCount)
+    .setBackground('#6D5BD0')
+    .setFontColor('#FFFFFF')
+    .setFontFamily('Malgun Gothic')
+    .setFontSize(10)
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center')
     .setVerticalAlignment('middle')
-    .setBorder(
-      true, true, true, true, true, true,
-      '#000000',
-      SpreadsheetApp.BorderStyle.SOLID
-    );
-  sheet.getRange(row, 17, 1, 2).setNumberFormat(
-    'yyyy-mm-dd hh:mm:ss'
+    .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP)
+    .setBorder(true, true, true, true, true, true,
+      '#FFFFFF', SpreadsheetApp.BorderStyle.SOLID);
+  const dataRowCount = Math.max(lastRow - INFO_ASSET.firstDataRow + 1, 0);
+  if (!dataRowCount) return;
+  sheet.setRowHeights(INFO_ASSET.firstDataRow, dataRowCount, 30);
+  for (let row = INFO_ASSET.firstDataRow; row <= lastRow; row += 1) {
+    formatInfoAssetRow_(sheet, row);
+  }
+  [7, 9, 10, 11, 12, 17, 24].forEach(function (column) {
+    sheet.getRange(INFO_ASSET.firstDataRow, column, dataRowCount, 1)
+      .setHorizontalAlignment('left');
+  });
+  formatCompactNumberColumn_(
+    sheet,
+    INFO_ASSET.firstDataRow,
+    dataRowCount,
+    INFO_ASSET_COL.amount
   );
+}
+
+function formatCompactNumberColumn_(sheet, startRow, rowCount, column) {
+  if (!rowCount) return;
+  const values = sheet.getRange(startRow, column, rowCount, 1).getValues();
+  const integerRanges = [];
+  const decimalRanges = [];
+  values.forEach(function (row, index) {
+    const value = Number(
+      String(row[0] == null ? '' : row[0]).replace(/,/g, '')
+    );
+    if (!Number.isFinite(value)) return;
+    const a1 = sheet.getRange(startRow + index, column).getA1Notation();
+    (Number.isInteger(value) ? integerRanges : decimalRanges).push(a1);
+  });
+  if (integerRanges.length) {
+    sheet.getRangeList(integerRanges).setNumberFormat('#,##0');
+  }
+  if (decimalRanges.length) {
+    sheet.getRangeList(decimalRanges).setNumberFormat('#,##0.###');
+  }
+  sheet.getRange(startRow, column, rowCount, 1)
+    .setHorizontalAlignment('right');
+}
+
+function formatCompactNumberCell_(range) {
+  const raw = range.getValue();
+  const value = Number(String(raw == null ? '' : raw).replace(/,/g, ''));
+  if (Number.isFinite(value)) {
+    range.setNumberFormat(Number.isInteger(value) ? '#,##0' : '#,##0.###');
+  }
+  range.setHorizontalAlignment('right');
+}
+
+function clearInfoAssetDataRangeByColumn_(sheet, startRow, rowCount) {
+  if (rowCount < 1) return;
+  for (let column = 1; column <= INFO_ASSET.columnCount; column += 1) {
+    sheet.getRange(startRow, column, rowCount, 1).clearContent();
+  }
+}
+
+function formatInfoSecurityClassCell_(sheet, row) {
+  const cell = sheet.getRange(row, INFO_ASSET_COL.securityClass);
+  const securityClass = String(cell.getDisplayValue() || '').trim();
+  const styles = {
+    '공개': ['#E7F4EA', '#245E36'],
+    '사내한': ['#FFF6D8', '#735C00'],
+    '대외비': ['#FCE8D5', '#8A4B08'],
+    '고객기밀': ['#FDE2E2', '#9B1C1C'],
+  };
+  if (!styles[securityClass]) return;
+  cell.setBackground(styles[securityClass][0])
+    .setFontColor(styles[securityClass][1])
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center');
+}
+
+function getDepartmentCode_(department) {
+  const normalized = String(department || '').replace(/\s/g, '');
+  const map = {
+    '고색연구소': 'L',
+    '화성1공장': 'F1',
+    '화성2공장': 'F2',
+    '화성2공장조립실': 'F2-A',
+    '화성2공장(조립실)': 'F2-A',
+  };
+  if (!map[normalized]) {
+    throw new Error('정보자산 부서코드를 확인하세요.');
+  }
+  return map[normalized];
+}
+
+function syncInformationDepartmentSheets_(spreadsheet, ledger) {
+  const lastRow = Math.max(
+    ledger.getLastRow(),
+    INFO_ASSET.firstDataRow - 1
+  );
+  const rows = lastRow >= INFO_ASSET.firstDataRow
+    ? ledger.getRange(
+        INFO_ASSET.firstDataRow,
+        1,
+        lastRow - INFO_ASSET.firstDataRow + 1,
+        INFO_ASSET.columnCount
+      ).getValues().map(function (values, index) {
+        return {
+          values: values,
+          sourceRow: INFO_ASSET.firstDataRow + index,
+        };
+      }).filter(function (entry) {
+        return String(entry.values[0] || '').trim() !== '';
+      })
+    : [];
+  ['L', 'F1', 'F2', 'F2-A'].forEach(function (code) {
+    const target = spreadsheet.getSheetByName(code + '-정보');
+    if (!target) return;
+    const currentLastRow = Math.max(
+      target.getLastRow(),
+      INFO_ASSET.firstDataRow
+    );
+    clearInfoAssetDataRangeByColumn_(
+      target,
+      INFO_ASSET.firstDataRow,
+      currentLastRow - INFO_ASSET.firstDataRow + 1
+    );
+    const departmentRows = rows.filter(function (entry) {
+      return String(entry.values[INFO_ASSET_COL.departmentCode - 1] || '') === code;
+    });
+    if (departmentRows.length) {
+      target.getRange(
+        INFO_ASSET.firstDataRow,
+        1,
+        departmentRows.length,
+        INFO_ASSET.columnCount
+      ).setValues(departmentRows.map(function (entry) { return entry.values; }));
+      departmentRows.forEach(function (entry, index) {
+        for (
+          let column = 1;
+          column <= INFO_ASSET.columnCount;
+          column += 1
+        ) {
+          ledger.getRange(entry.sourceRow, column).copyTo(
+            target.getRange(
+              INFO_ASSET.firstDataRow + index,
+              column
+            ),
+            SpreadsheetApp.CopyPasteType.PASTE_FORMAT,
+            false
+          );
+        }
+      });
+      applyLedgerRowLayout_(
+        target, INFO_ASSET.firstDataRow, departmentRows.length,
+        INFO_ASSET.firstDataRow
+      );
+    }
+  });
 }
 
 function openManagedSpreadsheetFast_(name, propertyKey) {
   const properties = PropertiesService.getScriptProperties();
-  const configuredId = properties.getProperty(propertyKey);
+  let configuredId = properties.getProperty(propertyKey);
+  const pinnedId = MANAGED_SPREADSHEET_IDS[propertyKey];
+  if (pinnedId && configuredId !== pinnedId) {
+    configuredId = pinnedId;
+    properties.setProperty(propertyKey, pinnedId);
+  }
 
   if (configuredId) {
     try {
+      const configuredFile = DriveApp.getFileById(configuredId);
+      if (configuredFile.isTrashed() || configuredFile.getName() !== name) {
+        throw new Error('관리 파일 연결이 오래되었습니다.');
+      }
       return SpreadsheetApp.openById(configuredId);
     } catch (error) {
       properties.deleteProperty(propertyKey);
@@ -6912,6 +8803,32 @@ function openManagedSpreadsheetFast_(name, propertyKey) {
     name,
     propertyKey
   );
+}
+
+// PASTE_FORMAT에는 행 높이가 포함되지 않는다. 쓰는 행에만 대장 본문
+// 첫 행의 높이를 적용하고, 새 행은 필요한 경우 본문 서식만 상속한다.
+// 값·수식·유효성 검사·열 너비는 변경하지 않으며 제목 행은 참조하지 않는다.
+function applyLedgerRowLayout_(
+  sheet, startRow, rowCount, firstDataRow, columnCount
+) {
+  if (rowCount < 1) return;
+  if (startRow < firstDataRow || firstDataRow < 2) {
+    throw new Error('대장 본문 행 범위를 확인하세요.');
+  }
+  const templateHeight = Number(sheet.getRowHeight(firstDataRow));
+  const rowHeight = Number.isFinite(templateHeight) && templateHeight > 0
+    ? templateHeight
+    : 30;
+  if (columnCount > 0) {
+    const copyStartRow = Math.max(startRow, firstDataRow + 1);
+    const endRow = startRow + rowCount - 1;
+    if (copyStartRow <= endRow) {
+      sheet.getRange(firstDataRow, 1, 1, columnCount).copyFormatToRange(
+        sheet, 1, columnCount, copyStartRow, endRow
+      );
+    }
+  }
+  sheet.setRowHeights(startRow, rowCount, rowHeight);
 }
 
 function styleManagedHeader_(sheet, columnCount, background) {
@@ -6931,48 +8848,42 @@ function styleManagedHeader_(sheet, columnCount, background) {
 
 function ensureManagedLogSheet_(sheet, description) {
   if (sheet.getLastRow() === 0) {
-    sheet.getRange(1, 1, 1, 10).setValues([[
-      '로그ID', '처리시각', '처리자', '처리유형',
-      '기록ID', '대상', '상세내용', '이전해시',
-      '현재해시', '비고',
+    sheet.getRange(1, 1, 1, 11).setValues([[
+      '처리일시', '처리자', '업무', '대상번호', '대상',
+      '처리유형', '처리내용', '결과', '사유·비고',
+      '변경 전', '변경 후',
     ]]);
-    styleManagedHeader_(sheet, 10, '#E8EAED');
+    styleManagedHeader_(sheet, 11, '#16324F');
+    sheet.getRange(1, 1, 1, 11).setFontColor('#FFFFFF');
     protectSheetForHumans_(sheet, description);
   }
 }
 
 function appendManagedLog_(sheet, event) {
-  const row = sheet.getLastRow() + 1;
-  const processedAt = new Date();
-  const previousHash = row > 2
-    ? String(sheet.getRange(row - 1, 9).getValue() || '')
-    : '';
-  const logId = Utilities.getUuid();
-  const details = JSON.stringify(event.details || {});
-  const currentHash = computeAuditHash_({
-    logId: logId,
-    processedAt: formatAccessDateTime_(processedAt),
-    actor: event.actor,
-    eventType: event.eventType,
-    recordId: event.recordId,
-    target: event.target,
-    details: details,
-    previousHash: previousHash,
+  const eventType = String(event.eventType || '업무 처리');
+  const details = event.details || {};
+  const business = eventType.indexOf('정보자산') !== -1
+    ? '정보자산'
+    : eventType.indexOf('반출') !== -1 || eventType.indexOf('반입') !== -1
+      ? '물품 반출입'
+      : '업무 관리';
+  const result = eventType.indexOf('반려') !== -1
+    ? '반려'
+    : eventType.indexOf('삭제') !== -1
+      ? '삭제 완료'
+      : '처리 완료';
+  appendReadableAuditLog_(sheet, {
+    actor: event.actor || '시스템',
+    business: business,
+    recordId: event.recordId || '',
+    target: event.target || '',
+    action: eventType,
+    summary: readableAuditSummary_(eventType, details),
+    result: result,
+    reason: details.reason || details.note || '',
+    beforeText: readableAuditValue_(details.before),
+    afterText: readableAuditValue_(details.after),
   });
-
-  sheet.getRange(row, 1, 1, 10).setValues([[
-    logId,
-    processedAt,
-    event.actor,
-    event.eventType,
-    event.recordId,
-    event.target,
-    details,
-    previousHash,
-    currentHash,
-    '',
-  ]]);
-  sheet.getRange(row, 2).setNumberFormat('yyyy-mm-dd hh:mm:ss');
   SpreadsheetApp.flush();
 }
 
@@ -6983,99 +8894,102 @@ function formatDateOnly_(value) {
   return String(value || '');
 }
 
+function formatDateTime_(value) {
+  if (!value) return '';
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, APP.timeZone, 'yyyy-MM-dd HH:mm:ss');
+  }
+  return String(value || '');
+}
+
 function appendAccessAuditLogBatch_(audit, events) {
   if (!events || !events.length) {
     return;
   }
-
-  const sheet = audit.sheet;
-  const startRow = sheet.getLastRow() + 1;
-  let previousHash = startRow > 2
-    ? String(sheet.getRange(startRow - 1, 10).getValue() || '')
-    : '';
-  const rows = events.map(function (event) {
-    const processedAt = new Date();
-    const logId = Utilities.getUuid();
-    const details = JSON.stringify(event.details || {});
-    const canonical = {
-      logId: logId,
-      processedAt: formatAccessDateTime_(processedAt),
-      author: event.author,
-      eventType: event.eventType,
-      accessType: event.accessType,
-      recordId: event.recordId,
-      name: event.name,
-      details: details,
-      previousHash: previousHash,
-    };
-    const currentHash = computeAuditHash_(canonical);
-    const row = [
-      logId,
-      processedAt,
-      event.author,
-      event.eventType,
-      getAccessTypeLabel_(event.accessType),
-      event.recordId,
-      event.name,
-      details,
-      previousHash,
-      currentHash,
-    ];
-    previousHash = currentHash;
-    return row;
+  events.forEach(function (event) {
+    appendAccessAuditLog_(audit, event);
   });
-
-  sheet.getRange(
-    startRow,
-    1,
-    rows.length,
-    ACCESS.logColumnCount
-  ).setValues(rows);
-  sheet.getRange(startRow, 2, rows.length, 1)
-    .setNumberFormat('yyyy-mm-dd hh:mm:ss');
-  SpreadsheetApp.flush();
 }
 
 function appendAccessAuditLog_(audit, event) {
-  const sheet = audit.sheet;
-  const row = sheet.getLastRow() + 1;
-  const processedAt = new Date();
-  const previousHash = row > 2
-    ? String(sheet.getRange(row - 1, 10).getValue() || '')
-    : '';
-  const logId = Utilities.getUuid();
-  const details = JSON.stringify(event.details || {});
-  const canonical = {
-    logId: logId,
-    processedAt: formatAccessDateTime_(processedAt),
-    author: event.author,
-    eventType: event.eventType,
-    accessType: event.accessType,
-    recordId: event.recordId,
-    name: event.name,
-    details: details,
-    previousHash: previousHash,
-  };
-  const currentHash = computeAuditHash_(canonical);
-
-  sheet.getRange(row, 1, 1, ACCESS.logColumnCount)
-    .setValues([[
-      logId,
-      processedAt,
-      event.author,
-      event.eventType,
-      getAccessTypeLabel_(event.accessType),
-      event.recordId,
-      event.name,
-      details,
-      previousHash,
-      currentHash,
-    ]]);
-  sheet.getRange(row, 2).setNumberFormat(
-    'yyyy-mm-dd hh:mm:ss'
-  );
+  const isVisitor = event.accessType === 'visitor';
+  const sheet = isVisitor
+    ? (audit.visitor || audit.sheet)
+    : (audit.department || audit.sheet);
+  if (!sheet) throw new Error('업무별 출입 감사로그를 찾을 수 없습니다.');
+  const eventType = String(event.eventType || '출입 처리');
+  const details = sanitizeAccessAuditDetails_(event.details || {}, isVisitor);
+  const result = eventType.indexOf('반려') !== -1
+    ? '반려'
+    : eventType.indexOf('취소') !== -1
+      ? '취소'
+      : eventType.indexOf('퇴장') !== -1
+        ? '퇴장 완료'
+        : eventType.indexOf('입장') !== -1
+          ? '입장 완료'
+          : eventType.indexOf('승인') !== -1
+            ? '승인'
+            : '처리 완료';
+  appendReadableAuditLog_(sheet, {
+    actor: event.author || '시스템',
+    business: isVisitor ? '외부 방문' : '부서 출입',
+    recordId: event.recordId || '',
+    target: isVisitor ? maskPersonName_(event.name) : event.name,
+    action: eventType,
+    summary: readableAuditSummary_(eventType, details),
+    result: result,
+    reason: details.reason || details.note || '',
+    beforeText: readableAuditValue_(details.previousStatus),
+    afterText: readableAuditValue_(details.nextStatus || result),
+  });
   SpreadsheetApp.flush();
-  return logId;
+  return '';
+}
+
+function sanitizeAccessAuditDetails_(details, isVisitor) {
+  const source = details || {};
+  const sanitized = {};
+  Object.keys(source).forEach(function (key) {
+    if ([
+      'sessionFingerprint', 'visitorId', 'hash', 'previousHash',
+      'currentHash', 'logId', 'rawJson',
+    ].indexOf(key) !== -1) return;
+    let value = source[key];
+    if (isVisitor && key === 'phone') value = maskPhone_(value);
+    if (isVisitor && key === 'email') value = maskEmail_(value);
+    if (isVisitor && key === 'vehicleNumber') value = maskVehicle_(value);
+    if (isVisitor && (key === 'name' || key === 'visitorName')) {
+      value = maskPersonName_(value);
+    }
+    sanitized[key] = value;
+  });
+  return sanitized;
+}
+
+function maskPersonName_(value) {
+  const text = String(value || '').trim();
+  if (text.length <= 1) return text ? '*' : '';
+  if (text.length === 2) return text.charAt(0) + '*';
+  return text.charAt(0) + '*' + text.slice(-1);
+}
+
+function maskPhone_(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length < 7) return digits ? '***' : '';
+  return digits.slice(0, 3) + '-****-' + digits.slice(-4);
+}
+
+function maskEmail_(value) {
+  const text = String(value || '').trim();
+  const at = text.indexOf('@');
+  if (at <= 0) return text ? '***' : '';
+  return text.slice(0, Math.min(2, at)) + '***' + text.slice(at);
+}
+
+function maskVehicle_(value) {
+  const text = String(value || '').trim();
+  if (text.length <= 4) return text ? '****' : '';
+  return text.slice(0, -4) + '****';
 }
 
 function formatAccessDateTime_(value) {
@@ -7314,7 +9228,10 @@ function getNextAssetPosition_(sheet) {
     sheet.getLastRow(),
     APP.firstDataRow - 1
   );
-  let maxManagementNumber = 0;
+  const sheetMeta = getPhysicalAssetSheetMeta_(
+    typeof sheet.getName === 'function' ? sheet.getName() : APP.sheetName
+  );
+  let maxSerialNumber = 0;
   let lastAssetRow = APP.firstDataRow - 1;
 
   if (lastRow >= APP.firstDataRow) {
@@ -7333,11 +9250,12 @@ function getNextAssetPosition_(sheet) {
         return String(value || '').trim() !== '';
       });
 
-      if (/^\d+$/.test(text) && hasAssetData) {
-        const managementNumber = Number(text);
+      const match = text.toUpperCase().match(/^GNS-H-(L|F1|F2|F2-A)-(\d{3})$/);
+      if (match && match[1] === sheetMeta.code && hasAssetData) {
+        const serialNumber = Number(match[2]);
 
-        if (managementNumber > maxManagementNumber) {
-          maxManagementNumber = managementNumber;
+        if (serialNumber > maxSerialNumber) {
+          maxSerialNumber = serialNumber;
           lastAssetRow = APP.firstDataRow + index;
         }
       }
@@ -7345,10 +9263,75 @@ function getNextAssetPosition_(sheet) {
   }
 
   return {
-    managementNumber: maxManagementNumber + 1,
+    managementNumber: 'GNS-H-' + sheetMeta.code + '-' +
+      String(maxSerialNumber + 1).padStart(3, '0'),
     row: Math.max(lastAssetRow + 1, APP.firstDataRow),
     previousAssetRow: lastAssetRow,
   };
+}
+
+function getNextAssetPositions_(sheet, count) {
+  const registrationCount = Number(count);
+  if (
+    !Number.isInteger(registrationCount) ||
+    registrationCount < 1 ||
+    registrationCount > 999
+  ) {
+    throw new Error('일괄 등록 수량은 1~999 사이여야 합니다.');
+  }
+
+  const first = getNextAssetPosition_(sheet);
+  const match = String(first.managementNumber).match(
+    /^(GNS-H-(?:L|F1|F2|F2-A)-)(\d{3})$/
+  );
+  if (!match) {
+    throw new Error('다음 관리번호 형식을 확인하세요.');
+  }
+
+  const firstSerial = Number(match[2]);
+  if (firstSerial + registrationCount - 1 > 999) {
+    throw new Error(
+      '해당 부서의 관리번호가 999를 초과합니다. 번호 체계를 점검하세요.'
+    );
+  }
+
+  return Array.from({ length: registrationCount }, function (_, index) {
+    return {
+      managementNumber: match[1] +
+        String(firstSerial + index).padStart(3, '0'),
+      row: first.row + index,
+      previousAssetRow: index === 0
+        ? first.previousAssetRow
+        : first.row + index - 1,
+    };
+  });
+}
+
+function rollbackRegisteredAssetRows_(sheet, rows) {
+  const uniqueRows = rows.filter(function (row, index, values) {
+    return values.indexOf(row) === index;
+  }).sort(function (left, right) {
+    return right - left;
+  });
+
+  uniqueRows.forEach(function (row) {
+    sheet.getRange(
+      row,
+      APP.firstDataColumn,
+      1,
+      APP.dataColumnCount
+    ).clearContent();
+  });
+  SpreadsheetApp.flush();
+}
+
+function rollbackAuditLogSuffix_(sheet, startRow) {
+  const firstRow = Number(startRow);
+  const lastRow = sheet.getLastRow();
+  if (firstRow >= 2 && lastRow >= firstRow) {
+    sheet.deleteRows(firstRow, lastRow - firstRow + 1);
+    SpreadsheetApp.flush();
+  }
 }
 
 function assertTargetRowAvailable_(
@@ -7372,8 +9355,8 @@ function assertTargetRowAvailable_(
   });
   const numberConflicts =
     existingManagementNumber !== '' &&
-    Number(existingManagementNumber) !==
-      Number(managementNumber);
+    existingManagementNumber.toUpperCase() !==
+      String(managementNumber).toUpperCase();
 
   if (hasAssetData || numberConflicts) {
     throw new Error(
@@ -7384,6 +9367,7 @@ function assertTargetRowAvailable_(
 }
 
 function writeAssetRow_(sheet, nextAsset, payload) {
+  applyLedgerRowLayout_(sheet, nextAsset.row, 1, APP.firstDataRow);
   const target = sheet.getRange(
     nextAsset.row,
     APP.firstDataColumn,
@@ -7419,26 +9403,22 @@ function writeAssetRow_(sheet, nextAsset, payload) {
     0
   ));
 
+  const sheetMeta = getPhysicalAssetSheetMeta_(sheet.getName());
   target.setValues([[
     nextAsset.managementNumber,
-    payload.itemName,
-    payload.modelMaker || '-',
-    payload.vendor,
+    payload.assetCategory, '실물자산 (H)', payload.itemName,
+    payload.modelMaker || '', payload.serialNumber || '', payload.vendor,
+    payload.quantity, payload.user || '미지정', payload.manager || '',
+    sheetMeta.department, sheetMeta.code, payload.storageLocation,
+    payload.assetStatus, payload.priority, purchaseDate,
     amountToSheetUnit_(payload.amount),
-    purchaseDate,
-    payload.manager || '-',
-    '',
-    payload.storageLocation,
     payload.remarks || '',
   ]]);
 
   sheet
-    .getRange(nextAsset.row, 7)
+    .getRange(nextAsset.row, 16)
     .setNumberFormat('yyyy-mm-dd');
-  sheet
-    .getRange(nextAsset.row, APP.firstDataColumn + 4)
-    .setNumberFormat('#,##0.###')
-    .setHorizontalAlignment('right');
+  formatCompactNumberCell_(sheet.getRange(nextAsset.row, 17));
 }
 
 function ensureAuditLogSpreadsheet_(
@@ -7446,9 +9426,14 @@ function ensureAuditLogSpreadsheet_(
   photoRoot
 ) {
   const properties = PropertiesService.getScriptProperties();
-  const configuredId = properties.getProperty(
+  let configuredId = properties.getProperty(
     'AUDIT_LOG_SPREADSHEET_ID'
   );
+  const pinnedId = MANAGED_SPREADSHEET_IDS.AUDIT_LOG_SPREADSHEET_ID;
+  if (pinnedId && configuredId !== pinnedId) {
+    configuredId = pinnedId;
+    properties.setProperty('AUDIT_LOG_SPREADSHEET_ID', pinnedId);
+  }
   let spreadsheet = null;
 
   if (configuredId) {
@@ -7522,76 +9507,11 @@ function getRootFolderFromPhoto_(photoRoot) {
 }
 
 function ensureAuditLogSheet_(spreadsheet) {
-  let sheet = spreadsheet.getSheetByName(APP.logSheetName);
-
-  if (!sheet) {
-    const sheets = spreadsheet.getSheets();
-
-    if (
-      sheets.length === 1 &&
-      sheets[0].getLastRow() === 0
-    ) {
-      sheet = sheets[0];
-      sheet.setName(APP.logSheetName);
-    } else {
-      sheet = spreadsheet.insertSheet(APP.logSheetName);
-    }
-  }
-
-  const headers = [[
-    '로그ID',
-    '처리일시',
-    '작업자 입력명',
-    '작업구분',
-    '관리번호',
-    '시트명',
-    '행번호',
-    '변경사유',
-    '변경 전 내용',
-    '변경 후 내용',
-    '품목',
-    '구입처',
-    '금액(원)',
-    '사진폴더명',
-    '사진폴더URL',
-    '송장수',
-    '발주서수',
-    '세금계산서수',
-    '실물사진수',
-    '이전해시',
-    '현재해시',
-  ]];
-
-  if (sheet.getLastRow() === 0) {
-    sheet
-      .getRange(1, 1, 1, APP.logColumnCount)
-      .setValues(headers)
-      .setFontWeight('bold')
-      .setBackground('#E8EAED')
-      .setFontColor('#202124');
-    sheet.setFrozenRows(1);
-    sheet.getRange('A:U').setVerticalAlignment('middle');
-    sheet.setColumnWidth(1, 230);
-    sheet.setColumnWidth(2, 145);
-    sheet.setColumnWidth(3, 120);
-    sheet.setColumnWidth(4, 100);
-    sheet.setColumnWidth(5, 90);
-    sheet.setColumnWidth(6, 110);
-    sheet.setColumnWidth(7, 70);
-    sheet.setColumnWidth(8, 220);
-    sheet.setColumnWidth(9, 360);
-    sheet.setColumnWidth(10, 360);
-    sheet.setColumnWidth(14, 240);
-    sheet.setColumnWidth(15, 280);
-    sheet.setColumnWidth(20, 300);
-    sheet.setColumnWidth(21, 300);
-  }
-
-  protectSheetForHumans_(
-    sheet,
-    '프로그램 전용 추가 기록'
+  return ensureReadableAuditSheet_(
+    spreadsheet,
+    APP.logSheetName,
+    '#123F72'
   );
-  return sheet;
 }
 
 function protectSheetForHumans_(sheet, description) {
@@ -7627,13 +9547,18 @@ function createAssetSnapshot_(
   fileCounts
 ) {
   return {
-    managementNumber: Number(managementNumber),
+    managementNumber: String(managementNumber || ''),
+    assetCategory: payload.assetCategory || '기타',
     itemName: payload.itemName,
     modelMaker: payload.modelMaker || '-',
     vendor: payload.vendor,
+    quantity: payload.quantity || '1EA',
+    user: payload.user || '미지정',
     amount: payload.amount === '' ? '' : payload.amount,
     purchaseDate: payload.purchaseDate,
     manager: payload.manager || '-',
+    assetStatus: payload.assetStatus || '사용중',
+    priority: payload.priority || '중',
     partNumber: '',
     storageLocation: payload.storageLocation,
     remarks: payload.remarks || '',
@@ -7662,73 +9587,66 @@ function appendAuditLog_(audit, event) {
   }
 
   const sheet = audit.sheet;
-  const row = sheet.getLastRow() + 1;
-  const logId = Utilities.getUuid();
-  const processedAt = Utilities.formatDate(
-    new Date(),
-    APP.timeZone,
-    'yyyy-MM-dd HH:mm:ss'
-  );
-  const previousHash = row > 2
-    ? String(
-        sheet.getRange(row - 1, 21).getDisplayValue() || ''
-      )
-    : 'GENESIS';
   const afterValues = event.afterValues || {};
   const counts = afterValues.fileCounts ||
     (event.beforeValues && event.beforeValues.fileCounts) ||
     emptyCategoryCounts_();
-  const canonical = {
-    logId: logId,
-    processedAt: processedAt,
-    author: event.author,
-    eventType: event.eventType,
-    managementNumber: Number(event.managementNumber),
-    sheetName: event.sheetName,
-    row: Number(event.row),
-    reason: event.reason || '',
-    beforeValues: event.beforeValues || null,
-    afterValues: event.afterValues || null,
-    previousHash: previousHash,
-  };
-  const currentHash = computeAuditHash_(canonical);
-
-  sheet.getRange(row, 1, 1, APP.logColumnCount)
-    .setValues([[
-      logId,
-      processedAt,
-      event.author,
-      event.eventType,
-      Number(event.managementNumber),
-      event.sheetName,
-      Number(event.row),
-      event.reason || '',
-      event.beforeValues
-        ? JSON.stringify(event.beforeValues)
-        : '',
-      event.afterValues
-        ? JSON.stringify(event.afterValues)
-        : '',
-      afterValues.itemName || '',
-      afterValues.vendor || '',
-      afterValues.amount === undefined
-        ? ''
-        : afterValues.amount,
-      afterValues.folderName || '',
-      afterValues.folderUrl || '',
-      Number(counts.invoice || 0),
-      Number(counts.purchaseOrder || 0),
-      Number(counts.taxInvoice || 0),
-      Number(counts.product || 0),
-      previousHash,
-      currentHash,
-    ]]);
-  sheet.getRange(row, 2).setNumberFormat(
-    'yyyy-mm-dd hh:mm:ss'
-  );
+  const summaryParts = [];
+  if (afterValues.itemName) summaryParts.push('품목: ' + afterValues.itemName);
+  if (afterValues.vendor) summaryParts.push('구입처: ' + afterValues.vendor);
+  if (afterValues.amount !== undefined && afterValues.amount !== '') {
+    summaryParts.push('금액: ' + afterValues.amount + '원');
+  }
+  if (event.sheetName) summaryParts.push('대장: ' + event.sheetName);
+  if (Number(counts.invoice || 0) + Number(counts.purchaseOrder || 0) +
+      Number(counts.taxInvoice || 0) + Number(counts.product || 0) > 0) {
+    summaryParts.push(
+      '증빙사진 송장 ' + Number(counts.invoice || 0) +
+      '·발주서 ' + Number(counts.purchaseOrder || 0) +
+      '·세금계산서 ' + Number(counts.taxInvoice || 0) +
+      '·실물 ' + Number(counts.product || 0)
+    );
+  }
+  appendReadableAuditLog_(sheet, {
+    actor: event.author || '시스템',
+    business: '실물자산',
+    recordId: String(event.managementNumber || ''),
+    target: afterValues.itemName || event.itemName || '',
+    action: event.eventType || '실물자산 처리',
+    summary: summaryParts.join(' · ') || '실물자산 업무 처리',
+    result: String(event.status || '').indexOf('실패') !== -1
+      ? '실패'
+      : '처리 완료',
+    reason: event.reason || event.remarks || '',
+    beforeText: readablePhysicalAssetSnapshot_(event.beforeValues),
+    afterText: readablePhysicalAssetSnapshot_(event.afterValues),
+  });
 
   SpreadsheetApp.flush();
-  return logId;
+  return '';
+}
+
+function readablePhysicalAssetSnapshot_(snapshot) {
+  if (!snapshot) return '';
+  const fields = [
+    ['품목', snapshot.itemName],
+    ['모델', snapshot.modelMaker],
+    ['구입처', snapshot.vendor],
+    ['수량', snapshot.quantity],
+    ['사용자', snapshot.user],
+    ['관리자', snapshot.manager],
+    ['보관장소', snapshot.storageLocation],
+    ['상태', snapshot.assetStatus],
+    ['중요도', snapshot.priority],
+    ['구입일', snapshot.purchaseDate],
+    ['금액', snapshot.amount],
+    ['비고', snapshot.remarks],
+  ];
+  return fields.filter(function (item) {
+    return item[1] !== undefined && item[1] !== null && item[1] !== '';
+  }).map(function (item) {
+    return item[0] + ': ' + item[1];
+  }).join(' · ').slice(0, 500);
 }
 
 function computeAuditHash_(value) {
@@ -8095,6 +10013,15 @@ function verifySystemState_(
 function verifyAuditHashChain_(sheet) {
   const lastRow = sheet.getLastRow();
 
+  const readableHeaderRow = getReadableAuditHeaderRow_(sheet);
+  if (readableHeaderRow) {
+    return {
+      ok: true,
+      rows: Math.max(lastRow - readableHeaderRow, 0),
+      mode: 'readable-audit-log',
+    };
+  }
+
   if (lastRow < 2) {
     return {
       ok: true,
@@ -8106,7 +10033,7 @@ function verifyAuditHashChain_(sheet) {
     2,
     1,
     lastRow - 1,
-    APP.logColumnCount
+    21
   ).getDisplayValues();
   let expectedPreviousHash = 'GENESIS';
 
@@ -8223,12 +10150,18 @@ function normalizePayload_(request) {
   return {
     sheetName: sheetName,
     author: cleanText_(source.author, 40),
+    assetCategory: cleanText_(source.assetCategory, 80) || '기타',
     itemName: cleanText_(source.itemName, 100),
     modelMaker: cleanText_(source.modelMaker, 150),
+    serialNumber: cleanText_(source.serialNumber, 120),
     vendor: cleanText_(source.vendor, 100),
+    quantity: normalizeAssetQuantity_(source.quantity),
+    user: cleanText_(source.user, 80) || '미지정',
     amount: normalizeAmount_(source.amount),
     purchaseDate: cleanText_(source.purchaseDate, 10),
-    manager: getSiteManager_(sheetName),
+    manager: cleanText_(source.manager, 80) || getSiteManager_(sheetName),
+    assetStatus: cleanText_(source.assetStatus, 30) || '사용중',
+    priority: cleanText_(source.priority, 10) || '중',
     partNumber: '',
     storageLocation: cleanText_(
       source.storageLocation,
@@ -8261,14 +10194,36 @@ function normalizePayload_(request) {
   };
 }
 
+function normalizeAssetQuantity_(value) {
+  const text = cleanText_(value, 30).toUpperCase().replace(/\s/g, '');
+  if (!text) return '1EA';
+  const match = text.match(/^(\d+)(EA)?$/);
+  if (!match || Number(match[1]) < 1 || Number(match[1]) > 999) {
+    throw new Error('수량은 1~999 사이의 숫자 또는 EA 단위로 입력하세요.');
+  }
+  return String(Number(match[1])) + 'EA';
+}
+
+function getAssetQuantityNumber_(value) {
+  const match = String(value || '').toUpperCase().match(/^(\d+)EA$/);
+  const quantity = match ? Number(match[1]) : 0;
+  if (!quantity || quantity > 999) {
+    throw new Error('수량 값을 확인하세요.');
+  }
+  return quantity;
+}
+
 function validatePayload_(payload) {
   const required = [
     ['자산 관리 목록표', payload.sheetName],
     ['작성자', payload.author],
     ['품목', payload.itemName],
+    ['자산구분', payload.assetCategory],
+    ['수량', payload.quantity],
     ['구입처', payload.vendor],
     ['구입일자', payload.purchaseDate],
     ['보관 장소', payload.storageLocation],
+    ['관리자', payload.manager],
   ];
 
   required.forEach(function (entry) {
@@ -8279,6 +10234,19 @@ function validatePayload_(payload) {
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(payload.purchaseDate)) {
     throw new Error('구입일자 형식이 올바르지 않습니다.');
+  }
+  const managerOptions = getAssetManagerOptions_(payload.sheetName);
+  if (managerOptions.indexOf(payload.manager) === -1) {
+    throw new Error('선택한 부서의 관리자 목록에서 관리자를 선택하세요.');
+  }
+  if (payload.manager === payload.user) {
+    throw new Error('관리자와 사용자는 같은 사람으로 지정할 수 없습니다.');
+  }
+  if (PHYSICAL_ASSET_STATUSES.indexOf(payload.assetStatus) === -1) {
+    throw new Error('사용상태를 올바르게 선택하세요.');
+  }
+  if (PHYSICAL_ASSET_PRIORITIES.indexOf(payload.priority) === -1) {
+    throw new Error('중요도는 상·중·하 중에서 선택하세요.');
   }
 
   let totalBytes = 0;
@@ -8316,6 +10284,10 @@ function validatePayload_(payload) {
 }
 
 function validateImageFile_(file) {
+  return decodeValidatedImageFile_(file).length;
+}
+
+function decodeValidatedImageFile_(file) {
   const mimeType = String(file && file.mimeType || '')
     .toLowerCase();
 
@@ -8339,7 +10311,7 @@ function validateImageFile_(file) {
     );
   }
 
-  return bytes.length;
+  return bytes;
 }
 
 function isSupportedImageBytes_(bytes, mimeType) {

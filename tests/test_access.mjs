@@ -115,7 +115,10 @@ assert.match(backend, /function ensureEmployeeRosterSheet_\(/);
 assert.match(backend, /function findEmployeeFromRoster_\(/);
 assert.match(backend, /function findOpenEmployeeRecord_\(/);
 assert.match(backend, /function appendAccessAuditLog_\(/);
-assert.match(backend, /'방문신청번호', '방문객ID', '반입물품'/);
+assert.match(
+  backend,
+  /'방문신청번호', '방문객ID',[\s\S]*?'반입물품'/,
+);
 assert.match(
   backend,
   /function completeAccessExit[\s\S]*?eventType: '퇴장처리'/,

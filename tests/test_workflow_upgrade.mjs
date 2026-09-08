@@ -12,6 +12,7 @@ const visitor = read("VisitorApplication.html");
 const movement = read("AssetMovement.html");
 const department = read("DepartmentAccess.html");
 const info = read("InfoAssets.html");
+const physical = read("Index.html");
 
 new vm.Script(code);
 [access, visitor, movement, department, info].forEach((html) => {
@@ -35,7 +36,71 @@ assert.match(code, /return '일부 승인·일부 반려'/);
 assert.match(code, /securityClasses: Object\.freeze\(\[[\s\S]*?'공개', '사내한', '대외비', '고객기밀'/);
 assert.match(code, /requireValueInList\(INFO_ASSET\.securityClasses\.slice\(\), true\)/);
 assert.match(code, /current === '사내'[\s\S]*?return \['사내한'\]/);
-assert.match(code, /current === '기밀'[\s\S]*?return \['고객기밀'\]/);
+assert.match(code, /current === '기밀' \|\| current === '중요기밀'[\s\S]*?return \['고객기밀'\]/);
+assert.match(code, /spreadsheet\.setSpreadsheetTimeZone\(APP\.timeZone\)/);
+assert.match(code, /logSpreadsheet\.setSpreadsheetTimeZone\(APP\.timeZone\)/);
+assert.ok(info.includes('id="assetName"'));
+assert.ok(info.includes("addEventListener('input',scheduleCatalogSearch)"));
+assert.ok(info.includes("searchInfoAssetCatalog(query,ADMIN_TOKEN)"));
+['originalNumber', 'identifier', 'networkIdentifier'].forEach((id) => {
+  assert.ok(!info.includes(`id="${id}"`));
+});
+assert.ok(!info.includes('id="catalogQuery"'));
+assert.ok(!info.includes('id="catalogSearchButton"'));
+assert.ok(!info.includes('<label for="originalNumber">기존번호</label>'));
+assert.ok(!info.includes('식별번호·계정명'));
+assert.ok(!info.includes('네트워크 식별정보'));
+assert.match(code, /columnCount: 24/);
+assert.ok(info.includes('id="serialNumber"'));
+assert.ok(info.includes('<select id="owner"'));
+assert.ok(physical.includes('id="serialNumber"'));
+assert.ok(physical.includes('managerOptionsBySite'));
+assert.ok(physical.includes('renderManagerOptionsForSheet(sheetName)'));
+assert.match(
+  code,
+  /'관리번호', '자산구분', '자산유형', '자산명\(용도\)', '모델명\/제품명',[\s\S]*?'S\/N'[\s\S]*?'금액\(천원\)', '비고'/,
+);
+assert.match(
+  code,
+  /'관리번호', '자산분류', '보안등급', '자산구분',[\s\S]*?'모델·버전', 'S\/N'[\s\S]*?'최종수정시각', '비고'/,
+);
+assert.match(code, /'등록시각', '최종수정시각', '비고'/);
+assert.match(code, /function ensureInfoAssetLeanSchema_\(/);
+assert.match(code, /function ensureInfoAssetFreeTextLocation_\(/);
+assert.match(code, /INFO_ASSET_COL\.location[\s\S]*?clearDataValidations\(\)/);
+assert.match(code, /function clearInfoAssetDataRangeByColumn_\(/);
+assert.match(
+  code,
+  /function formatInfoAssetRow_\([\s\S]*?for \(let column = 1;[\s\S]*?sheet\.getRange\(row, column\)/,
+);
+assert.match(
+  code,
+  /function syncInformationDepartmentSheets_\([\s\S]*?clearInfoAssetDataRangeByColumn_\(/,
+);
+const accessEntryBlock = code.slice(
+  code.indexOf('function registerAccessEntry('),
+  code.indexOf('function registerVisitorSelfEntry('),
+);
+const infoRegisterBlock = code.slice(
+  code.indexOf('function registerInfoAsset('),
+  code.indexOf('function updateInfoAsset('),
+);
+assert.match(
+  infoRegisterBlock,
+  /targetRange\.setValues\(values\);[\s\S]*?copyInfoAssetRowFormat_\(system\.ledger, row\);/,
+);
+assert.ok(accessEntryBlock.includes('targetRange.clearContent()'));
+assert.ok(!accessEntryBlock.includes('clearInfoAssetDataRangeByColumn_'));
+assert.ok(infoRegisterBlock.includes('clearInfoAssetDataRangeByColumn_'));
+
+[
+  'cleanupTestVisitorApplicationsOnce_',
+  'ensureProfessorApplicationRecord_',
+  'cleanupVisitorLedgerTestRowsOnce_',
+  'normalizeVisitorLedgerFinalRows_',
+  'seedVisitorLedgerReferenceRows_',
+].forEach((unsafeFunction) => assert.ok(!code.includes(unsafeFunction)));
+assert.doesNotMatch(code, /성덕환|2026-08-12T/);
 
 assert.match(code, /canApprove: !isMine && isTargetDepartmentMember/);
 assert.match(code, /processDepartmentAccessDecision[\s\S]*?'employeeEntry'/);
@@ -50,7 +115,7 @@ assert.match(code, /해당 부서 실장만 반출 신청을 승인·반려할 �
 assert.match(code, /const movementStatus = '승인 대기'/);
 
 assert.match(code, /visitor-application-schema-v92/);
-assert.match(code, /access-ledger-schema-v92/);
+assert.match(code, /access-ledger-schema-v95/);
 assert.match(code, /employee-roster-name-map-v1[\s\S]*?21600/);
 
 console.log("WORKFLOW_UPGRADE_TESTS_OK=1");

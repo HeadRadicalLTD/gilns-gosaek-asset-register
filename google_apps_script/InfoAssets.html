@@ -12,52 +12,114 @@
     .nav{display:flex;justify-content:space-between;gap:12px;margin-bottom:22px}.nav a{padding:8px 11px;border:1px solid rgba(255,255,255,.2);border-radius:9px;color:#fff;font-size:13px;font-weight:800;text-decoration:none}.eyebrow{margin:0 0 8px;color:#c8baff;font-size:12px;font-weight:900;letter-spacing:.12em}h1{margin:0;font-size:clamp(30px,5vw,46px);letter-spacing:-.04em}.hero p:last-child{margin:12px 0 0;color:#e3def5;line-height:1.6}
     .status{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:14px 0;padding:13px 16px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--muted);font-size:13px}.status a{color:var(--purple);font-weight:800}.notice{margin-top:14px;padding:13px 16px;border:1px solid #e0d6ff;border-radius:13px;background:#f8f5ff;color:#54417f;font-size:13px;font-weight:700}
     .card{margin-top:16px;padding:24px;border:1px solid var(--line);border-radius:20px;background:#fff;box-shadow:0 8px 22px rgba(23,32,51,.05)}.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:20px}.card h2{margin:0;font-size:22px}.card-head p{margin:7px 0 0;color:var(--muted);font-size:14px}.count{padding:8px 11px;border-radius:10px;background:#f0ecff;color:var(--purple);font-weight:900}
-    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.field.full{grid-column:1/-1}label{display:block;margin-bottom:7px;font-size:14px;font-weight:800}.required{color:var(--red)}input,select,textarea{width:100%;min-height:48px;padding:11px 13px;border:1px solid #cbd3e2;border-radius:11px;background:#fff;outline:none}textarea{min-height:90px;resize:vertical}input:focus,select:focus,textarea:focus{border-color:var(--purple);box-shadow:0 0 0 4px rgba(118,86,216,.1)}.submit{width:100%;min-height:52px;margin-top:20px;border:0;border-radius:12px;background:var(--purple);color:#fff;font-weight:900;cursor:pointer}.submit:disabled{opacity:.45;cursor:not-allowed}
-    .filters{display:flex;gap:10px;margin-bottom:14px}.filters input,.filters select{max-width:260px}.records{display:grid;gap:12px}.record{display:grid;grid-template-columns:110px 1.3fr 1fr 1fr 110px 80px;gap:12px;align-items:center;padding:15px;border:1px solid var(--line);border-radius:14px}.record strong,.record span{min-width:0;overflow-wrap:anywhere}.record small{display:block;margin-top:4px;color:var(--muted);font-size:12px}.class{display:inline-block;padding:5px 8px;border-radius:999px;background:#f0ecff;color:var(--purple);font-size:12px;font-weight:900}.edit-button,.cancel-edit{border:0;border-radius:9px;padding:9px 12px;background:#ede9fe;color:#5b3fc0;font-weight:900;cursor:pointer}.edit-controls{display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:14px}.empty{padding:34px;border:1px dashed #cbd3e2;border-radius:14px;color:var(--muted);text-align:center}
+    .mode-card{padding:18px}.mode-tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mode-tab{min-height:52px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);font-weight:900;cursor:pointer}.mode-tab.active{border-color:var(--purple);background:#f0ecff;color:#5b3fc0;box-shadow:0 0 0 3px rgba(118,86,216,.08)}
+    .form-section{padding:20px 0;border-top:1px solid #e7eaf1}.form-section:first-child{padding-top:0;border-top:0}.form-section h3{margin:0 0 5px;font-size:17px}.section-description{margin:0 0 16px;color:var(--muted);font-size:13px;line-height:1.55}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.field.full{grid-column:1/-1}label{display:block;margin-bottom:7px;font-size:14px;font-weight:800}input,select,textarea{width:100%;min-height:48px;padding:11px 13px;border:1px solid #cbd3e2;border-radius:11px;background:#fff;outline:none}textarea{min-height:90px;resize:vertical}input[readonly]{background:#f5f6f9;color:#596174}input:focus,select:focus,textarea:focus{border-color:var(--purple);box-shadow:0 0 0 4px rgba(118,86,216,.1)}.field-help{display:block;margin-top:6px;color:var(--muted);font-size:12px;line-height:1.45}.category-guide{margin-top:10px;padding:11px 13px;border-radius:10px;background:#f8f5ff;color:#5b3fc0;font-size:12px;font-weight:800;line-height:1.5}.submit{width:100%;min-height:52px;margin-top:20px;border:0;border-radius:12px;background:var(--purple);color:#fff;font-weight:900;cursor:pointer}.submit:disabled{opacity:.45;cursor:not-allowed}
+    .lookup{display:grid;grid-template-columns:1fr auto;gap:8px}.lookup button{border:0;border-radius:11px;padding:0 16px;background:#263856;color:#fff;font-weight:900;cursor:pointer}.lookup-results{display:grid;gap:8px;margin-top:8px}.lookup-result{display:flex;justify-content:space-between;gap:12px;width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;text-align:left;cursor:pointer}.lookup-result:hover,.lookup-result:focus-visible{border-color:var(--purple);background:#f8f5ff}.lookup-result small{display:block;color:var(--muted);margin-top:3px}
+    .filters{display:flex;gap:10px;margin-bottom:14px}.filters input,.filters select{max-width:300px}.records{display:grid;gap:12px}.record{display:grid;grid-template-columns:120px 1.3fr 1fr 1fr 110px 80px;gap:12px;align-items:center;padding:15px;border:1px solid var(--line);border-radius:14px}.record strong,.record span{min-width:0;overflow-wrap:anywhere}.record small{display:block;margin-top:4px;color:var(--muted);font-size:12px}.class{display:inline-block;padding:5px 8px;border-radius:999px;background:#f0ecff;color:var(--purple);font-size:12px;font-weight:900}.edit-button,.cancel-edit{border:0;border-radius:9px;padding:9px 12px;background:#ede9fe;color:#5b3fc0;font-weight:900;cursor:pointer}.edit-controls{display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:14px}.empty{padding:34px;border:1px dashed #cbd3e2;border-radius:14px;color:var(--muted);text-align:center}
     .message{display:none;margin-top:14px;padding:13px;border-radius:12px;font-size:14px}.message.show{display:block}.error{border:1px solid #efb8b8;background:#fff1f1;color:var(--red)}.success{border:1px solid #b7ddc8;background:#eef9f3;color:#0f6846}.overlay{display:none;position:fixed;z-index:20;inset:0;align-items:center;justify-content:center;background:rgba(23,32,51,.42);color:#fff;font-size:18px;font-weight:900}.overlay.show{display:flex}
-    @media(max-width:820px){.record{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}}@media(max-width:560px){.record{grid-template-columns:1fr}.filters{flex-direction:column}.filters input,.filters select{max-width:none}.status{align-items:flex-start;flex-direction:column}}
+    @media(max-width:820px){.record{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}}@media(max-width:560px){.mode-tabs{grid-template-columns:1fr}.record{grid-template-columns:1fr}.filters{flex-direction:column}.filters input,.filters select{max-width:none}.status{align-items:flex-start;flex-direction:column}.lookup{grid-template-columns:1fr}.lookup button{min-height:46px}}
   </style>
 </head>
 <body data-web-app-url="<?= webAppUrl ?>" data-admin-token="<?= adminToken ?>" data-user-role="<?= userRole ?>" data-actor-name="<?= actorName ?>" data-current-module="info">
   <?!= getSharedBackgroundHtml_() ?>
   <main class="shell">
     <header class="hero">
-      <nav class="nav"><a href="<?= webAppUrl ?>?adminToken=<?= adminToken ?>" target="_top">통합 메뉴</a><a href="<?= webAppUrl ?>?module=asset&adminToken=<?= adminToken ?>" target="_top">실물자산관리</a></nav>
-      <p class="eyebrow">INFORMATION ASSET MANAGEMENT</p><h1>정보자산관리</h1><p>장비·소프트웨어·서비스·계정·데이터의 책임자와 보안 상태를 관리합니다.</p>
+      <nav class="nav"><a href="<?= webAppUrl ?>?adminToken=<?= adminToken ?>" target="_top">통합 메뉴</a><a href="<?= webAppUrl ?>?module=asset&amp;adminToken=<?= adminToken ?>" target="_top">실물자산관리</a></nav>
+      <p class="eyebrow">INFORMATION ASSET MANAGEMENT</p>
+      <h1><?= userRole === 'admin' ? '정보자산관리' : '정보자산 등록' ?></h1>
+      <p><?= userRole === 'admin' ? '신규 등록과 기존 자산 수정을 분리하여 관리합니다.' : '장비·소프트웨어·서비스·계정·데이터를 신규 등록합니다.' ?></p>
     </header>
-    <div class="notice">비밀번호, 인증키, 복구코드 등 실제 비밀값은 절대 입력하지 마세요. 계정은 계정명과 담당자만 기록합니다.</div>
+    <div class="notice">비밀번호, 인증키, 복구코드 등 실제 비밀값은 절대 입력하지 마세요. 계정 자산은 품명과 담당자만 기록합니다.</div>
     <div class="status"><span id="systemStatus">정보자산 대장 연결 확인 중</span><a id="ledgerLink" class="hidden" href="#" target="_blank">정보자산 대장 열기</a></div>
-    <div id="errorMessage" class="message error"></div><div id="successMessage" class="message success"></div>
+    <div id="errorMessage" class="message error"></div>
+    <div id="successMessage" class="message success"></div>
 
-    <section class="card">
-      <div class="card-head"><div><h2 id="formTitle">정보자산 등록</h2><p>등록 및 수정 시 정보자산 번호와 변경 불가 로그가 자동 생성됩니다.</p></div></div>
-      <form id="assetForm">
-        <div class="grid">
-          <div class="field"><label for="category">분류 <span class="required">*</span></label><select id="category"><option value="">선택하세요</option></select></div>
-          <div class="field"><label for="assetName">자산명 <span class="required">*</span></label><input id="assetName"></div>
-          <div class="field"><label for="provider">제조사·서비스</label><input id="provider"></div>
-          <div class="field"><label for="modelVersion">모델·버전</label><input id="modelVersion"></div>
-          <div class="field"><label for="identifier">식별번호·계정명</label><input id="identifier"></div>
-          <div class="field"><label for="location">설치 위치·접속주소</label><input id="location"></div>
-          <div class="field"><label for="owner">담당자 <span class="required">*</span></label><input id="owner"></div>
-          <div class="field"><label for="department">부서 <span class="required">*</span></label><input id="department"></div>
-          <div class="field"><label for="securityClass">보안등급 <span class="required">*</span></label><select id="securityClass"><option value="">선택하세요</option></select></div>
-          <div class="field"><label for="status">상태 <span class="required">*</span></label><select id="status"><option value="">선택하세요</option></select></div>
-          <div class="field"><label for="introducedDate">도입일</label><input id="introducedDate" type="date"></div>
-          <div class="field"><label for="expiryDate">만료일·갱신일</label><input id="expiryDate" type="date"></div>
-          <div class="field"><label for="networkIdentifier">IP·MAC</label><input id="networkIdentifier"></div>
-          <div class="field"><label for="personalData">개인정보 포함</label><select id="personalData"><option value="아니오">아니오</option><option value="예">예</option><option value="확인필요">확인필요</option></select></div>
-          <div class="field full"><label for="remarks">비고</label><textarea id="remarks"></textarea></div>
-        </div>
-        <div id="editControls" class="edit-controls hidden"><input id="editReason" maxlength="300" placeholder="수정 사유를 입력하세요"><button id="cancelEditButton" class="cancel-edit" type="button">수정 취소</button></div>
-        <button id="submitButton" class="submit" type="submit" disabled>정보자산 등록</button>
-      </form>
+    <section id="adminModeCard" class="card mode-card <?= userRole === 'admin' ? '' : 'hidden' ?>">
+      <div class="mode-tabs" aria-label="정보자산 작업 선택">
+        <button id="registerModeButton" class="mode-tab active" type="button">신규 정보자산 등록</button>
+        <button id="editModeButton" class="mode-tab" type="button">기존 정보자산 수정</button>
+      </div>
     </section>
 
-    <section class="card <?= userRole === 'admin' ? '' : 'hidden' ?>">
-      <div class="card-head"><div><h2>정보자산 목록</h2><p>비밀번호와 인증키는 목록에 저장하지 않습니다.</p></div><span id="recordCount" class="count">00</span></div>
-      <div class="filters"><input id="searchInput" placeholder="자산명·담당자·식별번호 검색"><select id="categoryFilter"><option value="">전체 분류</option></select></div>
+    <section id="editLookupCard" class="card hidden">
+      <div class="card-head">
+        <div><h2>수정할 정보자산 선택</h2><p>자산을 검색한 뒤 수정 버튼을 누르면 별도의 수정 입력란이 열립니다.</p></div>
+        <span id="recordCount" class="count">00</span>
+      </div>
+      <div class="filters">
+        <input id="searchInput" type="search" placeholder="관리번호·품명·담당자 검색" autocomplete="off">
+        <select id="categoryFilter"><option value="">전체 자산분류</option></select>
+      </div>
       <div id="records" class="records"><div class="empty">정보자산 대장을 불러오는 중입니다.</div></div>
+    </section>
+
+    <section id="formCard" class="card">
+      <div class="card-head">
+        <div><h2 id="formTitle">신규 정보자산 등록</h2><p id="formDescription">새 정보자산의 실제 내용을 입력해 주세요. 등록 후 관리번호가 자동 생성됩니다.</p></div>
+      </div>
+      <form id="assetForm">
+        <section class="form-section edit-only hidden">
+          <h3>수정 대상</h3>
+          <p class="section-description">선택한 자산의 시스템 정보를 확인합니다. 관리번호와 등록시각은 변경할 수 없습니다.</p>
+          <div class="grid">
+            <div class="field"><label for="assetId">관리번호</label><input id="assetId" readonly></div>
+            <div class="field"><label for="assetType">자산구분</label><input id="assetType" readonly value="정보자산 (S)"></div>
+            <div class="field"><label for="departmentCode">부서코드</label><input id="departmentCode" readonly></div>
+            <div class="field"><label for="registeredAt">등록시각</label><input id="registeredAt" readonly></div>
+            <div class="field full"><label for="updatedAt">최종수정시각</label><input id="updatedAt" readonly></div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h3>기본 정보</h3>
+          <p class="section-description">자산분류를 먼저 선택하면 해당 유형에 필요한 입력란만 표시됩니다.</p>
+          <div class="grid">
+            <div class="field full"><label for="category">자산분류</label><select id="category"><option value="">자산분류를 선택하세요</option></select><div id="categoryGuide" class="category-guide">먼저 자산분류를 선택해 주세요.</div></div>
+            <div class="field category-dependent hidden"><label for="assetName">품명</label><input id="assetName" maxlength="150" autocomplete="off" placeholder="기존 품명을 선택하거나 새 품명을 입력하세요"><div id="catalogResults" class="lookup-results register-only"></div><small class="field-help register-only">두 글자 이상 입력하면 기존 품명이 표시됩니다. 없으면 새 품명을 그대로 입력하세요.</small></div>
+            <div class="field category-dependent hidden" data-extra="provider"><label for="provider">제조사·서비스 제공사</label><input id="provider" maxlength="150" placeholder="예: 삼성전자, Microsoft"></div>
+            <div class="field category-dependent hidden" data-extra="modelVersion"><label for="modelVersion">모델·버전</label><input id="modelVersion" maxlength="150" placeholder="예: NT950X, Business Standard"></div>
+            <div class="field category-dependent hidden" data-extra="serialNumber"><label for="serialNumber">S/N</label><input id="serialNumber" maxlength="120" placeholder="제품 시리얼 넘버"></div>
+            <div class="field category-dependent hidden"><label for="quantity">수량</label><input id="quantity" maxlength="30" value="1EA" placeholder="예: 1EA, 10계정"></div>
+          </div>
+        </section>
+
+        <section class="form-section category-dependent-section hidden">
+          <h3>담당 및 위치</h3>
+          <p class="section-description">관리 책임자와 실제 사용·보관 위치를 입력합니다.</p>
+          <div class="grid">
+            <div class="field category-dependent hidden"><label for="owner">담당자</label><select id="owner"><option value="">사업장·부서를 먼저 선택하세요</option></select><small class="field-help">선택한 사업장·부서의 담당자만 표시됩니다.</small></div>
+            <div class="field category-dependent hidden"><label for="user">사용자</label><input id="user" maxlength="80" placeholder="실제 사용 부서 또는 사용자 이름"></div>
+            <div class="field category-dependent hidden"><label for="department">사업장·부서</label><select id="department"><option value="">사업장·부서를 선택하세요</option></select></div>
+            <div class="field full category-dependent hidden"><label for="location">설치·보관 위치·접속주소</label><input id="location" maxlength="250" placeholder="자산분류에 맞는 위치 또는 접속주소"></div>
+          </div>
+        </section>
+
+        <section class="form-section category-dependent-section hidden">
+          <h3>보안 및 운영 상태</h3>
+          <p class="section-description">정보 노출 수준과 현재 운영 상태를 구분해 선택합니다.</p>
+          <div class="grid">
+            <div class="field category-dependent hidden"><label for="securityClass">보안등급</label><select id="securityClass"><option value="">보안등급을 선택하세요</option></select><small class="field-help">자산분류와 다른 항목입니다. 공개·사내한·대외비·고객기밀 중 선택합니다.</small></div>
+            <div class="field category-dependent hidden"><label for="status">운영 상태</label><select id="status"><option value="">운영 상태를 선택하세요</option></select></div>
+            <div class="field category-dependent hidden"><label for="personalData">개인정보 포함 여부</label><select id="personalData"><option value="아니오">아니오</option><option value="예">예</option><option value="확인필요">확인필요</option></select></div>
+            <div class="field category-dependent hidden" data-extra="introducedDate"><label for="introducedDate">도입일</label><input id="introducedDate" type="date"></div>
+            <div class="field category-dependent hidden" data-extra="expiryDate"><label for="expiryDate">만료일·갱신일</label><input id="expiryDate" type="date"></div>
+          </div>
+        </section>
+
+        <section class="form-section category-dependent-section hidden">
+          <h3>구입 및 참고 정보</h3>
+          <p class="section-description">구입 내역이 있는 경우에만 입력합니다.</p>
+          <div class="grid">
+            <div class="field category-dependent hidden" data-extra="purchasePlace"><label for="purchasePlace">구입처</label><input id="purchasePlace" maxlength="150" placeholder="구매처 또는 계약 업체"></div>
+            <div class="field category-dependent hidden" data-extra="amount"><label for="amount">금액(천원)</label><input id="amount" type="number" min="0" step="1" placeholder="예: 1500"></div>
+            <div class="field category-dependent hidden" data-extra="purchaseDate"><label for="purchaseDate">구입일</label><input id="purchaseDate" type="date"></div>
+            <div class="field full category-dependent hidden"><label for="remarks">비고</label><textarea id="remarks" maxlength="500" placeholder="추가 관리사항만 입력하세요"></textarea></div>
+          </div>
+        </section>
+
+        <div id="editControls" class="edit-controls edit-only hidden"><input id="editReason" maxlength="300" placeholder="무엇을 왜 수정하는지 입력하세요"><button id="cancelEditButton" class="cancel-edit" type="button">수정 대상 다시 선택</button></div>
+        <button id="submitButton" class="submit" type="submit" disabled>정보자산 등록</button>
+      </form>
     </section>
   </main>
   <div id="overlay" class="overlay">처리 중입니다.</div>
@@ -66,29 +128,228 @@
     gilnsProtectSessionUrl(ADMIN_TOKEN,{module:'info'});
     const USER_ROLE=document.body.dataset.userRole;
     const IS_ADMIN=USER_ROLE==='admin';
-    const state={ready:false,busy:false,records:[],editAssetId:''};
+    const state={ready:false,busy:false,records:[],mode:'register',editAssetId:'',defaultDepartment:'',managerOptionsByDepartment:{},overlayTimer:null,catalogTimer:null,catalogRequest:0};
+    const CATEGORY_EXTRAS={
+      'PC·노트북':['provider','modelVersion','serialNumber','introducedDate','purchasePlace','amount','purchaseDate'],
+      '서버':['provider','modelVersion','serialNumber','introducedDate','purchasePlace','amount','purchaseDate'],
+      '네트워크 장비':['provider','modelVersion','serialNumber','introducedDate','purchasePlace','amount','purchaseDate'],
+      '소프트웨어·라이선스':['provider','modelVersion','introducedDate','expiryDate','purchasePlace','amount','purchaseDate'],
+      '클라우드·SaaS':['provider','modelVersion','introducedDate','expiryDate','purchasePlace','amount','purchaseDate'],
+      '계정·권한':['introducedDate','expiryDate'],
+      '데이터·문서':[],
+      '기타':['provider','modelVersion','serialNumber','introducedDate','expiryDate','purchasePlace','amount','purchaseDate']
+    };
     const form=document.getElementById('assetForm');
+    const formCard=document.getElementById('formCard');
+
     form.addEventListener('input',updateButton);
     form.addEventListener('change',updateButton);
     form.addEventListener('submit',saveAsset);
-    document.getElementById('cancelEditButton').addEventListener('click',resetForm);
+    document.getElementById('cancelEditButton').addEventListener('click',()=>setMode('edit'));
     document.getElementById('searchInput').addEventListener('input',renderFiltered);
+    document.getElementById('assetName').addEventListener('input',scheduleCatalogSearch);
     document.getElementById('categoryFilter').addEventListener('change',renderFiltered);
+    document.getElementById('category').addEventListener('change',()=>applyCategoryLayout(true));
+    document.getElementById('department').addEventListener('change',()=>renderOwnerOptions(''));
+    document.getElementById('registerModeButton').addEventListener('click',()=>setMode('register'));
+    document.getElementById('editModeButton').addEventListener('click',()=>setMode('edit'));
 
-    function loadConfig(){google.script.run.withSuccessHandler((config)=>{if(!config.ok){showError(config.message);return;}state.ready=true;document.getElementById('systemStatus').textContent='정보자산 대장 연결됨';const ledger=document.getElementById('ledgerLink');ledger.href=config.ledgerUrl;ledger.classList.toggle('hidden',!config.ledgerUrl);fillSelect('category',config.categories);fillSelect('securityClass',config.securityClasses);fillSelect('status',config.statuses);document.getElementById('categoryFilter').innerHTML='<option value="">전체 분류</option>'+config.categories.map(option).join('');state.records=config.records||[];renderFiltered();updateButton();}).withFailureHandler((error)=>showError(messageOf(error))).getInfoAssetConfig(ADMIN_TOKEN);}
+    function loadConfig(){
+      google.script.run.withSuccessHandler((config)=>{
+        if(!config.ok){showError(config.message);document.getElementById('systemStatus').textContent='정보자산 대장 연결 실패';return;}
+        state.ready=true;
+        document.getElementById('systemStatus').textContent='정보자산 대장 연결됨';
+        const ledger=document.getElementById('ledgerLink');
+        ledger.href=config.ledgerUrl;
+        ledger.classList.toggle('hidden',!config.ledgerUrl);
+        fillSelect('category',config.categories,'자산분류를 선택하세요');
+        fillSelect('department',config.departments,'사업장·부서를 선택하세요');
+        fillSelect('securityClass',config.securityClasses,'보안등급을 선택하세요');
+        fillSelect('status',config.statuses,'운영 상태를 선택하세요');
+        state.managerOptionsByDepartment=config.managerOptionsByDepartment||{};
+        state.defaultDepartment=config.defaultDepartment&&config.departments.includes(config.defaultDepartment)?config.defaultDepartment:'';
+        document.getElementById('categoryFilter').innerHTML='<option value="">전체 자산분류</option>'+config.categories.map(option).join('');
+        state.records=IS_ADMIN?(config.records||[]):[];
+        renderFiltered();
+        setMode('register');
+      }).withFailureHandler((error)=>{
+        document.getElementById('systemStatus').textContent='정보자산 대장 연결 실패';
+        showError(messageOf(error));
+      }).getInfoAssetConfig(ADMIN_TOKEN);
+    }
 
-    function payload(){return {adminToken:ADMIN_TOKEN,assetId:state.editAssetId,reason:value('editReason'),category:value('category'),assetName:value('assetName'),provider:value('provider'),modelVersion:value('modelVersion'),identifier:value('identifier'),owner:value('owner'),department:value('department'),location:value('location'),securityClass:value('securityClass'),status:value('status'),introducedDate:value('introducedDate'),expiryDate:value('expiryDate'),networkIdentifier:value('networkIdentifier'),personalData:value('personalData'),remarks:value('remarks')};}
+    function setMode(mode){
+      const nextMode=IS_ADMIN&&mode==='edit'?'edit':'register';
+      state.mode=nextMode;
+      clearForm();
+      const isEdit=nextMode==='edit';
+      document.getElementById('registerModeButton').classList.toggle('active',!isEdit);
+      document.getElementById('editModeButton').classList.toggle('active',isEdit);
+      document.getElementById('editLookupCard').classList.toggle('hidden',!isEdit);
+      document.querySelectorAll('.register-only').forEach((el)=>el.classList.toggle('hidden',isEdit));
+      document.querySelectorAll('.edit-only').forEach((el)=>el.classList.toggle('hidden',!isEdit));
+      document.getElementById('formTitle').textContent=isEdit?'기존 정보자산 수정':'신규 정보자산 등록';
+      document.getElementById('formDescription').textContent=isEdit?'위 목록에서 수정할 정보자산을 먼저 선택해 주세요.':'새 정보자산의 실제 내용을 입력해 주세요. 등록 후 관리번호가 자동 생성됩니다.';
+      document.getElementById('submitButton').textContent=isEdit?'정보자산 수정':'정보자산 등록';
+      formCard.classList.toggle('hidden',isEdit);
+      clearMessages();
+      applyCategoryLayout(false);
+      updateButton();
+    }
 
-    function saveAsset(event){event.preventDefault();if(!ready()||state.busy)return;if(state.editAssetId&&!value('editReason')){showError('수정 사유를 입력하세요.');return;}setBusy(true);clearMessages();const request=payload();const success=(result)=>{setBusy(false);showSuccess(result.assetId+' '+result.assetName+(state.editAssetId?' 수정 완료':' 등록 완료'));state.records=result.records||[];resetForm();renderFiltered();};const failure=(error)=>{setBusy(false);showError(messageOf(error));};const runner=google.script.run.withSuccessHandler(success).withFailureHandler(failure);if(state.editAssetId){runner.updateInfoAsset(request);}else{runner.registerInfoAsset(request);}}
+    function payload(){return {adminToken:ADMIN_TOKEN,assetId:state.editAssetId,reason:value('editReason'),category:value('category'),assetName:value('assetName'),quantity:value('quantity'),provider:value('provider'),purchasePlace:value('purchasePlace'),amount:value('amount'),purchaseDate:value('purchaseDate'),modelVersion:value('modelVersion'),serialNumber:value('serialNumber'),owner:value('owner'),user:value('user'),department:value('department'),location:value('location'),securityClass:value('securityClass'),status:value('status'),introducedDate:value('introducedDate'),expiryDate:value('expiryDate'),personalData:value('personalData'),remarks:value('remarks')};}
 
-    function startEdit(assetId){if(!IS_ADMIN)return;const record=state.records.find((item)=>item.assetId===assetId);if(!record)return;state.editAssetId=record.assetId;['category','assetName','provider','modelVersion','identifier','owner','department','location','securityClass','status','introducedDate','expiryDate','networkIdentifier','personalData','remarks'].forEach((id)=>{document.getElementById(id).value=record[id]||'';});document.getElementById('formTitle').textContent=record.assetId+' 정보자산 수정';document.getElementById('editControls').classList.remove('hidden');document.getElementById('submitButton').textContent='정보자산 수정';window.scrollTo({top:0,behavior:'smooth'});updateButton();}
+    function renderOwnerOptions(selected){
+      const department=value('department');
+      const managers=state.managerOptionsByDepartment[department]||[];
+      const owner=document.getElementById('owner');
+      owner.innerHTML='<option value="">'+(department?'담당자를 선택하세요':'사업장·부서를 먼저 선택하세요')+'</option>'+managers.map(option).join('');
+      owner.disabled=!department;
+      if(selected&&managers.includes(selected))owner.value=selected;
+    }
 
-    function resetForm(){form.reset();state.editAssetId='';document.getElementById('personalData').value='아니오';document.getElementById('formTitle').textContent='정보자산 등록';document.getElementById('editControls').classList.add('hidden');document.getElementById('editReason').value='';document.getElementById('submitButton').textContent='정보자산 등록';updateButton();}
+    function applyCategoryLayout(clearHidden){
+      const category=value('category');
+      const extras=CATEGORY_EXTRAS[category]||[];
+      document.querySelectorAll('.category-dependent').forEach((field)=>{
+        const extra=field.dataset.extra||'';
+        const visible=Boolean(category)&&(!extra||extras.includes(extra));
+        field.classList.toggle('hidden',!visible);
+        if(!visible&&clearHidden){
+          const control=field.querySelector('input,select,textarea');
+          if(control)control.value='';
+        }
+      });
+      document.querySelectorAll('.category-dependent-section').forEach((section)=>{
+        const hasVisible=Array.from(section.querySelectorAll('.field')).some((field)=>!field.classList.contains('hidden'));
+        section.classList.toggle('hidden',!hasVisible);
+      });
+      const guide=document.getElementById('categoryGuide');
+      guide.textContent=category
+        ? category+'에 필요한 항목만 표시했습니다. 표시되지 않은 항목은 대장에 비워 둡니다.'
+        : '먼저 자산분류를 선택해 주세요.';
+      const placeholders={
+        'PC·노트북':'예: 고색연구소 2층 개발실',
+        '서버':'예: 서버실 랙 A-03',
+        '네트워크 장비':'예: 화성1공장 통신실',
+        '소프트웨어·라이선스':'예: 사용 PC 또는 라이선스 관리 위치',
+        '클라우드·SaaS':'예: https://서비스주소',
+        '계정·권한':'예: 사내 시스템 로그인 주소',
+        '데이터·문서':'예: 공유 드라이브 또는 문서 보관 위치',
+        '기타':'설치·보관 위치 또는 접속주소'
+      };
+      document.getElementById('location').placeholder=placeholders[category]||'자산분류에 맞는 위치 또는 접속주소';
+      updateButton();
+    }
 
-    function renderFiltered(){const q=value('searchInput').toLowerCase();const category=value('categoryFilter');const records=state.records.filter((r)=>(!category||r.category===category)&&(!q||[r.assetId,r.assetName,r.owner,r.identifier,r.provider].join(' ').toLowerCase().includes(q)));document.getElementById('recordCount').textContent=String(records.length).padStart(2,'0');const target=document.getElementById('records');if(!records.length){target.innerHTML='<div class="empty">조건에 맞는 정보자산이 없습니다.</div>';return;}target.innerHTML=records.map((r)=>['<article class="record"><strong>',escapeHtml(r.assetId),'<small>',escapeHtml(r.category),'</small></strong><span>',escapeHtml(r.assetName),'<small>',escapeHtml(r.provider),' ',escapeHtml(r.modelVersion),'</small></span><span>',escapeHtml(r.owner),'<small>',escapeHtml(r.department),'</small></span><span>',escapeHtml(r.identifier),'<small>',escapeHtml(r.location),'</small></span><span class="class">',escapeHtml(r.securityClass),'<small>',escapeHtml(r.status),'</small></span>','<button class="edit-button" type="button" data-id="'+escapeHtml(r.assetId)+'">수정</button>','</article>'].join('')).join('');target.querySelectorAll('.edit-button').forEach((button)=>button.addEventListener('click',()=>startEdit(button.dataset.id)));}
-    function fillSelect(id,values){document.getElementById(id).innerHTML='<option value="">선택하세요</option>'+values.map(option).join('');}
+    function scheduleCatalogSearch(){
+      clearTimeout(state.catalogTimer);
+      const target=document.getElementById('catalogResults');
+      if(state.mode!=='register'||value('assetName').length<2){target.innerHTML='';return;}
+      state.catalogTimer=setTimeout(searchCatalog,350);
+    }
+
+    function searchCatalog(){
+      if(state.mode!=='register')return;
+      const query=value('assetName');
+      if(query.length<2)return;
+      const requestId=++state.catalogRequest;
+      google.script.run.withSuccessHandler((result)=>{
+        if(requestId!==state.catalogRequest||query!==value('assetName')||state.mode!=='register')return;
+        const target=document.getElementById('catalogResults');
+        const rows=result.results||[];
+        if(!rows.length){target.innerHTML='';return;}
+        target.innerHTML=rows.map((item,index)=>'<button class="lookup-result" type="button" data-index="'+index+'"><span><strong>'+escapeHtml(item.assetName)+'</strong><small>'+escapeHtml(item.category||'')+' · '+escapeHtml(item.modelVersion||'')+'</small></span><small>'+escapeHtml(item.provider||'')+'</small></button>').join('');
+        target.querySelectorAll('.lookup-result').forEach((button)=>button.addEventListener('click',()=>selectCatalog(rows[Number(button.dataset.index)])));
+      }).withFailureHandler(()=>{if(requestId===state.catalogRequest)document.getElementById('catalogResults').innerHTML='';}).searchInfoAssetCatalog(query,ADMIN_TOKEN);
+    }
+
+    function selectCatalog(item){
+      document.getElementById('assetName').value=item.assetName||'';
+      document.getElementById('category').value=item.category||'';
+      applyCategoryLayout(true);
+      document.getElementById('modelVersion').value=item.modelVersion||'';
+      document.getElementById('provider').value=item.provider||'';
+      document.getElementById('catalogResults').innerHTML='<div class="notice">참고값을 반영했습니다. 새 관리번호로 등록됩니다.</div>';
+      updateButton();
+    }
+
+    function saveAsset(event){
+      event.preventDefault();
+      if(!ready()||state.busy)return;
+      const isEdit=state.mode==='edit';
+      if(isEdit&&(!IS_ADMIN||!state.editAssetId)){showError('관리자 화면에서 수정할 자산을 먼저 선택하세요.');return;}
+      if(isEdit&&!value('editReason')){showError('수정 사유를 입력하세요.');return;}
+      setBusy(true);
+      clearMessages();
+      const request=payload();
+      const success=(result)=>{
+        setBusy(false);
+        state.records=IS_ADMIN?(result.records||state.records):[];
+        if(isEdit){setMode('edit');}else{clearForm();}
+        renderFiltered();
+        showSuccess(result.assetId+' '+result.assetName+(isEdit?' 수정 완료':' 등록 완료'));
+      };
+      const failure=(error)=>{setBusy(false);showError(messageOf(error));};
+      const runner=google.script.run.withSuccessHandler(success).withFailureHandler(failure);
+      if(isEdit){runner.updateInfoAsset(request);}else{runner.registerInfoAsset(request);}
+    }
+
+    function startEdit(assetId){
+      if(!IS_ADMIN||state.mode!=='edit')return;
+      const record=state.records.find((item)=>item.assetId===assetId);
+      if(!record)return;
+      clearForm();
+      state.editAssetId=record.assetId;
+      ['assetId','assetType','category','assetName','provider','modelVersion','serialNumber','user','department','departmentCode','securityClass','status','introducedDate','expiryDate','personalData','remarks','quantity','purchasePlace','amount','purchaseDate','registeredAt','updatedAt'].forEach((id)=>{const el=document.getElementById(id);if(el)el.value=record[id]||'';});
+      renderOwnerOptions(record.owner||'');
+      applyCategoryLayout(true);
+      document.getElementById('formTitle').textContent=record.assetId+' 수정';
+      document.getElementById('formDescription').textContent='선택한 정보자산의 변경할 항목과 수정 사유를 입력해 주세요.';
+      formCard.classList.remove('hidden');
+      updateButton();
+      formCard.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+
+    function clearForm(){
+      clearTimeout(state.catalogTimer);
+      state.catalogRequest+=1;
+      form.reset();
+      state.editAssetId='';
+      document.getElementById('personalData').value='아니오';
+      document.getElementById('quantity').value='1EA';
+      document.getElementById('assetType').value='정보자산 (S)';
+      document.getElementById('department').value=state.defaultDepartment;
+      renderOwnerOptions('');
+      document.getElementById('editReason').value='';
+      document.getElementById('catalogResults').innerHTML='';
+      applyCategoryLayout(false);
+      updateButton();
+    }
+
+    function renderFiltered(){
+      if(!IS_ADMIN)return;
+      const q=value('searchInput').toLowerCase();
+      const category=value('categoryFilter');
+      const records=state.records.filter((r)=>(!category||r.category===category)&&(!q||[r.assetId,r.assetName,r.owner,r.provider].join(' ').toLowerCase().includes(q)));
+      document.getElementById('recordCount').textContent=String(records.length).padStart(2,'0');
+      const target=document.getElementById('records');
+      if(!records.length){target.innerHTML='<div class="empty">조건에 맞는 정보자산이 없습니다.</div>';return;}
+      target.innerHTML=records.map((r)=>['<article class="record"><strong>',escapeHtml(r.assetId),'<small>',escapeHtml(r.category),'</small></strong><span>',escapeHtml(r.assetName),'<small>',escapeHtml(r.provider),' ',escapeHtml(r.modelVersion),'</small></span><span>',escapeHtml(r.owner||'-'),'<small>사용자 ',escapeHtml(r.user||'-'),' · ',escapeHtml(r.department),'</small></span><span>',escapeHtml(r.location||'-'),'<small>설치·보관 위치·접속주소</small></span><span class="class">',escapeHtml(r.securityClass||'-'),'<small>',escapeHtml(r.status||'-'),'</small></span>','<button class="edit-button" type="button" data-id="'+escapeHtml(r.assetId)+'">수정</button>','</article>'].join('')).join('');
+      target.querySelectorAll('.edit-button').forEach((button)=>button.addEventListener('click',()=>startEdit(button.dataset.id)));
+    }
+
+    function fillSelect(id,values,placeholder){document.getElementById(id).innerHTML='<option value="">'+escapeHtml(placeholder)+'</option>'+(values||[]).map(option).join('');}
     function option(text){return '<option value="'+escapeHtml(text)+'">'+escapeHtml(text)+'</option>';}
-    function ready(){return ['category','assetName','owner','department','securityClass','status'].every((id)=>value(id));}function updateButton(){document.getElementById('submitButton').disabled=state.busy||!state.ready||!ready()||(state.editAssetId&&!value('editReason'));}function setBusy(v){state.busy=v;clearTimeout(state.overlayTimer);const overlay=document.getElementById('overlay');if(v){state.overlayTimer=setTimeout(()=>overlay.classList.add('show'),350)}else{overlay.classList.remove('show')}updateButton();}function value(id){return document.getElementById(id).value.trim();}function clearMessages(){['errorMessage','successMessage'].forEach((id)=>document.getElementById(id).classList.remove('show'));}function showError(text){const e=document.getElementById('errorMessage');e.textContent=text;e.classList.add('show');}function showSuccess(text){const e=document.getElementById('successMessage');e.textContent=text;e.classList.add('show');}function messageOf(error){return error&&error.message?error.message:String(error||'처리 중 오류가 발생했습니다.');}function escapeHtml(text){return String(text==null?'':text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');}
+    function ready(){return Boolean(value('category'));}
+    function updateButton(){document.getElementById('submitButton').disabled=state.busy||!state.ready||!ready()||(state.mode==='edit'&&(!IS_ADMIN||!state.editAssetId||!value('editReason')));}
+    function setBusy(v){state.busy=v;clearTimeout(state.overlayTimer);const overlay=document.getElementById('overlay');if(v){state.overlayTimer=setTimeout(()=>overlay.classList.add('show'),350);}else{overlay.classList.remove('show');}updateButton();}
+    function value(id){const el=document.getElementById(id);return el?el.value.trim():'';}
+    function clearMessages(){['errorMessage','successMessage'].forEach((id)=>document.getElementById(id).classList.remove('show'));}
+    function showError(text){const e=document.getElementById('errorMessage');e.textContent=text;e.classList.add('show');}
+    function showSuccess(text){const e=document.getElementById('successMessage');e.textContent=text;e.classList.add('show');}
+    function messageOf(error){return error&&error.message?error.message:String(error||'처리 중 오류가 발생했습니다.');}
+    function escapeHtml(text){return String(text==null?'':text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');}
     loadConfig();
   </script>
 </body>

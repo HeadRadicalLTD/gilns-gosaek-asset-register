@@ -208,13 +208,18 @@ assert.ok(!requests.includes('placeholder="예: 52, IA-0007, 출입기록 ID"'))
 ].forEach((pattern) => assert.match(backend, pattern));
 
 [
-  "'화성1공장': '김한영'",
+  "'화성1공장': '전관식'",
   "'화성2공장': '임현구'",
   "'화성2공장(조립실)': '임현구'",
   "'고색연구소': '이장명'",
-  'manager: getSiteManager_(sheetName)',
-  'asset.manager = getSiteManager_(context.sheet.getName())',
+  'manager: getSiteManager_(context.sheet.getName())',
+  'asset.manager = asset.manager || getSiteManager_(context.sheet.getName())',
 ].forEach((needle) => assert.ok(backend.includes(needle)));
+assert.match(
+  backend,
+  /'화성1공장': Object\.freeze\(\['김재웅', '오양택', '전관식'\]\)/,
+);
+assert.doesNotMatch(backend, /김한영/);
 assert.ok(!backend.includes("'실물자산 사진 정정'"));
 
 assert.doesNotMatch(backend, /rlfdosdptm[12]!/);

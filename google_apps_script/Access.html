@@ -1064,11 +1064,23 @@
         });
     }
 
-    function processExit(recordId, name) {
+    function processExit(recordId, name, hostName) {
       const processorField = TYPE === 'visitor'
         ? 'exitProcessedBy'
         : 'processedBy';
       const processedBy = valueOf(processorField);
+
+      if (
+        TYPE === 'visitor' &&
+        !IS_ADMIN &&
+        String(hostName || '').trim() !== String(ACTOR_NAME || '').trim()
+      ) {
+        const message =
+          '본인을 방문 대상으로 지정한 방문객만 퇴장 처리할 수 있습니다.';
+        showError(message);
+        window.alert(message);
+        return;
+      }
 
       if (!processedBy) {
         showError('퇴장 처리 전에 처리자를 입력하세요.');
@@ -1099,7 +1111,9 @@
         })
         .withFailureHandler((error) => {
           setBusy(false);
-          showError(getErrorMessage(error));
+          const message = getErrorMessage(error);
+          showError(message);
+          window.alert(message);
         })
         .completeAccessExit({
           adminToken: ADMIN_TOKEN,
@@ -1127,12 +1141,14 @@
         const name = escapeHtml(record.name);
         const organization = escapeHtml(record.organization);
         const purpose = escapeHtml(record.purpose);
+        const hostName = escapeHtml(record.hostName || '');
 
         const action = TYPE === 'visitor'
           ? [
               '<button class="exit-button" type="button" ',
               'data-record-id="', escapeHtml(record.recordId), '" ',
-              'data-name="', name, '">퇴장 처리</button>',
+              'data-name="', name, '" ',
+              'data-host-name="', hostName, '">퇴장 처리</button>',
             ].join('')
           : '<span>출입 중</span>';
 
@@ -1155,7 +1171,8 @@
           button.addEventListener('click', () => {
             processExit(
               button.dataset.recordId,
-              button.dataset.name
+              button.dataset.name,
+              button.dataset.hostName
             );
           });
         });
