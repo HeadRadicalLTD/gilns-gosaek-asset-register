@@ -8,7 +8,7 @@ const properties = new Map();
 const context = vm.createContext({ console, PropertiesService: { getScriptProperties: () => ({
   getProperty: key => properties.get(key), setProperty: (key, value) => properties.set(key, value),
 }) }, LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) } });
-vm.runInContext(read('Code.gs') + '\n' + read('Notifications.gs'), context);
+vm.runInContext(read('Code.gs') + '\n' + read('InternalNotifications.gs'), context);
 context.sha256Text_ = value => crypto.createHash('sha256').update(String(value)).digest('hex');
 const user = { actorName: '이은범', employeeNumber: 'GNS-018', department: '고색연구소', role: 'registrar' };
 let session = user;

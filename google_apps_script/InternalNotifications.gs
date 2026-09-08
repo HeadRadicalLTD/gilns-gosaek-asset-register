@@ -1,4 +1,4 @@
-// Read-only feeds use existing ledgers. Polling never invokes schema migrations.
+// Internal notification feeds use existing ledgers without schema migrations.
 function readNotificationRows_(propertyKey, sheetName, width, fallbackId) {
   const id = PropertiesService.getScriptProperties().getProperty(propertyKey) || fallbackId;
   if (!id) throw new Error('알림 대장이 연결되지 않았습니다.');
