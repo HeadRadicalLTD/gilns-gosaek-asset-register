@@ -35,7 +35,12 @@ assert.equal(feed.find(i=>i.recordId==='MOVE-MINE').status,'반입 기한 경과
 assert.ok(!JSON.stringify(feed).includes('010-private'));
 const oldId = feed.find(i=>i.recordId==='REQ-MINE').id;
 const changed=structuredClone(sources);changed.requests[0][8]='처리 완료';changed.requests[0][11]='수정했습니다';changed.requests[0][10]='2026-09-08 15:00';
-assert.notEqual(build(user,changed).find(i=>i.recordId==='REQ-MINE').id,oldId);
+assert.ok(!build(user,changed).some(i=>i.recordId==='REQ-MINE'));
+for (const terminalStatus of ['반려','취소']) {
+  const terminal=structuredClone(sources);terminal.requests[0][8]=terminalStatus;
+  assert.ok(!build(user,terminal).some(i=>i.recordId==='REQ-MINE'));
+  assert.ok(!build({...user,role:'admin'},terminal).some(i=>i.recordId==='REQ-MINE'));
+}
 assert.ok(build({...user,role:'admin'}).some(i=>i.recordId==='REQ-PENDING'));
 assert.ok(!build({...user,role:'admin'}).some(i=>i.recordId==='REQ-OTHER'));
 assert.equal(context.markInternalNotificationsRead({adminToken:'mock',ids:[oldId]}).ok,true);

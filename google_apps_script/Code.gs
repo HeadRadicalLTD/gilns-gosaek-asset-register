@@ -5002,6 +5002,7 @@ function registerManagementRequest(request) {
     );
     sheet.getRange(row, 2).setNumberFormat('yyyy-mm-dd hh:mm:ss');
     SpreadsheetApp.flush();
+    invalidateManagementRequestNotifications_();
     appendManagementRequestAuditLog_(system.log, {
       author: session.actorName,
       eventType: '관리요청접수',
@@ -5162,6 +5163,8 @@ function executeManagementDeletion(request) {
       '삭제 실행 완료 · 백업 ' + backupFile.getUrl(),
     ]]);
     requestSheet.getRange(requestRow, 11).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+    SpreadsheetApp.flush();
+    invalidateManagementRequestNotifications_();
     appendManagementRequestAuditLog_(managementSystem.log, {
       author: session.actorName,
       eventType: '관리요청삭제실행',
@@ -5221,6 +5224,7 @@ function processManagementRequest(request) {
     ]]);
     sheet.getRange(row, 11).setNumberFormat('yyyy-mm-dd hh:mm:ss');
     SpreadsheetApp.flush();
+    invalidateManagementRequestNotifications_();
     appendManagementRequestAuditLog_(system.log, {
       author: session.actorName,
       eventType: '관리요청' + status,

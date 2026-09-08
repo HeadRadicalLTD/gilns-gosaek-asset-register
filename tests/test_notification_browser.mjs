@@ -19,7 +19,7 @@ for(const [label,executablePath] of browsers){
         if(name==='withSuccessHandler')return callback=>runner(callback,fail);
         if(name==='withFailureHandler')return callback=>runner(ok,callback);
         return (...args)=>{window.calls.push({name,args});setTimeout(()=>{
-          if(name==='getInternalNotifications')ok({ok:true,items:[{id:(window.noticeVersion?'b':'a').repeat(32),module:'requests',recordId:'REQ-1',title:'정보자산 수정',status:window.noticeVersion?'처리 완료':'처리 대기',detail:'테스트 <script>evil()</script>',at:'2026-09-08',read:window.noticeRead}],unavailable:[]});
+          if(name==='getInternalNotifications'){const terminal=window.noticeVersion===1;ok({ok:true,items:terminal?[]:[{id:(window.noticeVersion===2?'c':'a').repeat(32),module:'requests',recordId:'REQ-1',title:'정보자산 수정',status:'처리 대기',detail:'테스트 <script>evil()</script>',at:'2026-09-08',read:window.noticeRead}],unavailable:[]});}
           else if(name==='markInternalNotificationsRead'){if(window.failRead){fail(new Error('offline'));return;}window.noticeRead=true;ok({ok:true});}
           else if(name==='searchAssetCorrectionTargets')ok({ok:true,results:[{managementNumber:'GNS-S-L-001',itemName:'Office'}]});
           else if(name==='registerManagementRequest')ok({ok:true,requestId:'REQ-2'});
@@ -43,8 +43,14 @@ for(const [label,executablePath] of browsers){
     if(width<720)assert.ok(topBox.x+topBox.width<=toggleBox.x,'mobile controls must not overlap');
     await page.getByRole('button',{name:'모두 읽음',exact:true}).click();
     await page.waitForFunction(()=>document.querySelector('#gilns-notice-toggle').textContent==='알림');
+    assert.equal(await page.locator('#gilns-notice-list a').count(),0);
+    assert.equal(await page.locator('#gilns-notice-message').innerText(),'현재 알림이 없습니다.');
     await page.getByRole('button',{name:'닫기',exact:true}).click();
     await page.evaluate(()=>{window.noticeRead=false;window.noticeVersion=1;window.gilnsRefreshNotifications();});
+    await page.waitForFunction(()=>document.querySelector('#gilns-notice-toggle').textContent==='알림');
+    assert.equal(await page.locator('#gilns-notice-list a').count(),0);
+    assert.equal(await page.locator('#gilns-notice-message').innerText(),'현재 알림이 없습니다.');
+    await page.evaluate(()=>{window.noticeVersion=2;window.gilnsRefreshNotifications();});
     await page.waitForFunction(()=>!document.querySelector('#gilns-notice-panel').hidden);
     await page.evaluate(()=>{window.failRead=true;});
     await page.getByRole('button',{name:'모두 읽음',exact:true}).click();

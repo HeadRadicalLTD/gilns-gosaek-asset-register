@@ -41,7 +41,7 @@
     const list=node('div');list.id='gilns-notice-list';panel.append(head,message,list);
     const toggle=node('button','알림 확인 중');toggle.id='gilns-notice-toggle';toggle.type='button';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',panel.id);
     root.append(panel,toggle);document.body.appendChild(root);
-    let items=[],loading=false,marking=false,timer,lastLoad=0,seen=new Set();
+    let items=[],unavailable=[],loading=false,marking=false,timer,lastLoad=0,seen=new Set();
     function show(open){panel.hidden=!open;toggle.setAttribute('aria-expanded',String(open));}
     toggle.addEventListener('click',function(){show(panel.hidden);if(Date.now()-lastLoad>25000)load();});
     close.addEventListener('click',function(){show(false);toggle.focus();});
@@ -58,10 +58,11 @@
     }
     readAll.addEventListener('click',function(){mark(items.filter(i=>!i.read).map(i=>i.id));});
     function render(){
-      const unread=items.filter(i=>!i.read).length;
+      const visibleItems=items.filter(i=>!i.read);
+      const unread=visibleItems.length;
       toggle.textContent=unread?'알림 '+unread+'건':'알림';
       readAll.disabled=marking||!unread;list.replaceChildren();
-      items.forEach(function(item){
+      visibleItems.forEach(function(item){
         const link=node('a');link.href=href(item.module,item.recordId);link.target='_top';link.dataset.unread=String(!item.read);
         link.append(node('strong',item.title+' · '+item.status),node('small',item.detail),node('small',item.at));
         link.addEventListener('click',function(e){
@@ -70,8 +71,9 @@
           if(!item.read){e.preventDefault();mark([item.id],function(){window.top.location.href=link.href;});}
         });list.appendChild(link);
       });
-      if(items.some(i=>!i.read&&!seen.has(i.id)))show(true);
-      items.forEach(i=>seen.add(i.id));
+      message.textContent=unavailable.length?'일부 업무의 알림을 불러오지 못했습니다. 새로고침해 주세요.':visibleItems.length?'알림을 누르면 관련 업무로 이동합니다.':'현재 알림이 없습니다.';
+      if(visibleItems.some(i=>!seen.has(i.id)))show(true);
+      visibleItems.forEach(i=>seen.add(i.id));
     }
     function schedule(){clearTimeout(timer);timer=setTimeout(load,45000);}
     function load(){
@@ -80,8 +82,8 @@
       call('getInternalNotifications',[token],function(result){
         loading=false;refresh.disabled=false;lastLoad=Date.now();
         if(!result||!result.ok){message.textContent='알림을 불러오지 못했습니다. 다시 로그인하거나 새로고침해 주세요.';toggle.textContent='알림 확인 필요';schedule();return;}
+        unavailable=result.unavailable||[];
         items=result.items||[];
-        message.textContent=(result.unavailable||[]).length?'일부 업무의 알림을 불러오지 못했습니다. 새로고침해 주세요.':items.length?'알림을 누르면 관련 업무로 이동합니다.':'현재 알림이 없습니다.';
         render();schedule();
       },function(){loading=false;refresh.disabled=false;message.textContent='알림 연결에 실패했습니다. 새로고침해 주세요.';toggle.textContent='알림 연결 확인';schedule();});
     }

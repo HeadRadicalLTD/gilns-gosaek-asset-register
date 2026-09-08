@@ -15,6 +15,22 @@ function readNotificationRows_(propertyKey, sheetName, width, fallbackId) {
   return rows;
 }
 
+function invalidateNotificationRows_(propertyKey, sheetName, fallbackId) {
+  const id = PropertiesService.getScriptProperties().getProperty(propertyKey) || fallbackId;
+  if (!id) return;
+  CacheService.getScriptCache().remove(
+    'notice-rows-v1-' + sha256Text_(id + ':' + sheetName)
+  );
+}
+
+function invalidateManagementRequestNotifications_() {
+  invalidateNotificationRows_(
+    MANAGEMENT_REQUEST.spreadsheetPropertyKey,
+    MANAGEMENT_REQUEST.sheetName,
+    MANAGED_SPREADSHEET_IDS.MANAGEMENT_REQUEST_SPREADSHEET_ID
+  );
+}
+
 function notificationSession_(token) {
   const session = requireSessionInfo_(token);
   if (['admin', 'registrar'].indexOf(session.role) === -1 || !session.actorName) {
@@ -42,7 +58,8 @@ function buildInternalNotifications_(session, sources, today) {
     items.push(item);
   }
   (sources.requests || []).forEach(function (r) {
-    if (r[0] && (r[2] === session.actorName || (admin && r[8] === '처리 대기'))) {
+    const pending = String(r[8] || '').trim() === '처리 대기';
+    if (r[0] && pending && (r[2] === session.actorName || admin)) {
       add('requests', r[0], r[4] + ' · ' + r[6], r[8], r[11] || r[7], r[10] || r[1], r[9]);
     }
   });
