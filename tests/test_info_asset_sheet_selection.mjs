@@ -70,6 +70,13 @@ function environment({ missing = [], sessionDepartment = '고색연구소', exis
     return { actorName: '관리자', role: 'admin', department: sessionDepartment };
   };
   context.ensureInfoAssetSystem_ = () => ({ spreadsheet, ledger, log: {} });
+  const employeeRoster = {};
+  context.getAccessSpreadsheetForRead_ = () => ({});
+  context.ensureEmployeeRosterSheet_ = () => employeeRoster;
+  context.listEmployeeRoster_ = (sheet) => {
+    assert.equal(sheet, employeeRoster);
+    return [{ employeeNumber: 'GNS-001', name: '테스트 사용자', department: '고색연구소', enabled: true }];
+  };
   context.listInfoAssets_ = (_ledger, perDepartmentLimit) => { observed.listLimits.push(perDepartmentLimit); return []; };
   context.getNextInfoAssetId_ = (_ledger, department) => {
     observed.idDepartments.push(department);

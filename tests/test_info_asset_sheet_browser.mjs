@@ -24,7 +24,7 @@ const baseRecord = {
   registeredAt: '2026-09-08 09:00:00', updatedAt: '2026-09-08 09:00:00',
 };
 const records = [
-  { ...baseRecord, assetId: 'GNS-S-L-001', assetName: '고색연구소 검증 노트북', ...sheets[0], owner: '이장명', user: '테스트 등록자', location: '고색연구소 개발실 A-01' },
+  { ...baseRecord, assetId: 'GNS-S-L-001', assetName: '고색연구소 검증 노트북', ...sheets[0], owner: '이장명', user: '테스트 사용자', location: '고색연구소 개발실 A-01' },
   { ...baseRecord, assetId: 'GNS-S-F1-001', assetName: '화성1공장 검증 장비', ...sheets[1], owner: '전관식', user: '테스트 사용자', location: 'https://example.invalid/' + 'long-location-segment-'.repeat(15) },
 ];
 const config = {
@@ -32,6 +32,10 @@ const config = {
   sheets, categories: ['PC·노트북', '서버', '데이터·문서'],
   departments: sheets.map((sheet) => sheet.department), defaultDepartment: '고색연구소',
   managerOptionsByDepartment: { '고색연구소': ['김재웅', '이장명'], '화성1공장': ['김재웅', '전관식'] },
+  employees: [
+    { name: '김재웅', department: '경영지원' }, { name: '이장명', department: '고색연구소' },
+    { name: '전관식', department: '화성1공장' }, { name: '테스트 사용자', department: '고색연구소' },
+  ],
   securityClasses: ['공개', '사내한', '대외비'], statuses: ['사용중', '예비', '폐기'], records,
 };
 
@@ -143,7 +147,9 @@ async function verifyScenario(browser, browserName, width, role) {
     await page.locator('#category').selectOption('PC·노트북');
     await page.locator('#assetName').fill('신규 모의 검증 자산');
     await page.locator('#owner').selectOption('이장명');
-    await page.locator('#user').fill('테스트 사용자');
+    assert.equal(await page.locator('#user').isDisabled(), false, label + ': user enabled after owner selection');
+    assert.deepEqual(await page.locator('#user option').evaluateAll((options) => options.map((option) => option.value)), ['미지정', '김재웅', '전관식', '테스트 사용자']);
+    await page.locator('#user').selectOption('테스트 사용자');
     await page.locator('#location').fill('고색연구소 개발실 A-02');
     await page.locator('#securityClass').selectOption('사내한');
     await page.locator('#status').selectOption('사용중');
@@ -169,6 +175,7 @@ async function verifyScenario(browser, browserName, width, role) {
       await page.locator('#records .edit-button[data-id="GNS-S-L-001"]').click();
       assert.equal(await page.locator('#assetId').inputValue(), 'GNS-S-L-001');
       assert.equal(await page.locator('#location').inputValue(), records[0].location, label + ': existing location retained in edit form');
+      assert.equal(await page.locator('#user').inputValue(), records[0].user, label + ': existing roster user retained in edit form');
       await page.locator('#editReason').fill('로컬 모의 수정 검증');
       await page.locator('#location').fill('고색연구소 개발실 A-03');
       await page.locator('#submitButton').click();

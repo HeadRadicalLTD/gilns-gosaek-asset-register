@@ -95,7 +95,7 @@
           <p class="section-description">관리 책임자와 실제 사용·보관 위치를 입력합니다.</p>
           <div class="grid">
             <div class="field category-dependent hidden"><label for="owner">담당자</label><select id="owner"><option value="">사업장·부서를 먼저 선택하세요</option></select><small class="field-help">선택한 사업장·부서의 담당자만 표시됩니다.</small></div>
-            <div class="field category-dependent hidden"><label for="user">사용자</label><input id="user" maxlength="80" placeholder="실제 사용 부서 또는 사용자 이름"></div>
+            <div class="field category-dependent hidden"><label for="user">사용자</label><select id="user" disabled><option value="">담당자를 먼저 선택하세요</option></select><small class="field-help">사원 명부에서 선택합니다. 미지정도 가능합니다.</small></div>
             <div class="field category-dependent hidden"><label for="department">사업장·부서</label><select id="department" disabled><option value="">등록할 시트를 먼저 선택하세요</option></select><small class="field-help">위에서 선택한 시트에 맞춰 자동 지정됩니다.</small></div>
             <div class="field full category-dependent hidden"><label for="location">설치·보관 위치·접속주소</label><input id="location" maxlength="250" placeholder="자산분류에 맞는 위치 또는 접속주소"></div>
           </div>
@@ -135,7 +135,7 @@
     gilnsProtectSessionUrl(ADMIN_TOKEN,{module:'info'});
     const USER_ROLE=document.body.dataset.userRole;
     const IS_ADMIN=USER_ROLE==='admin';
-    const state={ready:false,busy:false,records:[],sheets:[],sheetName:'',mode:'register',editAssetId:'',defaultDepartment:'',managerOptionsByDepartment:{},overlayTimer:null,catalogTimer:null,catalogRequest:0};
+    const state={ready:false,busy:false,records:[],sheets:[],employees:[],sheetName:'',mode:'register',editAssetId:'',defaultDepartment:'',managerOptionsByDepartment:{},overlayTimer:null,catalogTimer:null,catalogRequest:0};
     const CATEGORY_EXTRAS={
       'PC·노트북':['provider','modelVersion','serialNumber','introducedDate','purchasePlace','amount','purchaseDate'],
       '서버':['provider','modelVersion','serialNumber','introducedDate','purchasePlace','amount','purchaseDate'],
@@ -158,6 +158,7 @@
     document.getElementById('categoryFilter').addEventListener('change',renderFiltered);
     document.getElementById('category').addEventListener('change',()=>applyCategoryLayout(true));
     document.getElementById('sheetName').addEventListener('change',selectSheet);
+    document.getElementById('owner').addEventListener('change',()=>renderUserOptions());
     document.getElementById('registerModeButton').addEventListener('click',()=>setMode('register'));
     document.getElementById('editModeButton').addEventListener('click',()=>setMode('edit'));
 
@@ -176,6 +177,7 @@
         fillSelect('securityClass',config.securityClasses,'보안등급을 선택하세요');
         fillSelect('status',config.statuses,'운영 상태를 선택하세요');
         state.managerOptionsByDepartment=config.managerOptionsByDepartment||{};
+        state.employees=(config.employees||[]).filter((employee)=>employee&&employee.name);
         state.defaultDepartment=config.defaultDepartment&&(config.departments||[]).includes(config.defaultDepartment)?config.defaultDepartment:'';
         document.getElementById('categoryFilter').innerHTML='<option value="">전체 자산분류</option>'+(config.categories||[]).map(option).join('');
         state.records=IS_ADMIN?(config.records||[]):[];
@@ -258,6 +260,19 @@
       owner.innerHTML='<option value="">'+(department?'담당자를 선택하세요':'사업장·부서를 먼저 선택하세요')+'</option>'+managers.map(option).join('');
       owner.disabled=!department;
       if(selected&&managers.includes(selected))owner.value=selected;
+      renderUserOptions();
+    }
+
+    function renderUserOptions(selected){
+      const current=selected===undefined?value('user'):selected;
+      const owner=value('owner');
+      const user=document.getElementById('user');
+      user.innerHTML='<option value="미지정">'+(owner?'미지정':'담당자를 먼저 선택하세요')+'</option>';
+      user.disabled=!owner;
+      if(!owner)return;
+      const employees=state.employees.filter((employee)=>employee.name!==owner);
+      user.innerHTML+=employees.map((employee)=>'<option value="'+escapeHtml(employee.name)+'">'+escapeHtml(employee.name+' · '+employee.department)+'</option>').join('');
+      if(current&&current!=='미지정'&&employees.some((employee)=>employee.name===current))user.value=current;
     }
 
     function applyCategoryLayout(clearHidden){
@@ -360,6 +375,7 @@
       ['assetId','assetType','category','assetName','provider','modelVersion','serialNumber','user','location','securityClass','status','introducedDate','expiryDate','personalData','remarks','quantity','purchasePlace','amount','purchaseDate','registeredAt','updatedAt'].forEach((id)=>{const el=document.getElementById(id);if(el)el.value=record[id]||'';});
       syncSelectedSheetDetails();
       renderOwnerOptions(record.owner||'');
+      renderUserOptions(record.user||'');
       applyCategoryLayout(false);
       document.getElementById('formTitle').textContent=record.assetId+' 수정';
       document.getElementById('formDescription').textContent='선택한 정보자산의 변경할 항목과 수정 사유를 입력해 주세요.';

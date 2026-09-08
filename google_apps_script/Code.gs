@@ -7968,6 +7968,8 @@ function getInfoAssetConfig(adminToken) {
     const session = requireSessionInfo_(adminToken, 'infoRegister');
     const userRole = session.role;
     const system = ensureInfoAssetSystem_();
+    const accessSpreadsheet = getAccessSpreadsheetForRead_();
+    const employeeRoster = ensureEmployeeRosterSheet_(accessSpreadsheet);
     return {
       ok: true,
       userRole: userRole,
@@ -7987,6 +7989,7 @@ function getInfoAssetConfig(adminToken) {
       defaultDepartment: session.department || '',
       recordLimit: INFO_ASSET.maxRecords,
       managerOptionsByDepartment: getAssetManagerOptionsBySite_(),
+      employees: listEmployeeRoster_(employeeRoster),
       securityClasses: INFO_ASSET.securityClasses.slice(),
       statuses: ['사용중', '예비', '점검중', '폐기예정', '폐기'],
       records: userRole === 'admin'

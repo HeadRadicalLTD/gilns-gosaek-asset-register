@@ -76,6 +76,8 @@ assert.ok(info.includes("정보자산 수정"));
   '등록할 시트를 선택하세요',
   'id="sheetSelectionCard"',
   '<select id="department" disabled>',
+  '<select id="user" disabled>',
+  "renderUserOptions(record.user||'');",
 ].forEach((needle) => assert.ok(
   info.includes(needle),
   `InfoAssets role/mode separation missing: ${needle}`,
