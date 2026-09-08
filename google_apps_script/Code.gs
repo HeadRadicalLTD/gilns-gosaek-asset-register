@@ -8712,11 +8712,19 @@ function formatInfoAssetRow_(sheet, row) {
     .setNumberFormat('yyyy-mm-dd hh:mm:ss');
   sheet.getRange(row, INFO_ASSET_COL.updatedAt)
     .setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  formatInfoAssetDateFields_(sheet, row);
   sheet.getRange(row, INFO_ASSET_COL.location)
     .clearDataValidations()
     .setBackground('#EAF6F3');
   formatCompactNumberCell_(sheet.getRange(row, INFO_ASSET_COL.amount));
   formatInfoSecurityClassCell_(sheet, row);
+}
+
+function formatInfoAssetDateFields_(sheet, row) {
+  sheet.getRange(row, INFO_ASSET_COL.purchaseDate)
+    .setNumberFormat('yyyy-mm-dd');
+  sheet.getRange(row, INFO_ASSET_COL.introducedDate, 1, 2)
+    .setNumberFormat('yyyy-mm-dd');
 }
 
 function copyInfoAssetRowFormat_(sheet, row) {
@@ -8951,6 +8959,7 @@ function syncInformationDepartmentSheetRow_(
     .setNumberFormat('yyyy-mm-dd hh:mm:ss');
   target.getRange(targetRow, INFO_ASSET_COL.updatedAt)
     .setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  formatInfoAssetDateFields_(target, targetRow);
   target.getRange(targetRow, INFO_ASSET_COL.location)
     .clearDataValidations()
     .setBackground('#EAF6F3');

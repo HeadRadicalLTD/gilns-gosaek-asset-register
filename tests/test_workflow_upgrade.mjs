@@ -102,6 +102,7 @@ assert.ok(!accessEntryBlock.includes('clearInfoAssetDataRangeByColumn_'));
 assert.ok(infoRegisterBlock.includes('clearInfoAssetDataRangeByColumn_'));
 assert.match(code, /function syncPhysicalIntegratedAssetRow_\(/);
 assert.match(code, /function syncInformationDepartmentSheetRow_\(/);
+assert.match(code, /function formatInfoAssetDateFields_\([\s\S]*?INFO_ASSET_COL\.introducedDate, 1, 2[\s\S]*?'yyyy-mm-dd'/);
 assert.match(physicalRegisterBlock, /syncPhysicalIntegratedAssetRow_\(/);
 assert.equal((physicalRegisterBlock.match(/syncPhysicalIntegratedSheet_\(/g) || []).length, 1);
 assert.match(physicalUpdateBlock, /syncPhysicalIntegratedAssetRow_\(/);
