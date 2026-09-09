@@ -146,6 +146,15 @@ document.addEventListener('keydown',(event)=>{
   else if(event.key==='ArrowUp'){event.preventDefault();enterMonthOverview();}
   else if(event.key==='ArrowDown'){event.preventDefault();exitMonthOverview();}
 });
+function appendSeptember09ReportEntry(){
+  const daily=document.getElementById('daily');
+  if(!daily||document.getElementById('daily-2026-09-09'))return;
+  daily.insertAdjacentHTML('afterbegin',`<details class="daily-card month-filter-item" id="daily-2026-09-09" data-months="2026-09" open><summary><span>2026-09-09</span><strong>물품 반출입 보관·승인 및 성능 개선</strong></summary><div class="daily-body"><button class="back-calendar" type="button">← 달력으로 돌아가기</button><p class="daily-summary">물품 반출·보관 요청과 부서 승인 흐름을 자산 상태와 연결하고, 신청·반려·초기 로딩 지연을 줄였습니다.</p><ul class="detail-steps"><li class="problem"><span class="step-label">문제</span><span>반출 뒤 보관 처리와 승인 화면이 분리되어 있었고, 신청·반려와 화면 로딩이 10초 이상 걸리는 경우가 있었습니다.</span></li><li class="action"><span class="step-label">개선</span><span>사용중 자산의 보관 신청과 승인 흐름을 추가해 승인 시 물품관리대장의 상태가 사용중에서 보관중으로 바뀌도록 연결했습니다. 반출 승인은 보관중에서 사용중으로 동기화됩니다.</span></li><li class="action"><span class="step-label">권한</span><span>같은 부서의 LM·BM·ES만 반출·보관 신청을 승인하거나 반려하도록 제한했습니다.</span></li><li class="action"><span class="step-label">성능</span><span>반출입 대장 조회를 한 번으로 통합하고 자산 시트 목록을 캐시했으며, 정상 운영 중에는 반복적인 대장 구조 점검과 감사로그 자동 폭·행높이 계산을 건너뛰도록 했습니다.</span></li><li class="result"><span class="step-label">결과</span><span>Apps Script 버전 169 배포와 구문 검증을 완료했습니다. 실제 운영 계정으로 측정한 브라우저별 응답 시간과 전체 승인 E2E는 아직 별도 확인이 필요합니다.</span></li></ul><div class="evidence"><strong>확인 근거</strong><ul><li>Apps Script 배포 버전 168·169</li><li>반출입 상태 동기화·직급 권한 코드</li><li>버전 169 구문 검증 및 배포 연결 확인</li></ul></div></div></details>`);
+  const september=document.querySelector(".month-report[data-month='2026-09'] .calendar-grid");
+  const day=september&&Array.from(september.querySelectorAll('.day')).find((item)=>item.querySelector('.date')?.textContent==='9');
+  if(day){day.insertAdjacentHTML('beforeend',`<button type="button" class="event orange" data-month="2026-09" data-tab-target="daily" data-scroll-target="daily-2026-09-09" aria-label="9월 9일 물품 반출입 보관·승인 및 성능 개선 상세 내용 보기">반출입·성능 개선<b aria-hidden="true">↗</b></button>`);}
+}
+appendSeptember09ReportEntry();
 positionMonthReports(selectedMonth);
 filterReportContent(selectedMonth);
 requestAnimationFrame(()=>monthCarousel.classList.add('ready'));
