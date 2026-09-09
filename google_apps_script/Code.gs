@@ -2673,6 +2673,10 @@ function writeExistingAssetRow_(
   sheet.getRange(row, 16).setNumberFormat('yyyy-mm-dd');
   formatCompactNumberCell_(sheet.getRange(row, 17));
   applyLedgerRowLayout_(sheet, row, 1, APP.firstDataRow);
+  finalizeLedgerRows_(sheet, row, 1, APP.dataColumnCount, {
+    headerRow: APP.headerRow,
+    widthColumns: [4, 5, 6, 7, 9, 10, 13, 18],
+  });
 }
 
 function findAssetFolder_(photoRoot, managementNumber) {
@@ -3128,7 +3132,6 @@ function formatPhysicalAssetLedger_(sheet, lastRow) {
   const dataRowCount = Math.max(lastRow - APP.firstDataRow + 1, 0);
   if (!dataRowCount) return;
 
-  sheet.setRowHeights(APP.firstDataRow, dataRowCount, 30);
   sheet.getRange(
     APP.firstDataRow, 1, dataRowCount, APP.dataColumnCount
   )
@@ -3198,6 +3201,10 @@ function formatPhysicalAssetLedger_(sheet, lastRow) {
     );
   });
   sheet.setConditionalFormatRules(retainedRules);
+  finalizeLedgerRows_(sheet, APP.firstDataRow, dataRowCount, APP.dataColumnCount, {
+    headerRow: APP.headerRow,
+    widthColumns: [4, 5, 6, 7, 9, 10, 13, 18],
+  });
 }
 
 function adminUnhideAllColumnsAndClearPartNumbers(adminToken) {
@@ -3776,6 +3783,10 @@ function formatDepartmentAccessRow_(sheet, row, isNew) {
   sheet.getRange(row, 2).setNumberFormat('yyyy-mm-dd hh:mm:ss');
   sheet.getRange(row, 7).setNumberFormat('yyyy-mm-dd');
   sheet.getRange(row, 11, 1, 5).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  finalizeLedgerRows_(sheet, row, 1, ACCESS.departmentAccessColumnCount, {
+    headerRow: 1,
+    widthColumns: [5, 6, 8, 12],
+  });
 }
 
 function getAccessPublicConfig(accessType, adminToken) {
@@ -4971,9 +4982,10 @@ function registerManagementRequest(request) {
       'yyyyMMdd'
     ) + '-' + Utilities.getUuid().replace(/-/g, '')
       .slice(0, 8).toUpperCase();
-    const row = sheet.getLastRow() + 1;
+    const firstDataRow = getManagementRequestFirstDataRow_(sheet);
+    const row = Math.max(sheet.getLastRow() + 1, firstDataRow);
     applyLedgerRowLayout_(
-      sheet, row, 1, 2, MANAGEMENT_REQUEST.columnCount
+      sheet, row, 1, firstDataRow, MANAGEMENT_REQUEST.columnCount
     );
     targetRange = sheet.getRange(
       row,
@@ -4995,12 +5007,10 @@ function registerManagementRequest(request) {
       '',
       '',
     ]]);
-    targetRange.setBorder(
-      true, true, true, true, true, true,
-      '#000000',
-      SpreadsheetApp.BorderStyle.SOLID
-    );
     sheet.getRange(row, 2).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+    finalizeLedgerRows_(sheet, row, 1, MANAGEMENT_REQUEST.columnCount, {
+      headerRow: firstDataRow - 1,
+    });
     SpreadsheetApp.flush();
     invalidateManagementRequestNotifications_();
     appendManagementRequestAuditLog_(system.log, {
@@ -5163,6 +5173,13 @@ function executeManagementDeletion(request) {
       '삭제 실행 완료 · 백업 ' + backupFile.getUrl(),
     ]]);
     requestSheet.getRange(requestRow, 11).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+    finalizeLedgerRows_(
+      requestSheet,
+      requestRow,
+      1,
+      MANAGEMENT_REQUEST.columnCount,
+      { headerRow: getManagementRequestHeaderRow_(requestSheet) }
+    );
     SpreadsheetApp.flush();
     invalidateManagementRequestNotifications_();
     appendManagementRequestAuditLog_(managementSystem.log, {
@@ -5223,6 +5240,9 @@ function processManagementRequest(request) {
       note,
     ]]);
     sheet.getRange(row, 11).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+    finalizeLedgerRows_(sheet, row, 1, MANAGEMENT_REQUEST.columnCount, {
+      headerRow: getManagementRequestHeaderRow_(sheet),
+    });
     SpreadsheetApp.flush();
     invalidateManagementRequestNotifications_();
     appendManagementRequestAuditLog_(system.log, {
@@ -5283,6 +5303,16 @@ function ensureManagementRequestSheet_(spreadsheet) {
     protectSheetForHumans_(sheet, '프로그램 전용 관리 요청 기록');
   }
   return sheet;
+}
+
+// 관리 요청 대장은 신규 파일에서는 1행 헤더지만, 운영 대장은 제목·설명 뒤
+// 5행에 헤더가 있을 수 있다. 저장·검색 모두 실제 헤더 바로 아래만 본다.
+function getManagementRequestHeaderRow_(sheet) {
+  return findLedgerHeaderRow_(sheet, '요청번호', 12) || 1;
+}
+
+function getManagementRequestFirstDataRow_(sheet) {
+  return getManagementRequestHeaderRow_(sheet) + 1;
 }
 
 function ensureManagementRequestSystem_() {
@@ -5365,27 +5395,38 @@ function migrateLegacyManagementRequests_(targetSheet) {
   if (properties.getProperty(key) === '1') return;
   const accessSpreadsheet = getAccessSpreadsheetForRead_();
   const legacySheet = accessSpreadsheet.getSheetByName('관리 요청');
-  if (legacySheet && legacySheet.getLastRow() > 1 &&
-      targetSheet.getLastRow() <= 1) {
+  const targetFirstDataRow = getManagementRequestFirstDataRow_(targetSheet);
+  const legacyFirstDataRow = legacySheet
+    ? getManagementRequestFirstDataRow_(legacySheet)
+    : 0;
+  if (legacySheet && legacySheet.getLastRow() >= legacyFirstDataRow &&
+      targetSheet.getLastRow() < targetFirstDataRow) {
     const values = legacySheet.getRange(
-      2,
+      legacyFirstDataRow,
       1,
-      legacySheet.getLastRow() - 1,
+      legacySheet.getLastRow() - legacyFirstDataRow + 1,
       MANAGEMENT_REQUEST.columnCount
     ).getValues().filter(function (row) {
       return String(row[0] || '').trim() !== '';
     });
     if (values.length) {
       targetSheet.getRange(
-        2,
+        targetFirstDataRow,
         1,
         values.length,
         MANAGEMENT_REQUEST.columnCount
       ).setValues(values);
-      targetSheet.getRange(2, 2, values.length, 1)
+      targetSheet.getRange(targetFirstDataRow, 2, values.length, 1)
         .setNumberFormat('yyyy-mm-dd hh:mm:ss');
-      targetSheet.getRange(2, 11, values.length, 1)
+      targetSheet.getRange(targetFirstDataRow, 11, values.length, 1)
         .setNumberFormat('yyyy-mm-dd hh:mm:ss');
+      finalizeLedgerRows_(
+        targetSheet,
+        targetFirstDataRow,
+        values.length,
+        MANAGEMENT_REQUEST.columnCount,
+        { headerRow: targetFirstDataRow - 1 }
+      );
     }
   }
   properties.setProperty(key, '1');
@@ -5413,15 +5454,18 @@ function appendManagementRequestAuditLog_(sheet, event) {
 
 function findManagementRequestRow_(sheet, requestId) {
   const lastRow = sheet.getLastRow();
-  if (lastRow < 2 || !requestId) {
+  const firstDataRow = getManagementRequestFirstDataRow_(sheet);
+  if (lastRow < firstDataRow || !requestId) {
     throw new Error('관리 요청을 찾을 수 없습니다.');
   }
-  const values = sheet.getRange(2, 1, lastRow - 1, 1)
+  const values = sheet.getRange(
+    firstDataRow, 1, lastRow - firstDataRow + 1, 1
+  )
     .getDisplayValues();
   const matches = [];
   values.forEach(function (row, index) {
     if (String(row[0] || '') === requestId) {
-      matches.push(index + 2);
+      matches.push(index + firstDataRow);
     }
   });
   if (matches.length !== 1) {
@@ -5435,13 +5479,14 @@ function findManagementRequestRow_(sheet, requestId) {
 
 function listManagementRequests_(sheet, requesterName) {
   const lastRow = sheet.getLastRow();
-  if (lastRow < 2) {
+  const firstDataRow = getManagementRequestFirstDataRow_(sheet);
+  if (lastRow < firstDataRow) {
     return [];
   }
   return sheet.getRange(
-    2,
+    firstDataRow,
     1,
-    lastRow - 1,
+    lastRow - firstDataRow + 1,
     MANAGEMENT_REQUEST.columnCount
   ).getValues()
     .filter(function (row) {
@@ -5582,14 +5627,19 @@ function appendReadableAuditLog_(sheet, record) {
     cleanText_(record.afterText, 500),
   ]]);
   sheet.getRange(row, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
-  sheet.getRange(row, 1, 1, 11)
-    .setVerticalAlignment('middle')
-    .setWrap(true)
-    .setBorder(
-      true, true, true, true, true, true,
-      '#D9DEE8',
-      SpreadsheetApp.BorderStyle.SOLID
-    );
+  finalizeLedgerRows_(sheet, row, 1, 11, {
+    headerRow: firstDataRow - 1,
+    borderColor: '#D9DEE8',
+    widthColumns: [
+      { column: 4, min: 130, max: 190 },
+      { column: 5, min: 160, max: 300 },
+      { column: 6, min: 120, max: 220 },
+      { column: 7, min: 220, max: 420 },
+      { column: 9, min: 220, max: 420 },
+      { column: 10, min: 220, max: 420 },
+      { column: 11, min: 220, max: 420 },
+    ],
+  });
   if (!record.skipIntegratedIndex) {
     try {
       appendIntegratedAuditIndexRow_(record);
@@ -5972,6 +6022,13 @@ function formatVisitorApplicationRows_(sheet, startRow, rowCount, isNew) {
     .setNumberFormat('@');
   sheet.getRange(startRow, 1, rowCount, 3)
     .setHorizontalAlignment('center');
+  finalizeLedgerRows_(
+    sheet,
+    startRow,
+    rowCount,
+    ACCESS.visitorApplicationColumnCount,
+    { headerRow: 1, widthColumns: [4, 7, 8, 10, 11, 13, 14, 17, 24] }
+  );
 }
 
 function getVisitorApplicationRows_(sheet, applicationNumber) {
@@ -7348,6 +7405,12 @@ function formatAccessDataRow_(sheet, row, columnCount) {
     sheet.getRange(row, 1, 1, 5)
       .setHorizontalAlignment('center');
   }
+  finalizeLedgerRows_(sheet, row, 1, columnCount, {
+    headerRow: 1,
+    widthColumns: columnCount === ACCESS.visitorColumnCount
+      ? [6, 11, 13, 15, 16, 17, 18, 19, 20]
+      : [6, 7, 8, 9, 10, 11],
+  });
 }
 
 function makeAccessRecordId_(accessType, date) {
@@ -8012,6 +8075,10 @@ function formatMovementRow_(sheet, row, isNew) {
       SpreadsheetApp.BorderStyle.SOLID
     );
   sheet.getRange(row, 9).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  finalizeLedgerRows_(sheet, row, 1, MOVEMENT.columnCount, {
+    headerRow: 1,
+    widthColumns: [3, 4, 5, 6, 7, 10, 13, 14, 15, 16],
+  });
 }
 
 function getInfoAssetSheetOptions_(spreadsheet) {
@@ -8726,19 +8793,8 @@ function getNextInfoAssetId_(sheet, department) {
   return 'GNS-S-' + code + '-' + String(maxNumber + 1).padStart(3, '0');
 }
 
-function formatInfoAssetRow_(sheet, row) {
+function formatInfoAssetRow_(sheet, row, skipLayoutFinalize) {
   applyLedgerRowLayout_(sheet, row, 1, INFO_ASSET.firstDataRow);
-  // Google Sheets의 표(Table) 안에서는 여러 열을 한 번에 서식 지정하면
-  // "단일 열에서 선택" 오류가 날 수 있어 열별로 적용한다.
-  for (let column = 1; column <= INFO_ASSET.columnCount; column += 1) {
-    sheet.getRange(row, column)
-      .setVerticalAlignment('middle')
-      .setBorder(
-        true, true, true, true, false, false,
-        '#000000',
-        SpreadsheetApp.BorderStyle.SOLID
-      );
-  }
   sheet.getRange(row, INFO_ASSET_COL.registeredAt)
     .setNumberFormat('yyyy-mm-dd hh:mm:ss');
   sheet.getRange(row, INFO_ASSET_COL.updatedAt)
@@ -8749,6 +8805,13 @@ function formatInfoAssetRow_(sheet, row) {
     .setBackground('#EAF6F3');
   formatCompactNumberCell_(sheet.getRange(row, INFO_ASSET_COL.amount));
   formatInfoSecurityClassCell_(sheet, row);
+  if (!skipLayoutFinalize) {
+    finalizeLedgerRows_(sheet, row, 1, INFO_ASSET.columnCount, {
+      headerRow: INFO_ASSET.headerRow,
+      tableMode: true,
+      widthColumns: [7, 9, 10, 11, 12, 15, 16, 17, 24],
+    });
+  }
 }
 
 function formatInfoAssetDateFields_(sheet, row) {
@@ -8801,9 +8864,8 @@ function formatInfoAssetLedger_(sheet, lastRow) {
       '#FFFFFF', SpreadsheetApp.BorderStyle.SOLID);
   const dataRowCount = Math.max(lastRow - INFO_ASSET.firstDataRow + 1, 0);
   if (!dataRowCount) return;
-  sheet.setRowHeights(INFO_ASSET.firstDataRow, dataRowCount, 30);
   for (let row = INFO_ASSET.firstDataRow; row <= lastRow; row += 1) {
-    formatInfoAssetRow_(sheet, row);
+    formatInfoAssetRow_(sheet, row, true);
   }
   [7, 9, 10, 11, 12, 17, 24].forEach(function (column) {
     sheet.getRange(INFO_ASSET.firstDataRow, column, dataRowCount, 1)
@@ -8814,6 +8876,17 @@ function formatInfoAssetLedger_(sheet, lastRow) {
     INFO_ASSET.firstDataRow,
     dataRowCount,
     INFO_ASSET_COL.amount
+  );
+  finalizeLedgerRows_(
+    sheet,
+    INFO_ASSET.firstDataRow,
+    dataRowCount,
+    INFO_ASSET.columnCount,
+    {
+      headerRow: INFO_ASSET.headerRow,
+      tableMode: true,
+      widthColumns: [7, 9, 10, 11, 12, 15, 16, 17, 24],
+    }
   );
 }
 
@@ -9052,6 +9125,150 @@ function applyLedgerRowLayout_(
     }
   }
   sheet.setRowHeights(startRow, rowCount, rowHeight);
+}
+
+// 운영 대장은 제목·설명 행과 본문 표가 섞여 있으므로, 표의 첫 헤더명을 찾아
+// 실제 본문만 후처리한다. 제목 행의 높이·색상·병합은 건드리지 않는다.
+function findLedgerHeaderRow_(sheet, firstHeader, maxRows) {
+  if (!sheet || !firstHeader || sheet.getLastRow() < 1) return 0;
+  const limit = Math.min(
+    Math.max(Number(sheet.getLastRow()) || 1, 1),
+    Math.max(Number(maxRows) || 12, 1)
+  );
+  const values = sheet.getRange(1, 1, limit, 1).getDisplayValues();
+  for (let index = 0; index < values.length; index += 1) {
+    if (String(values[index][0] || '').trim() === String(firstHeader)) {
+      return index + 1;
+    }
+  }
+  return 0;
+}
+
+function getLedgerColumnWidthPolicy_(header, override) {
+  if (override && typeof override === 'object' &&
+      (override.min != null || override.max != null)) {
+    return {
+      min: Math.max(Number(override.min) || 96, 60),
+      max: Math.max(Number(override.max) || 320, Number(override.min) || 96),
+    };
+  }
+  const name = String(header || '').replace(/\s/g, '');
+  if (/요청사유|처리메모|처리내용|사유|비고|변경전|변경후|설명|기준/.test(name)) {
+    return { min: 220, max: 420 };
+  }
+  if (/대상명|자산명|품목|모델|제조|공급|설치|보관|사용자|관리자|목적/.test(name)) {
+    return { min: 145, max: 300 };
+  }
+  if (/번호|일시|날짜|일자|상태|구분|수량|권한|결과|등급/.test(name)) {
+    return { min: 96, max: 190 };
+  }
+  return { min: 120, max: 260 };
+}
+
+function estimateLedgerTextWidth_(value) {
+  const lines = String(value == null ? '' : value).split(/\r?\n/);
+  const longest = lines.reduce(function (maximum, line) {
+    let width = 0;
+    for (let index = 0; index < line.length; index += 1) {
+      const code = line.charCodeAt(index);
+      width += code >= 0x2e80 ? 11 : 7;
+    }
+    return Math.max(maximum, width);
+  }, 0);
+  return longest + 32;
+}
+
+function normalizeLedgerWidthColumns_(widthColumns, columnCount) {
+  const source = Array.isArray(widthColumns) && widthColumns.length
+    ? widthColumns
+    : Array.from({ length: columnCount }, function (_value, index) {
+      return index + 1;
+    });
+  const seen = {};
+  return source.map(function (entry) {
+    const column = Number(
+      typeof entry === 'object' && entry ? entry.column : entry
+    );
+    if (!Number.isInteger(column) || column < 1 || column > columnCount ||
+        seen[column]) {
+      return null;
+    }
+    seen[column] = true;
+    return typeof entry === 'object' && entry
+      ? { column: column, min: entry.min, max: entry.max }
+      : { column: column };
+  }).filter(function (entry) { return Boolean(entry); });
+}
+
+// 값 저장 뒤에만 실행한다. 새 행의 문장이 길면 행 높이를 자동으로 늘리고,
+// 열은 업무별 상한 안에서만 넓혀 장문 한 건 때문에 대장이 옆으로 무한히
+// 늘어나는 문제를 막는다. 값·수식·드롭다운은 건드리지 않는다.
+function finalizeLedgerRows_(
+  sheet, startRow, rowCount, columnCount, options
+) {
+  const count = Number(rowCount) || 0;
+  const width = Number(columnCount) || 0;
+  if (!sheet || count < 1 || width < 1 || startRow < 1) return;
+  const settings = options || {};
+  const borderColor = settings.borderColor || '#C7D2E0';
+  const minRowHeight = Math.max(Number(settings.minRowHeight) || 30, 20);
+  const applyFormat = function (range) {
+    range
+      .setVerticalAlignment('middle')
+      .setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP)
+      .setBorder(
+        true, true, true, true, true, true,
+        borderColor,
+        SpreadsheetApp.BorderStyle.SOLID
+      );
+  };
+
+  if (settings.tableMode) {
+    // Google Sheets 표(Table)는 다열 범위에 한꺼번에 테두리를 적용하면
+    // 오류가 날 수 있어 열별로 적용한다.
+    for (let column = 1; column <= width; column += 1) {
+      applyFormat(sheet.getRange(startRow, column, count, 1));
+    }
+  } else {
+    applyFormat(sheet.getRange(startRow, 1, count, width));
+  }
+
+  if (typeof sheet.autoResizeRows === 'function') {
+    sheet.autoResizeRows(startRow, count);
+  }
+  for (let row = startRow; row < startRow + count; row += 1) {
+    if (Number(sheet.getRowHeight(row)) < minRowHeight) {
+      sheet.setRowHeight(row, minRowHeight);
+    }
+  }
+
+  if (typeof sheet.getColumnWidth !== 'function' ||
+      typeof sheet.setColumnWidth !== 'function') {
+    return;
+  }
+  const headerRow = Math.max(Number(settings.headerRow) || startRow - 1, 1);
+  const headers = sheet.getRange(headerRow, 1, 1, width)
+    .getDisplayValues()[0];
+  const values = sheet.getRange(startRow, 1, count, width).getDisplayValues();
+  normalizeLedgerWidthColumns_(settings.widthColumns, width).forEach(
+    function (entry) {
+      const index = entry.column - 1;
+      const policy = getLedgerColumnWidthPolicy_(headers[index], entry);
+      const required = values.reduce(function (maximum, row) {
+        return Math.max(maximum, estimateLedgerTextWidth_(row[index]));
+      }, estimateLedgerTextWidth_(headers[index]));
+      const desired = Math.max(
+        policy.min,
+        Math.min(required, policy.max)
+      );
+      const current = Number(sheet.getColumnWidth(entry.column)) || 0;
+      // 기존 대장의 넓게 잡아 둔 열(예: 실물자산 모델·비고)은 줄이지 않는다.
+      // 이 후처리는 새 값 때문에 부족해진 열만 확장한다.
+      if (desired > current) {
+        sheet.setColumnWidth(entry.column, desired);
+      }
+    }
+  );
 }
 
 function styleManagedHeader_(sheet, columnCount, background) {
@@ -9640,6 +9857,10 @@ function writeAssetRow_(sheet, nextAsset, payload) {
     .getRange(nextAsset.row, 16)
     .setNumberFormat('yyyy-mm-dd');
   formatCompactNumberCell_(sheet.getRange(nextAsset.row, 17));
+  finalizeLedgerRows_(sheet, nextAsset.row, 1, APP.dataColumnCount, {
+    headerRow: APP.headerRow,
+    widthColumns: [4, 5, 6, 7, 9, 10, 13, 18],
+  });
 }
 
 function ensureAuditLogSpreadsheet_(

@@ -12,6 +12,11 @@ class Sheet {
     this.heights = new Map();
     this.heightWrites = [];
     this.heightReads = [];
+    this.autoResizeRowCalls = [];
+    this.autoResizeRowHeight = 18;
+    this.columnWidths = new Map();
+    this.columnWidthWrites = [];
+    this.autoResizeColumnCalls = [];
     this.formatCopies = [];
   }
   cell(row, column) {
@@ -23,6 +28,14 @@ class Sheet {
   }
   getName() { return this.name; }
   getMaxRows() { return 1000; }
+  getMaxColumns() { return 1000; }
+  getLastColumn() {
+    let last = 0;
+    for (const key of this.cells.keys()) {
+      last = Math.max(last, Number(key.split(',')[1]));
+    }
+    return last;
+  }
   getRange(row, column, rows = 1, columns = 1) {
     return new Range(this, row, column, rows, columns);
   }
@@ -38,6 +51,23 @@ class Sheet {
     return this;
   }
   setRowHeight(row, height) { return this.setRowHeights(row, 1, height); }
+  autoResizeRows(startRow, rowCount) {
+    this.autoResizeRowCalls.push({ startRow, rowCount });
+    for (let row = startRow; row < startRow + rowCount; row += 1) {
+      this.heights.set(row, this.autoResizeRowHeight);
+    }
+    return this;
+  }
+  getColumnWidth(column) { return this.columnWidths.get(column) ?? 80; }
+  setColumnWidth(column, width) {
+    this.columnWidthWrites.push({ column, width });
+    this.columnWidths.set(column, width);
+    return this;
+  }
+  autoResizeColumn(column) {
+    this.autoResizeColumnCalls.push(column);
+    return this;
+  }
   getLastRow() {
     let last = 0;
     for (const [key, cell] of this.cells) {
@@ -103,6 +133,9 @@ const context = vm.createContext({
 vm.runInContext(code, context);
 const run = (name, ...args) => context[name](...args);
 const bodyHeight = (sheet, row) => sheet.heights.get(row) ?? 21;
+const hasWrappedText = (cell) =>
+  cell.format.Wrap === true || cell.format.WrapStrategy === 'WRAP';
+const fullBorderFlags = (cell) => (cell.format.Border || []).slice(0, 6);
 const protectedContents = (sheet, startRow, rowCount, width) =>
   Array.from({ length: rowCount }, (_, offset) => Array.from({ length: width }, (_, column) => {
     const { value, formula, validation } = sheet.cell(startRow + offset, column + 1);
@@ -173,6 +206,68 @@ check('formatting cannot target the header and zero-row batches do nothing', () 
   assert.deepEqual(sheet.heightReads, []);
 });
 
+check('management request title blocks resolve their actual header and first body row', () => {
+  const titled = new Sheet('관리 요청 대장');
+  titled.cell(1, 1).value = '관리 요청 현재 현황';
+  titled.cell(5, 1).value = '요청번호';
+  assert.equal(run('getManagementRequestHeaderRow_', titled), 5);
+  assert.equal(run('getManagementRequestFirstDataRow_', titled), 6);
+
+  const plain = new Sheet('관리 요청');
+  plain.cell(1, 1).value = '요청번호';
+  assert.equal(run('getManagementRequestHeaderRow_', plain), 1);
+  assert.equal(run('getManagementRequestFirstDataRow_', plain), 2);
+});
+
+check('ledger finalizer wraps, borders, auto-sizes only body rows, and clamps long text columns', () => {
+  const sheet = new Sheet('관리 요청 대장');
+  sheet.cell(1, 1).value = '관리 요청 현재 현황';
+  sheet.cell(1, 1).format = { Background: 'title', FontSize: 22 };
+  const headers = [
+    '요청번호', '요청일시', '요청자', '요청자권한', '요청구분', '대상번호',
+    '대상명', '요청사유', '상태', '처리자', '처리일시', '처리메모',
+  ];
+  headers.forEach((header, index) => { sheet.cell(5, index + 1).value = header; });
+  for (let column = 1; column <= headers.length; column += 1) {
+    for (let row = 6; row <= 7; row += 1) {
+      sheet.cell(row, column).value = `value-${row}-${column}`;
+      sheet.cell(row, column).validation = { column, strict: true };
+    }
+  }
+  sheet.cell(6, 8).value = '요청 사유 '.repeat(120);
+  sheet.cell(7, 12).value = '처리 메모 '.repeat(120);
+  sheet.cell(6, 3).formula = '=A6&"-requester"';
+  sheet.cell(7, 10).formula = '=A7&"-processor"';
+  const before = protectedContents(sheet, 6, 2, headers.length);
+
+  run('finalizeLedgerRows_', sheet, 6, 2, headers.length, {
+    headerRow: 5,
+    tableMode: 'management-request',
+    widthColumns: [
+      { column: 8, min: 220, max: 360 },
+      { column: 12, min: 220, max: 360 },
+    ],
+  });
+
+  assert.deepEqual(protectedContents(sheet, 6, 2, headers.length), before);
+  assert.deepEqual(sheet.autoResizeRowCalls, [{ startRow: 6, rowCount: 2 }]);
+  assert.equal(sheet.cell(1, 1).format.Background, 'title');
+  assert.equal(sheet.autoResizeRowCalls.some(({ startRow }) => startRow < 6), false);
+  for (let row = 6; row <= 7; row += 1) {
+    assert.ok(bodyHeight(sheet, row) >= 30, 'body rows retain the 30px minimum');
+    for (let column = 1; column <= headers.length; column += 1) {
+      const cell = sheet.cell(row, column);
+      assert.equal(hasWrappedText(cell), true, 'body values wrap instead of clipping');
+      assert.equal(cell.format.VerticalAlignment, 'middle');
+      assert.deepEqual(fullBorderFlags(cell), [true, true, true, true, true, true]);
+    }
+  }
+  assert.equal(sheet.getColumnWidth(8), 360, 'long request reasons respect the configured max width');
+  assert.equal(sheet.getColumnWidth(12), 360, 'long processing notes respect the configured max width');
+  assert.ok(sheet.getColumnWidth(8) >= 220);
+  assert.ok(sheet.getColumnWidth(12) >= 220);
+});
+
 check('physical asset registration fixes both short rows and preserves price/date semantics', () => {
   const sheet = new Sheet('L-실물');
   sheet.heights.set(9, 30);
@@ -213,7 +308,8 @@ check('physical asset edits also repair an already short row', () => {
     vendor: '공급자', quantity: '1EA', storageLocation: '화성1공장',
     assetStatus: '사용중', priority: '하', amount: 5500,
   });
-  assert.equal(bodyHeight(sheet, 20), 34);
+  assert.ok(bodyHeight(sheet, 20) >= 30);
+  assert.deepEqual(sheet.autoResizeRowCalls, [{ startRow: 20, rowCount: 1 }]);
   assert.equal(sheet.cell(20, 4).format.Background, 'keep-custom-background');
   assert.equal(sheet.cell(20, 17).value, 5.5);
 });
@@ -234,12 +330,23 @@ check('visitor, employee, department, movement, and information rows use their b
     sheet.cell(row, 1).formula = '=A1';
     sheet.cell(row, 1).validation = { custom: true };
     run(name, sheet, row, ...extra);
-    assert.equal(bodyHeight(sheet, row), 35, name);
+    assert.ok(bodyHeight(sheet, row) >= 30, name);
+    assert.deepEqual(
+      sheet.autoResizeRowCalls,
+      [{ startRow: row, rowCount: 1 }],
+      `${name} finalizes the changed data row`,
+    );
+    assert.equal(hasWrappedText(sheet.cell(row, 1)), true, name);
+    assert.deepEqual(
+      fullBorderFlags(sheet.cell(row, 1)),
+      [true, true, true, true, true, true],
+      name,
+    );
     assert.equal(sheet.cell(row, 1).value, 'record-id', name);
     assert.equal(sheet.cell(row, 1).formula, '=A1', name);
     assert.deepEqual(sheet.cell(row, 1).validation, { custom: true }, name);
-    assert.equal(sheet.heightWrites.length, 1, `${name} must not reformat the whole ledger`);
-    assert.equal(sheet.heightWrites[0].rowCount, 1, `${name} stays scoped to its row`);
+    assert.ok(sheet.heightWrites.length >= 1, `${name} must not reformat the whole ledger`);
+    assert.ok(sheet.heightWrites.every(({ rowCount }) => rowCount === 1), `${name} stays scoped to its row`);
   }
 });
 
@@ -250,27 +357,36 @@ check('multi-visitor application formatting uses one scoped batch height update'
   sheet.cell(8, 12).value = '01098765432';
   const before = protectedContents(sheet, 7, 2, 24);
   run('formatVisitorApplicationRows_', sheet, 7, 2);
-  assert.deepEqual(sheet.heightWrites, [{ startRow: 7, rowCount: 2, height: 32 }]);
+  assert.deepEqual(sheet.autoResizeRowCalls, [{ startRow: 7, rowCount: 2 }]);
+  assert.ok(bodyHeight(sheet, 7) >= 30);
+  assert.ok(bodyHeight(sheet, 8) >= 30);
+  assert.ok(sheet.heightWrites.every(({ startRow, rowCount }) =>
+    startRow >= 7 && startRow + rowCount <= 9));
   assert.deepEqual(protectedContents(sheet, 7, 2, 24), before);
   assert.equal(sheet.cell(7, 12).format.NumberFormat, '@');
+  assert.equal(hasWrappedText(sheet.cell(7, 1)), true);
+  assert.deepEqual(fullBorderFlags(sheet.cell(7, 1)), [true, true, true, true, true, true]);
 });
 
-check('audit append applies body layout while preserving readable wrapped details', () => {
+check('audit append finalizes its new row for readable wrapped details', () => {
   const sheet = new Sheet('감사로그');
+  const longSummary = '여러 항목의 처리 내용 '.repeat(80);
   sheet.cell(1, 1).value = '처리일시';
   sheet.cell(2, 1).value = '기존 처리';
   sheet.cell(2, 1).format.FontFamily = 'Malgun Gothic';
   sheet.heights.set(2, 40);
   run('appendReadableAuditLog_', sheet, {
     actor: '담당자', business: '실물자산', recordId: 'GNS-H-L-045',
-    target: '케이블', action: '등록', summary: '여러 항목의 처리 내용',
+    target: '케이블', action: '등록', summary: longSummary,
     result: '완료', reason: '', beforeText: '', afterText: '보관중',
     skipIntegratedIndex: true,
   });
-  assert.equal(bodyHeight(sheet, 3), 40);
+  assert.deepEqual(sheet.autoResizeRowCalls, [{ startRow: 3, rowCount: 1 }]);
+  assert.ok(bodyHeight(sheet, 3) >= 30);
   assert.equal(sheet.cell(3, 2).value, '담당자');
-  assert.equal(sheet.cell(3, 7).value, '여러 항목의 처리 내용');
-  assert.equal(sheet.cell(3, 7).format.Wrap, true);
+  assert.equal(sheet.cell(3, 7).value, longSummary.trim().slice(0, 500));
+  assert.equal(hasWrappedText(sheet.cell(3, 7)), true);
+  assert.deepEqual(fullBorderFlags(sheet.cell(3, 7)), [true, true, true, true, true, true]);
   assert.equal(sheet.cell(3, 1).format.FontFamily, 'Malgun Gothic');
 });
 
@@ -289,7 +405,8 @@ check('audit ledgers with a title block use row six rather than title or header 
     actor: '담당자', business: '등록', summary: '완료', skipIntegratedIndex: true,
   });
   assert.equal(bodyHeight(sheet, 7), 30);
-  assert.deepEqual(sheet.heightReads, [6]);
+  assert.deepEqual(sheet.heightReads, [6, 7]);
+  assert.deepEqual(sheet.autoResizeRowCalls, [{ startRow: 7, rowCount: 1 }]);
   assert.equal(sheet.cell(7, 1).format.Background, 'audit-body');
   assert.equal(sheet.cell(7, 1).format.FontSize, 10);
 });
