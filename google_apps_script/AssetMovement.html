@@ -14,7 +14,7 @@
     .hero{padding:30px;border-radius:24px;background:#1e2b46;color:#fff;box-shadow:0 16px 38px rgba(23,32,51,.14)}
     .nav{display:flex;justify-content:space-between;gap:12px;margin-bottom:22px}.nav a{padding:8px 11px;border:1px solid rgba(255,255,255,.2);border-radius:9px;color:#fff;font-size:13px;font-weight:800;text-decoration:none}
     .eyebrow{margin:0 0 8px;color:#9bb8ff;font-size:12px;font-weight:900;letter-spacing:.12em}h1{margin:0;font-size:clamp(30px,5vw,46px);letter-spacing:-.04em}.hero p:last-child{margin:12px 0 0;color:#d8e1f1;line-height:1.6}
-    .status{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:14px 0;padding:13px 16px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--muted);font-size:13px}.status a{color:var(--blue);font-weight:800}
+    .status{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:14px 0;padding:13px 16px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--muted);font-size:13px}.status a{color:var(--blue);font-weight:800}.page-tabs{display:flex;gap:8px;margin-top:14px}.page-tab{min-height:42px;padding:10px 16px;border:1px solid rgba(255,255,255,.3);border-radius:10px;color:#fff;font-size:14px;font-weight:900;text-decoration:none}.page-tab.active{border-color:#fff;background:#fff;color:#1e2b46}
     .card{margin-top:16px;padding:24px;border:1px solid var(--line);border-radius:20px;background:#fff;box-shadow:0 8px 22px rgba(23,32,51,.05)}.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:20px}.card h2{margin:0;font-size:22px}.card-head p{margin:7px 0 0;color:var(--muted);font-size:14px;line-height:1.55}.count{flex:0 0 auto;padding:8px 11px;border-radius:10px;background:#eef3ff;color:var(--blue);font-weight:900}
     .mode-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 18px;padding:6px;border:1px solid var(--line);border-radius:14px;background:#f6f8fb}.mode-tab{min-height:48px;padding:10px 14px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-size:15px;font-weight:900;cursor:pointer}.mode-tab[aria-selected="true"]{background:var(--blue);color:#fff;box-shadow:0 5px 12px rgba(49,107,232,.22)}
     .mode-summary{margin:0 0 18px;padding:13px 14px;border:1px solid #cbd9fa;border-radius:12px;background:var(--blue-soft);color:#294c9a;font-size:14px;line-height:1.55}.mode-summary.storage{border-color:#b8dfc9;background:var(--green-soft);color:#0f6846}
@@ -31,7 +31,7 @@
     @media(max-width:760px){.shell{width:min(100% - 20px,1080px);padding-top:10px}.hero{padding:22px 18px;border-radius:18px}.nav{flex-wrap:wrap;margin-bottom:18px}.card{padding:18px 14px;border-radius:16px}.card-head{flex-direction:column}.grid,.record{grid-template-columns:1fr}.field.full{grid-column:auto}.status{align-items:flex-start;flex-direction:column}.mode-tab{padding-inline:8px;font-size:14px}}
   </style>
 </head>
-<body data-web-app-url="<?= webAppUrl ?>" data-admin-token="<?= adminToken ?>" data-actor-name="<?= actorName ?>" data-user-role="<?= userRole ?>" data-current-module="movement">
+<body data-web-app-url="<?= webAppUrl ?>" data-admin-token="<?= adminToken ?>" data-actor-name="<?= actorName ?>" data-user-role="<?= userRole ?>" data-movement-view="<?= movementView ?>" data-current-module="movement">
   <?!= getSharedBackgroundHtml_() ?>
   <main class="shell">
     <header class="hero">
@@ -40,8 +40,12 @@
         <a href="<?= webAppUrl ?>?module=asset&adminToken=<?= adminToken ?>" target="_top">실물자산관리</a>
       </nav>
       <p class="eyebrow">PHYSICAL ASSET MOVEMENT</p>
-      <h1>물품 반출·보관 <?= userRole === 'admin' ? '관리' : '신청' ?></h1>
+      <h1>물품 반출·보관 <?= movementView === 'manage' ? '관리' : '신청' ?></h1>
       <p>반출 승인 시 자산은 사용중으로, 보관 승인 시 보관중으로 물품관리대장에 자동 반영됩니다.</p>
+      <div class="page-tabs" aria-label="물품 반출입 업무">
+        <a id="requestPageLink" class="page-tab" href="#">반출·보관 신청</a>
+        <a id="managePageLink" class="page-tab hidden" href="#">관리</a>
+      </div>
     </header>
 
     <div class="status">
@@ -51,7 +55,7 @@
     <div id="errorMessage" class="message error" role="alert"></div>
     <div id="successMessage" class="message success" role="status"></div>
 
-    <section class="card">
+    <section id="requestSection" class="card">
       <div class="card-head"><div><h2 id="formModeTitle">물품 반출 신청</h2><p id="formModeGuide">자산 시트를 선택하고 품목명을 검색하면 관리번호가 자동으로 입력됩니다.</p></div></div>
       <div class="mode-tabs" role="tablist" aria-label="신청 유형">
         <button class="mode-tab" id="checkoutTab" type="button" role="tab" aria-selected="true" aria-controls="checkoutForm" data-movement-type="checkout">반출 신청</button>
@@ -79,8 +83,8 @@
       <div id="pendingRecords" class="records"><div class="empty">승인 대기 신청을 불러오는 중입니다.</div></div>
     </section>
 
-    <section class="card">
-      <div class="card-head"><div><h2><?= userRole === 'admin' ? '반출·보관 진행 현황' : '내 반출입 신청 내역 및 보관 현황' ?></h2><p><?= userRole === 'admin' ? '반출이 끝난 자산은 보관 신청을 승인하면 물품관리대장 상태가 보관중으로 바뀝니다.' : '승인 대기·사용중·보관 완료·반려 상태를 확인할 수 있습니다.' ?></p></div><span id="openCount" class="count">00</span></div>
+    <section id="historySection" class="card">
+      <div class="card-head"><div><h2>내 반출입 신청 내역 및 보관 현황</h2><p>승인 대기·사용중·보관 완료·반려 상태를 확인할 수 있습니다.</p></div><span id="openCount" class="count">00</span></div>
       <div id="records" class="records"><div class="empty">반출·보관 대장을 불러오는 중입니다.</div></div>
       <p class="workflow-note">반출이 끝난 물품은 위의 <strong>보관 신청</strong> 탭에서 신청해 주세요. 담당 실장 승인 후에만 물품관리대장의 상태가 <strong>사용중 → 보관중</strong>으로 변경됩니다.</p>
     </section>
@@ -92,6 +96,7 @@
     const ACTOR_NAME = document.body.dataset.actorName;
     const USER_ROLE = document.body.dataset.userRole;
     const IS_ADMIN = USER_ROLE === 'admin';
+    const MANAGEMENT_VIEW = document.body.dataset.movementView === 'manage';
     const MODE_COPY = {
       checkout: {title:'물품 반출 신청',guide:'자산 시트를 선택하고 품목명을 검색하면 관리번호가 자동으로 입력됩니다.',assetLabel:'반출할 품목 검색',borrowerLabel:'반출자',purposeLabel:'반출 목적',destinationLabel:'반출 장소',expectedDateLabel:'반입 예정일',summary:'반출 승인 후 물품관리대장의 사용상태가 <strong>보관중 → 사용중</strong>으로 자동 변경됩니다.',submitLabel:'반출 신청',handlerLabel:IS_ADMIN?'반출 처리자':'신청자',searchPlaceholder:'예: 노트북, 핸드폰 거치대'},
       storage: {title:'물품 보관 신청',guide:'사용이 끝난 자산을 검색해 보관 위치와 사유를 등록하면 담당 실장에게 승인 요청됩니다.',assetLabel:'보관할 품목 검색',borrowerLabel:'보관 요청자',purposeLabel:'보관 사유',destinationLabel:'보관 장소',expectedDateLabel:'보관 예정일',summary:'보관 승인 후 물품관리대장의 사용상태가 <strong>사용중 → 보관중</strong>으로 자동 변경됩니다.',submitLabel:'보관 신청',handlerLabel:IS_ADMIN?'보관 처리자':'신청자',searchPlaceholder:'예: 반출이 끝난 노트북, HDMI 케이블'}
@@ -106,7 +111,9 @@
       google.script.run.withSuccessHandler((config)=>{
         if(!config.ok){showError(config.message);return;}
         state.ready=true;state.department=config.department||'';state.canManageMovement=Boolean(config.canManageMovement);
-        document.getElementById('pendingSection').classList.toggle('hidden',!state.canManageMovement);document.getElementById('handler').value=config.actorName||ACTOR_NAME;
+        const requestLink=document.getElementById('requestPageLink');const manageLink=document.getElementById('managePageLink');const baseUrl=document.body.dataset.webAppUrl+'?module=movement&adminToken='+encodeURIComponent(ADMIN_TOKEN);requestLink.href=baseUrl;manageLink.href=baseUrl+'&view=manage';requestLink.classList.toggle('active',!MANAGEMENT_VIEW);manageLink.classList.toggle('active',MANAGEMENT_VIEW);manageLink.classList.toggle('hidden',!state.canManageMovement);
+        const canOpenManagement=state.canManageMovement&&MANAGEMENT_VIEW;document.getElementById('requestSection').classList.toggle('hidden',MANAGEMENT_VIEW);document.getElementById('historySection').classList.toggle('hidden',MANAGEMENT_VIEW);document.getElementById('pendingSection').classList.toggle('hidden',!canOpenManagement);if(MANAGEMENT_VIEW&&!state.canManageMovement){showError('물품 반출입 관리는 같은 부서의 LM·BM·ES만 사용할 수 있습니다.');}
+        document.getElementById('handler').value=config.actorName||ACTOR_NAME;
         if(!IS_ADMIN){document.getElementById('borrower').value=config.actorName||ACTOR_NAME;document.getElementById('department').value=config.department||'';}
         document.getElementById('systemStatus').textContent='물품 반출·보관 대장 연결됨';const ledger=document.getElementById('ledgerLink');if(config.ledgerUrl){ledger.href=config.ledgerUrl;ledger.classList.remove('hidden');}
         document.getElementById('sheetName').innerHTML='<option value="">선택하세요</option>'+((config.assetSheets||[]).map((name)=>'<option value="'+escapeHtml(name)+'">'+escapeHtml(name)+'</option>').join(''));

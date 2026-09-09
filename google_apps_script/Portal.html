@@ -370,6 +370,18 @@
       </a>
 
       <a
+        id="movementManagementModule"
+        class="module movement hidden"
+        href="<?= webAppUrl ?>?module=movement&view=manage&adminToken=<?= adminToken ?>"
+        target="_top"
+      >
+        <span class="number">05</span>
+        <h2>물품 반출입 관리</h2>
+        <p class="description">같은 부서의 LM·BM·ES만 반출·보관 신청을 승인하거나 반려합니다.</p>
+        <span class="open">물품 반출입 관리 열기</span>
+      </a>
+
+      <a
         class="module request"
         href="<?= webAppUrl ?>?module=requests&adminToken=<?= adminToken ?>"
         target="_top"
@@ -398,6 +410,15 @@
     const WEB_APP_URL = '<?= webAppUrl ?>';
     const ADMIN_TOKEN = '<?= adminToken ?>';
     gilnsProtectSessionUrl(ADMIN_TOKEN, {});
+
+    google.script.run
+      .withSuccessHandler((result) => {
+        if (result && result.ok && result.canManageMovement) {
+          document.getElementById('movementManagementModule')
+            .classList.remove('hidden');
+        }
+      })
+      .getMovementApprovalAccess(ADMIN_TOKEN);
 
     document.getElementById('logoutButton')
       .addEventListener('click', () => {

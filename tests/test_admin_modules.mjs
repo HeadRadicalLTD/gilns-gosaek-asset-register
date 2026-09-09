@@ -131,6 +131,9 @@ assert.ok(!sharedBackground.includes('google.script.history.replace'));
   "외부 방문객 관리",
   "부서 출입 관리",
   "물품 반출입",
+  "id=\"movementManagementModule\"",
+  ".getMovementApprovalAccess(ADMIN_TOKEN)",
+  "LM·BM·ES",
   "adminToken=<?= adminToken ?>",
   "id=\"passwordForm\"",
   "처음 페이지",
@@ -152,6 +155,9 @@ assert.ok(!sharedBackground.includes('google.script.history.replace'));
   "function recordMovementType(",
   "searchAssetsForMovement(value('sheetName'),query,ADMIN_TOKEN,state.movementType)",
   "id=\"pendingRecords\"",
+  "id=\"managePageLink\"",
+  "data-movement-view=\"<?= movementView ?>\"",
+  "MANAGEMENT_VIEW",
 ].forEach((needle) => assert.ok(movement.includes(needle)));
 assert.ok(!movement.includes('class="return-button"'));
 
@@ -201,6 +207,7 @@ assert.ok(!requests.includes('placeholder="예: 52, IA-0007, 출입기록 ID"'))
   /function requireAdminSession_\(/,
   /function registerAssetCheckout\(/,
   /function returnCheckedOutAsset\(/,
+  /function getMovementApprovalAccess\(/,
   /function registerInfoAsset\(/,
   /function updateInfoAsset\(/,
   /function searchAssetsForEdit\(/,

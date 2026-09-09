@@ -13,6 +13,9 @@ context.sha256Text_ = value => crypto.createHash('sha256').update(String(value))
 const user = { actorName: '이은범', employeeNumber: 'GNS-018', department: '고색연구소', role: 'registrar' };
 let session = user;
 context.requireSessionInfo_ = () => session;
+// 반출 승인 권한은 명부를 조회하므로, 알림 조합 단위 테스트에서는
+// 권한 판정 자체가 아닌 수신자 필터만 고정된 값으로 검증한다.
+context.isSiteManagerFor_ = () => false;
 const row = (size, cells) => Object.assign(Array(size).fill(''), cells);
 const sources = {
   requests: [

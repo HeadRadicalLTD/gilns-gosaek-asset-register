@@ -130,6 +130,11 @@ assert.match(code, /function searchAssetsForMovement\(/);
 assert.match(code, /function listMovementPendingForApprover_\(/);
 assert.match(code, /해당 부서 실장만 반출 신청을 승인·반려할 수 있습니다/);
 assert.match(code, /const movementStatus = '승인 대기'/);
+assert.match(code, /MOVEMENT_APPROVER_RANKS = Object\.freeze\(\['LM', 'BM', 'ES'\]\)/);
+assert.match(code, /function isSiteManagerFor_\([\s\S]*?isMovementApproverRank_\(employee\.rank\)/);
+assert.ok(movement.includes('id="requestPageLink"'));
+assert.ok(movement.includes('id="managePageLink"'));
+assert.ok(movement.includes("const MANAGEMENT_VIEW = document.body.dataset.movementView === 'manage'"));
 
 assert.match(code, /visitor-application-schema-v92/);
 assert.match(code, /access-ledger-schema-v95/);

@@ -160,6 +160,8 @@ vm.runInContext(
     getVisitorApplicationOverallStatus_,
     cleanAdminToken_,
     constantTimeEquals_,
+    normalizeMovementDepartment_,
+    isMovementApproverRank_,
     normalizeMovementPayload_,
     transitionPhysicalAssetStatusForMovement_,
     getMovementRecordType_,
@@ -179,6 +181,12 @@ context.finalizeLedgerRows_ = () => {};
 assert.equal(api.cleanAdminToken_('ab-cd_12'), 'abcd12');
 assert.equal(api.constantTimeEquals_('same', 'same'), true);
 assert.equal(api.constantTimeEquals_('same', 'different'), false);
+assert.equal(api.isMovementApproverRank_(' LM '), true);
+assert.equal(api.isMovementApproverRank_('bm'), true);
+assert.equal(api.isMovementApproverRank_('ES'), true);
+assert.equal(api.isMovementApproverRank_('RB'), false);
+assert.equal(api.isMovementApproverRank_('LMS'), false);
+assert.equal(api.normalizeMovementDepartment_('변속 개발실'), '변속개발실');
 assert.equal(
   api.normalizeMovementPayload_({
     sheetName: 'L-실물',
@@ -410,6 +418,10 @@ const storageRegistrationBlock = getFunctionBlock('registerAssetStorage');
 const checkoutDecisionBlock = getFunctionBlock('processAssetCheckoutDecision');
 const storageDecisionBlock = getFunctionBlock('processAssetStorageDecision');
 const returnMovementBlock = getFunctionBlock('returnCheckedOutAsset');
+assert.match(source, /const MOVEMENT_APPROVER_RANKS = Object\.freeze\(\['LM', 'BM', 'ES'\]\)/);
+assert.match(getFunctionBlock('isSiteManagerFor_'), /isMovementApproverRank_\(employee\.rank\)/);
+assert.match(getFunctionBlock('isSiteManagerFor_'), /normalizeMovementDepartment_\(employee\.department\) === targetDepartment/);
+assert.match(getFunctionBlock('getMovementApprovalAccess'), /isSiteManagerFor_\(session, session\.department\)/);
 // 신청 단계는 실제 자산 상태를 바꾸지 않고, 가능한 현재 상태만 검증한다.
 assert.match(checkoutRegistrationBlock, /asset\.assetStatus !== '보관중'/);
 assert.match(storageRegistrationBlock, /asset\.assetStatus !== '사용중'/);

@@ -40,6 +40,10 @@ const SITE_MANAGERS = Object.freeze({
   '고색연구소': '이장명',
 });
 
+// 물품 반출·보관 신청은 명부에서 현재 재직 중인 실장급 이상만 승인한다.
+// 관리자 로그인 유형 자체는 승인 권한이 아니며, 명부의 직급과 부서를 매번 확인한다.
+const MOVEMENT_APPROVER_RANKS = Object.freeze(['LM', 'BM', 'ES']);
+
 // 자산 책임자는 부서별 지정 후보에서만 선택한다. 사용자는 사원 명부 전체에서
 // 선택하되, 같은 사람을 관리자와 사용자로 함께 지정할 수 없다.
 const ASSET_MANAGER_OPTIONS = Object.freeze({
@@ -142,10 +146,43 @@ function getPhysicalAssetHeaders_() {
   ];
 }
 
-function isSiteManagerFor_(session, siteName) {
+function normalizeMovementDepartment_(value) {
+  return cleanText_(value, 100).replace(/\s/g, '');
+}
+
+function isMovementApproverRank_(rank) {
+  return MOVEMENT_APPROVER_RANKS.indexOf(
+    cleanText_(rank, 40).toUpperCase()
+  ) !== -1;
+}
+
+function getCurrentSessionEmployee_(session) {
+  if (!session || !session.actorName) {
+    return null;
+  }
+
+  const roster = listEmployeeRoster_(
+    ensureEmployeeRosterSheet_(getAccessSpreadsheetForRead_('employee'))
+  );
+  const employeeNumber = cleanText_(session.employeeNumber, 40);
+  const matches = roster.filter(function (employee) {
+    return employeeNumber
+      ? employee.employeeNumber === employeeNumber
+      : employee.name === session.actorName;
+  });
+
+  // 구 세션에 사번이 없을 때는 동명이인이 아닌 경우에만 이름으로 보완한다.
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function isSiteManagerFor_(session, department) {
+  const employee = getCurrentSessionEmployee_(session);
+  const targetDepartment = normalizeMovementDepartment_(department);
   return Boolean(
-    session && session.actorName &&
-    getSiteManagerSafe_(siteName) === session.actorName
+    employee &&
+    isMovementApproverRank_(employee.rank) &&
+    targetDepartment &&
+    normalizeMovementDepartment_(employee.department) === targetDepartment
   );
 }
 
@@ -664,9 +701,12 @@ function doGet(event) {
     movementTemplate.adminToken = adminToken;
     movementTemplate.userRole = userRole;
     movementTemplate.actorName = sessionInfo.actorName;
+    movementTemplate.movementView = cleanText_(parameters.view, 20) === 'manage'
+      ? 'manage'
+      : 'request';
 
     return movementTemplate.evaluate()
-      .setTitle(userRole === 'admin'
+      .setTitle(movementTemplate.movementView === 'manage'
         ? '물품 반출입 관리'
         : '물품 반출입 신청')
       .addMetaTag(
@@ -7560,10 +7600,9 @@ function getAssetMovementConfig(adminToken) {
       APP.sheetName
     );
     const system = ensureMovementSystem_();
-    const canManageMovement = Object.keys(SITE_MANAGERS).some(
-      function (siteName) {
-        return SITE_MANAGERS[siteName] === session.actorName;
-      }
+    const canManageMovement = isSiteManagerFor_(
+      session,
+      session.department
     );
 
     return {
@@ -7590,6 +7629,18 @@ function getAssetMovementConfig(adminToken) {
       ok: false,
       message: safeErrorMessage_(error),
     };
+  }
+}
+
+function getMovementApprovalAccess(adminToken) {
+  try {
+    const session = requireSessionInfo_(adminToken, 'movementRequest');
+    return {
+      ok: true,
+      canManageMovement: isSiteManagerFor_(session, session.department),
+    };
+  } catch (error) {
+    return { ok: false, message: safeErrorMessage_(error) };
   }
 }
 
