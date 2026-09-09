@@ -142,10 +142,18 @@ assert.ok(!sharedBackground.includes('google.script.history.replace'));
   "id=\"managementNumber\"",
   ".getAssetMovementConfig(ADMIN_TOKEN)",
   ".registerAssetCheckout(payload)",
+  ".registerAssetStorage(payload)",
   ".processAssetCheckoutDecision({",
+  ".processAssetStorageDecision({",
   ".returnCheckedOutAsset({",
+  "data-movement-type=\"checkout\"",
+  "data-movement-type=\"storage\"",
+  "function setMovementType(",
+  "function recordMovementType(",
+  "searchAssetsForMovement(value('sheetName'),query,ADMIN_TOKEN,state.movementType)",
   "id=\"pendingRecords\"",
 ].forEach((needle) => assert.ok(movement.includes(needle)));
+assert.ok(!movement.includes('class="return-button"'));
 
 [
   "맨 위로 돌아가기",

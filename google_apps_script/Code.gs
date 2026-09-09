@@ -282,9 +282,22 @@ const MOVEMENT = Object.freeze({
   logSpreadsheetName: '물품 반출입 로그',
   logSpreadsheetPropertyKey: 'MOVEMENT_LOG_SPREADSHEET_ID',
   logSheetName: '감사로그',
-  columnCount: 16,
+  // 기존 16열은 그대로 보존하고, 17~18열만 업무 흐름 연결용으로 확장한다.
+  // 기존 행의 업무구분 공란은 getMovementRecordType_()에서 반출로 해석한다.
+  columnCount: 18,
+  legacyColumnCount: 16,
+  typeColumn: 17,
+  sourceRecordColumn: 18,
   maxOpenRecords: 100,
 });
+
+const MOVEMENT_HEADERS = Object.freeze([
+  '기록ID', '자산시트', '관리번호', '품목',
+  '반출자', '부서', '반출목적', '반출장소',
+  '신청·반출시각', '반입예정일', '반입시각', '상태',
+  '신청·반출처리자', '반입처리자', '반입상태', '비고',
+  '업무구분', '원반출기록ID',
+]);
 
 const INFO_ASSET = Object.freeze({
   spreadsheetName: '정보자산 관리대장',
@@ -2144,6 +2157,7 @@ function searchAssetsForEdit(sheetName, query, adminToken) {
     const serialNumber = normalizePlaceholder_(row[5]);
     const vendor = String(row[6] || '').trim();
     const storageLocation = String(row[12] || '').trim();
+    const assetStatus = String(row[13] || '').trim();
     const haystack = [itemName, modelMaker, serialNumber]
       .join(' ')
       .toLowerCase();
@@ -2156,6 +2170,7 @@ function searchAssetsForEdit(sheetName, query, adminToken) {
         serialNumber: serialNumber,
         vendor: vendor,
         storageLocation: storageLocation,
+        assetStatus: assetStatus,
         row: APP.firstDataRow + index,
       });
     }
@@ -2186,9 +2201,22 @@ function searchAssetCatalog(sheetName, query, adminToken) {
   };
 }
 
-function searchAssetsForMovement(sheetName, query, adminToken) {
+function searchAssetsForMovement(
+  sheetName, query, adminToken, movementType
+) {
   requireSessionInfo_(adminToken, 'movementRequest');
-  return searchAssetsForEdit(sheetName, query, adminToken);
+  const requestedType = String(movementType || 'checkout')
+    .trim()
+    .toLowerCase();
+  const expectedStatus = requestedType === 'storage'
+    ? '사용중'
+    : '보관중';
+  const result = searchAssetsForEdit(sheetName, query, adminToken);
+  return Object.assign({}, result, {
+    results: (result.results || []).filter(function (asset) {
+      return String(asset.assetStatus || '') === expectedStatus;
+    }),
+  });
 }
 
 function listAssetPhotoFiles_(assetFolder) {
@@ -5739,6 +5767,12 @@ function readableAuditSummary_(eventType, details) {
     organization: '소속회사',
     purpose: '목적',
     destination: '반출 장소',
+    requester: '신청자',
+    recordId: '기록ID',
+    relatedCheckoutRecordId: '원반출기록ID',
+    storageRecordId: '보관기록ID',
+    beforeStatus: '변경 전 상태',
+    afterStatus: '변경 후 상태',
   };
   const ignored = {
     before: true,
@@ -7542,6 +7576,7 @@ function getAssetMovementConfig(adminToken) {
         '#gid=' + system.ledger.getSheetId(),
       canManageMovement: canManageMovement,
       canReturnMovement: session.role === 'admin',
+      canRequestStorage: true,
       pendingRecords: canManageMovement
         ? listMovementPendingForApprover_(system.ledger, session)
         : [],
@@ -7593,6 +7628,12 @@ function registerAssetCheckout(request) {
     const asset = readAssetRecord_(assetSheet, assetRow);
     const system = ensureMovementSystem_();
 
+    if (asset.assetStatus !== '보관중') {
+      throw new Error(
+        '물품관리대장에서 보관중인 자산만 반출 신청할 수 있습니다.'
+      );
+    }
+
     if (findOpenMovementByAsset_(
       system.ledger,
       payload.sheetName,
@@ -7603,14 +7644,7 @@ function registerAssetCheckout(request) {
 
     const checkedOutAt = new Date();
     const movementStatus = '승인 대기';
-    const recordId = 'M-' + Utilities.formatDate(
-      checkedOutAt,
-      APP.timeZone,
-      'yyyyMMdd'
-    ) + '-' + Utilities.getUuid()
-      .replace(/-/g, '')
-      .slice(0, 8)
-      .toUpperCase();
+    const recordId = makeMovementRecordId_(checkedOutAt, 'checkout');
     const values = [[
       recordId,
       payload.sheetName,
@@ -7628,6 +7662,8 @@ function registerAssetCheckout(request) {
       '',
       '',
       payload.remarks,
+      'checkout',
+      '',
     ]];
     const row = system.ledger.getLastRow() + 1;
 
@@ -7692,6 +7728,7 @@ function processAssetCheckoutDecision(request) {
   let hasLock = false;
   let targetRange = null;
   let originalValues = null;
+  let assetTransition = null;
 
   try {
     const source = request || {};
@@ -7716,6 +7753,9 @@ function processAssetCheckoutDecision(request) {
       cleanText_(source.recordId, 80),
       '승인 대기'
     );
+    if (getMovementRecordType_(found.values) !== 'checkout') {
+      throw new Error('반출 신청 기록만 이 화면에서 승인할 수 있습니다.');
+    }
     if (!isSiteManagerFor_(session, String(found.values[5] || ''))) {
       throw new Error('해당 부서 실장만 반출 신청을 승인·반려할 수 있습니다.');
     }
@@ -7733,10 +7773,20 @@ function processAssetCheckoutDecision(request) {
         formatAccessDateTime_(processedAt)
       : '반려: ' + session.actorName + ' · ' + reason;
     values[11] = action === 'approve' ? '반출중' : '반려';
-    values[15] = [String(values[15] || ''), note]
-      .filter(Boolean)
-      .join(' / ');
+    values[15] = appendMovementNote_(values[15], note);
     if (action === 'approve') {
+      const assetContext = getContextWithAutoDiscovery_(
+        true,
+        String(values[1] || '')
+      );
+      ensurePhysicalAssetSchemaReady_(assetContext.spreadsheet);
+      assetTransition = transitionPhysicalAssetStatusForMovement_(
+        assetContext.sheet,
+        String(values[2] || ''),
+        '보관중',
+        '사용중'
+      );
+      assetTransition.context = assetContext;
       values[8] = processedAt;
     }
     targetRange.setValues([values]);
@@ -7749,14 +7799,37 @@ function processAssetCheckoutDecision(request) {
       recordId: String(values[0] || ''),
       target: String(values[1] || '') + ' #' +
         String(values[2] || '') + ' ' + String(values[3] || ''),
-      details: { reason: reason, requester: String(values[12] || '') },
+      details: {
+        reason: reason,
+        requester: String(values[12] || ''),
+        recordId: String(values[0] || ''),
+        beforeStatus: assetTransition ? assetTransition.beforeStatus : '',
+        afterStatus: assetTransition ? assetTransition.afterStatus : '',
+      },
     });
+    if (assetTransition) {
+      appendPhysicalAssetMovementStatusAudit_(
+        assetTransition.context,
+        assetTransition,
+        session.actorName,
+        '물품반출 상태변경',
+        '반출 승인에 따른 상태 동기화 · 기록 ' + String(values[0] || '')
+      );
+    }
 
     return getAssetMovementConfig(source.adminToken);
   } catch (error) {
     if (targetRange && originalValues) {
       try {
         targetRange.setValues(originalValues);
+        SpreadsheetApp.flush();
+      } catch (rollbackError) {
+        console.error(rollbackError);
+      }
+    }
+    if (assetTransition) {
+      try {
+        rollbackPhysicalAssetStatusForMovement_(assetTransition);
         SpreadsheetApp.flush();
       } catch (rollbackError) {
         console.error(rollbackError);
@@ -7770,80 +7843,110 @@ function processAssetCheckoutDecision(request) {
   }
 }
 
-function returnCheckedOutAsset(request) {
+// 반출자가 실제 보관을 요청합니다. 원 반출 기록은 보관 승인 전까지
+// 반출중으로 유지되므로, 반려 시 다시 사용할 수 있고 이력도 분리됩니다.
+function registerAssetStorage(request) {
   const lock = LockService.getScriptLock();
   let hasLock = false;
   let targetRange = null;
-  let originalValues = null;
 
   try {
     const source = request || {};
     const session = requireSessionInfo_(
       source.adminToken,
-      'movementManage'
+      'movementRequest'
     );
     lock.waitLock(30000);
     hasLock = true;
 
-    const recordId = cleanText_(source.recordId, 80);
-    const handler = session.actorName;
-    const condition = cleanText_(source.condition, 120);
-
-    if (!recordId) {
-      throw new Error('반입 처리할 기록을 선택하세요.');
-    }
-    if (!handler) {
-      throw new Error('반입 처리자를 입력하세요.');
-    }
-    if (!condition) {
-      throw new Error('반입 상태를 입력하세요.');
-    }
-
     const system = ensureMovementSystem_();
-    const found = findOpenMovementByRecordId_(
-      system.ledger,
-      recordId
+    let recordId = cleanText_(source.recordId, 80);
+    let found = null;
+    if (recordId) {
+      found = findOpenMovementByRecordId_(system.ledger, recordId);
+    } else {
+      const sheetName = cleanText_(source.sheetName, 100);
+      const managementNumber = normalizeManagementNumber_(
+        source.managementNumber
+      );
+      if (!sheetName) {
+        throw new Error('보관할 자산 시트를 선택하세요.');
+      }
+      found = findOpenMovementByAsset_(
+        system.ledger,
+        sheetName,
+        managementNumber
+      );
+      if (!found || String(found.values[11] || '') !== '반출중') {
+        throw new Error('현재 반출중인 자산만 보관 신청할 수 있습니다.');
+      }
+      recordId = String(found.values[0] || '').trim();
+    }
+    if (getMovementRecordType_(found.values) !== 'checkout') {
+      throw new Error('원 반출 기록이 아닌 항목은 보관 신청할 수 없습니다.');
+    }
+    assertCanRequestMovementStorage_(session, found.values);
+
+    const assetContext = getContextWithAutoDiscovery_(
+      false,
+      String(found.values[1] || '')
     );
-    const returnedAt = new Date();
-    targetRange = system.ledger.getRange(found.row, 11, 1, 5);
-    originalValues = targetRange.getValues();
-    targetRange.setValues([[
-      returnedAt,
-      '반입완료',
-      found.values[12],
-      handler,
-      condition,
-    ]]);
-    system.ledger.getRange(found.row, 11).setNumberFormat(
-      'yyyy-mm-dd hh:mm:ss'
+    ensurePhysicalAssetSchemaReady_(assetContext.spreadsheet);
+    const assetRow = findAssetRow_(
+      assetContext.sheet,
+      String(found.values[2] || '')
     );
+    const asset = readAssetRecord_(assetContext.sheet, assetRow);
+    if (asset.assetStatus !== '사용중') {
+      throw new Error(
+        '물품관리대장에서 사용중인 자산만 보관 신청할 수 있습니다.'
+      );
+    }
+
+    const storageRequest = createAssetStorageRequest_(
+      system,
+      found,
+      session.actorName,
+      normalizeMovementStoragePayload_(source),
+      asset
+    );
+    targetRange = storageRequest.targetRange;
     SpreadsheetApp.flush();
 
     appendManagedLog_(system.log, {
-      actor: handler,
-      eventType: '반입처리',
-      recordId: recordId,
+      actor: session.actorName,
+      eventType: '보관신청',
+      recordId: storageRequest.recordId,
       target:
         String(found.values[1] || '') + ' #' +
         String(found.values[2] || '') + ' ' +
         String(found.values[3] || ''),
       details: {
-        returnedAt: formatAccessDateTime_(returnedAt),
-        condition: condition,
+        relatedCheckoutRecordId: recordId,
+        requester: session.actorName,
+        purpose: String(storageRequest.values[6] || ''),
+        destination: storageRequest.storageLocation,
+        reason: storageRequest.remarks,
       },
     });
 
     return {
       ok: true,
-      recordId: recordId,
+      recordId: storageRequest.recordId,
+      relatedCheckoutRecordId: recordId,
       itemName: String(found.values[3] || ''),
-      returnedAt: formatAccessDateTime_(returnedAt),
+      status: '보관 승인 대기',
+      pendingRecords: isSiteManagerFor_(
+        session,
+        String(found.values[5] || '')
+      ) ? listMovementPendingForApprover_(system.ledger, session) : [],
       openRecords: listOpenMovementRecords_(system.ledger),
+      myRecords: listMyMovementRecords_(system.ledger, session.actorName),
     };
   } catch (error) {
-    if (targetRange && originalValues) {
+    if (targetRange) {
       try {
-        targetRange.setValues(originalValues);
+        targetRange.clearContent();
         SpreadsheetApp.flush();
       } catch (rollbackError) {
         console.error(rollbackError);
@@ -7855,6 +7958,426 @@ function returnCheckedOutAsset(request) {
       lock.releaseLock();
     }
   }
+}
+
+// 과거 화면의 "반입 처리" 호출도 보관 승인 절차를 우회하지 않도록
+// 보관 신청으로 연결한다. 화면은 새 registerAssetStorage API로 전환한다.
+function returnCheckedOutAsset(request) {
+  const source = Object.assign({}, request || {}, {
+    remarks: cleanText_(
+      (request && request.condition) || (request && request.remarks),
+      300
+    ),
+  });
+  const result = registerAssetStorage(source);
+  return Object.assign({}, result, {
+    storagePending: true,
+    message: '보관 승인 요청이 등록되었습니다.',
+  });
+}
+
+function processAssetStorageDecision(request) {
+  const lock = LockService.getScriptLock();
+  let hasLock = false;
+  let targetRange = null;
+  let originalValues = null;
+  let checkoutRange = null;
+  let checkoutOriginalValues = null;
+  let assetTransition = null;
+
+  try {
+    const source = request || {};
+    const session = requireSessionInfo_(
+      source.adminToken,
+      'movementRequest'
+    );
+    const action = String(source.action || '').toLowerCase();
+    const reason = cleanText_(source.reason, 300);
+    if (['approve', 'reject'].indexOf(action) === -1) {
+      throw new Error('승인 또는 반려를 선택하세요.');
+    }
+    if (action === 'reject' && !reason) {
+      throw new Error('반려 사유를 입력하세요.');
+    }
+
+    lock.waitLock(30000);
+    hasLock = true;
+    const system = ensureMovementSystem_();
+    const found = findMovementByRecordIdAndStatus_(
+      system.ledger,
+      cleanText_(source.recordId, 80),
+      '보관 승인 대기'
+    );
+    if (getMovementRecordType_(found.values) !== 'storage') {
+      throw new Error('보관 신청 기록만 이 화면에서 승인할 수 있습니다.');
+    }
+    if (!isSiteManagerFor_(session, String(found.values[5] || ''))) {
+      throw new Error('해당 부서 실장만 보관 신청을 승인·반려할 수 있습니다.');
+    }
+
+    targetRange = system.ledger.getRange(
+      found.row, 1, 1, MOVEMENT.columnCount
+    );
+    originalValues = targetRange.getValues();
+    const values = originalValues[0].slice();
+    const processedAt = new Date();
+    const sourceCheckoutRecordId = String(values[17] || '').trim();
+    if (!sourceCheckoutRecordId) {
+      throw new Error('원 반출 기록이 없는 보관 신청입니다.');
+    }
+
+    let checkoutValues = null;
+    if (action === 'approve') {
+      const checkout = findOpenMovementByRecordId_(
+        system.ledger,
+        sourceCheckoutRecordId
+      );
+      if (getMovementRecordType_(checkout.values) !== 'checkout') {
+        throw new Error('원 반출 기록을 확인할 수 없습니다.');
+      }
+      checkoutRange = system.ledger.getRange(
+        checkout.row, 1, 1, MOVEMENT.columnCount
+      );
+      checkoutOriginalValues = checkoutRange.getValues();
+      checkoutValues = checkoutOriginalValues[0].slice();
+
+      const assetContext = getContextWithAutoDiscovery_(
+        true,
+        String(values[1] || '')
+      );
+      ensurePhysicalAssetSchemaReady_(assetContext.spreadsheet);
+      assetTransition = transitionPhysicalAssetStatusForMovement_(
+        assetContext.sheet,
+        String(values[2] || ''),
+        '사용중',
+        '보관중'
+      );
+      assetTransition.context = assetContext;
+
+      checkoutValues[10] = processedAt;
+      checkoutValues[11] = '반입완료';
+      checkoutValues[13] = session.actorName;
+      checkoutValues[14] = '보관완료';
+      checkoutValues[15] = appendMovementNote_(
+        checkoutValues[15],
+        '보관승인: ' + session.actorName + ' · ' +
+          formatAccessDateTime_(processedAt) +
+          ' · 보관기록 ' + String(values[0] || '')
+      );
+      checkoutRange.setValues([checkoutValues]);
+      formatMovementRow_(system.ledger, checkout.row);
+    }
+
+    values[10] = processedAt;
+    values[11] = action === 'approve' ? '보관완료' : '보관반려';
+    values[13] = session.actorName;
+    values[14] = action === 'approve' ? '보관완료' : '보관반려';
+    values[15] = appendMovementNote_(
+      values[15],
+      action === 'approve'
+        ? '보관승인: ' + session.actorName + ' · ' +
+          formatAccessDateTime_(processedAt)
+        : '보관반려: ' + session.actorName + ' · ' + reason
+    );
+    targetRange.setValues([values]);
+    formatMovementRow_(system.ledger, found.row);
+    SpreadsheetApp.flush();
+
+    appendManagedLog_(system.log, {
+      actor: session.actorName,
+      eventType: action === 'approve' ? '보관승인' : '보관반려',
+      recordId: String(values[0] || ''),
+      target: String(values[1] || '') + ' #' +
+        String(values[2] || '') + ' ' + String(values[3] || ''),
+      details: {
+        reason: reason,
+        requester: String(values[12] || ''),
+        recordId: String(values[0] || ''),
+        relatedCheckoutRecordId: sourceCheckoutRecordId,
+        storageRecordId: String(values[0] || ''),
+        beforeStatus: assetTransition ? assetTransition.beforeStatus : '',
+        afterStatus: assetTransition ? assetTransition.afterStatus : '',
+      },
+    });
+    if (assetTransition) {
+      appendPhysicalAssetMovementStatusAudit_(
+        assetTransition.context,
+        assetTransition,
+        session.actorName,
+        '물품보관 상태변경',
+        '보관 승인에 따른 상태 동기화 · 기록 ' + String(values[0] || '')
+      );
+    }
+
+    return getAssetMovementConfig(source.adminToken);
+  } catch (error) {
+    if (checkoutRange && checkoutOriginalValues) {
+      try {
+        checkoutRange.setValues(checkoutOriginalValues);
+        SpreadsheetApp.flush();
+      } catch (rollbackError) {
+        console.error(rollbackError);
+      }
+    }
+    if (targetRange && originalValues) {
+      try {
+        targetRange.setValues(originalValues);
+        SpreadsheetApp.flush();
+      } catch (rollbackError) {
+        console.error(rollbackError);
+      }
+    }
+    if (assetTransition) {
+      try {
+        rollbackPhysicalAssetStatusForMovement_(assetTransition);
+        SpreadsheetApp.flush();
+      } catch (rollbackError) {
+        console.error(rollbackError);
+      }
+    }
+    throw new Error(safeErrorMessage_(error));
+  } finally {
+    if (hasLock) {
+      lock.releaseLock();
+    }
+  }
+}
+
+function normalizeMovementStoragePayload_(request) {
+  const source = request || {};
+  return {
+    storageLocation: cleanText_(
+      source.storageLocation || source.destination,
+      100
+    ),
+    purpose: cleanText_(source.purpose, 200),
+    expectedStorageDate: cleanText_(source.expectedReturnDate, 20),
+    remarks: cleanText_(
+      source.remarks || source.purpose || source.reason,
+      300
+    ),
+  };
+}
+
+function makeMovementRecordId_(occurredAt, movementType) {
+  const prefix = movementType === 'storage' ? 'M-S-' : 'M-';
+  return prefix + Utilities.formatDate(
+    occurredAt,
+    APP.timeZone,
+    'yyyyMMdd'
+  ) + '-' + Utilities.getUuid()
+    .replace(/-/g, '')
+    .slice(0, 8)
+    .toUpperCase();
+}
+
+function getMovementRecordType_(row) {
+  const value = String(
+    (row || [])[MOVEMENT.typeColumn - 1] || ''
+  ).trim().toLowerCase();
+  // 16열로 이미 기록된 반출 이력은 반출로 계속 해석한다.
+  return value === 'storage' || value === '보관'
+    ? 'storage'
+    : 'checkout';
+}
+
+function appendMovementNote_(existing, note) {
+  return [String(existing || '').trim(), String(note || '').trim()]
+    .filter(Boolean)
+    .join(' / ')
+    .slice(0, 500);
+}
+
+function assertCanRequestMovementStorage_(session, checkoutValues) {
+  if (session && session.role === 'admin') return;
+  const actorName = String(session && session.actorName || '').trim();
+  const borrower = String(checkoutValues[4] || '').trim();
+  const requester = String(checkoutValues[12] || '').trim();
+  if (!actorName || (actorName !== borrower && actorName !== requester)) {
+    throw new Error('반출자 또는 최초 신청자만 보관 신청할 수 있습니다.');
+  }
+}
+
+function findPendingStorageRequestBySourceRecordId_(sheet, sourceRecordId) {
+  const matches = readMovementRows_(sheet).filter(function (entry) {
+    return getMovementRecordType_(entry.values) === 'storage' &&
+      String(entry.values[MOVEMENT.sourceRecordColumn - 1] || '').trim() ===
+        String(sourceRecordId || '').trim() &&
+      String(entry.values[11] || '') === '보관 승인 대기';
+  });
+  if (matches.length > 1) {
+    throw new Error('같은 반출 기록의 보관 승인 요청이 여러 개입니다.');
+  }
+  return matches.length ? matches[0] : null;
+}
+
+function createAssetStorageRequest_(
+  system, checkout, requester, payload, asset
+) {
+  const checkoutValues = checkout.values;
+  const sourceRecordId = String(checkoutValues[0] || '').trim();
+  if (findPendingStorageRequestBySourceRecordId_(
+    system.ledger,
+    sourceRecordId
+  )) {
+    throw new Error('이미 보관 승인 대기 중인 신청이 있습니다.');
+  }
+  const requestedAt = new Date();
+  const recordId = makeMovementRecordId_(requestedAt, 'storage');
+  const storageLocation = String(
+    payload.storageLocation || asset.storageLocation || ''
+  ).trim();
+  if (payload.expectedStorageDate &&
+      !/^\d{4}-\d{2}-\d{2}$/.test(payload.expectedStorageDate)) {
+    throw new Error('보관 예정일 형식이 올바르지 않습니다.');
+  }
+  const remarks = appendMovementNote_(
+    payload.remarks,
+    '원반출기록: ' + sourceRecordId
+  );
+  const values = [[
+    recordId,
+    String(checkoutValues[1] || ''),
+    String(checkoutValues[2] || ''),
+    String(checkoutValues[3] || ''),
+    String(checkoutValues[4] || ''),
+    String(checkoutValues[5] || ''),
+    payload.purpose || '보관 신청',
+    storageLocation,
+    requestedAt,
+    payload.expectedStorageDate || '',
+    '',
+    '보관 승인 대기',
+    requester,
+    '',
+    '',
+    remarks,
+    'storage',
+    sourceRecordId,
+  ]];
+  const row = Math.max(system.ledger.getLastRow() + 1, 2);
+  const targetRange = system.ledger.getRange(
+    row, 1, 1, MOVEMENT.columnCount
+  );
+  targetRange.setValues(values);
+  formatMovementRow_(system.ledger, row, true);
+  return {
+    recordId: recordId,
+    row: row,
+    targetRange: targetRange,
+    values: values[0],
+    storageLocation: storageLocation,
+    remarks: payload.remarks || '',
+  };
+}
+
+// 반출·보관 승인에서만 쓰는 최소 변경 helper입니다. 전체 행을 다시 쓰지
+// 않아 관리자·사용자·수량 등 다른 대장 값은 보존하고, 통합(H) 시트도 즉시
+// 같은 값으로 맞춥니다.
+function transitionPhysicalAssetStatusForMovement_(
+  sheet, managementNumber, expectedCurrentStatus, nextStatus
+) {
+  const expected = String(expectedCurrentStatus || '').trim();
+  const next = String(nextStatus || '').trim();
+  if (!expected || PHYSICAL_ASSET_STATUSES.indexOf(next) === -1) {
+    throw new Error('물품 상태 전환 값을 확인하세요.');
+  }
+  const row = findAssetRow_(sheet, managementNumber);
+  const beforeRecord = readAssetRecord_(sheet, row);
+  if (beforeRecord.assetStatus !== expected) {
+    throw new Error(
+      '물품관리대장 상태가 ' + expected + '인 자산만 ' +
+      next + '으로 변경할 수 있습니다. 현재 상태: ' +
+      (beforeRecord.assetStatus || '미기재')
+    );
+  }
+  const sourceRange = sheet.getRange(
+    row, APP.firstDataColumn, 1, APP.dataColumnCount
+  );
+  const beforeValues = sourceRange.getValues();
+  const afterRecord = Object.assign({}, beforeRecord, {
+    assetStatus: next,
+  });
+  const spreadsheet = typeof sheet.getParent === 'function'
+    ? sheet.getParent()
+    : null;
+
+  try {
+    sheet.getRange(row, 14).setValue(next);
+    if (spreadsheet) {
+      syncPhysicalIntegratedAssetRow_(
+        spreadsheet,
+        sheet,
+        row,
+        managementNumber
+      );
+    }
+  } catch (error) {
+    try {
+      sourceRange.setValues(beforeValues);
+      if (spreadsheet) {
+        syncPhysicalIntegratedAssetRow_(
+          spreadsheet,
+          sheet,
+          row,
+          managementNumber
+        );
+      }
+    } catch (rollbackError) {
+      console.error(rollbackError);
+    }
+    throw error;
+  }
+
+  return {
+    sheet: sheet,
+    managementNumber: String(managementNumber || ''),
+    row: row,
+    beforeStatus: beforeRecord.assetStatus,
+    afterStatus: next,
+    beforeRecord: beforeRecord,
+    afterRecord: afterRecord,
+    beforeValues: beforeValues,
+  };
+}
+
+function rollbackPhysicalAssetStatusForMovement_(transition) {
+  if (!transition || !transition.sheet) return;
+  // 상태만 바뀐 경로이므로 같은 helper로 되돌려 통합(H) 동기화도 보장한다.
+  transitionPhysicalAssetStatusForMovement_(
+    transition.sheet,
+    transition.managementNumber,
+    transition.afterStatus,
+    transition.beforeStatus
+  );
+}
+
+function appendPhysicalAssetMovementStatusAudit_(
+  context, transition, actor, eventType, reason
+) {
+  if (!context || !context.audit || !transition) {
+    throw new Error('자산 상태 변경 감사로그 연결이 필요합니다.');
+  }
+  appendAuditLog_(context.audit, {
+    eventType: eventType,
+    author: actor,
+    sheetName: transition.sheet.getName(),
+    row: transition.row,
+    managementNumber: transition.managementNumber,
+    reason: reason,
+    beforeValues: createAssetSnapshot_(
+      transition.managementNumber,
+      transition.beforeRecord,
+      null,
+      emptyCategoryCounts_()
+    ),
+    afterValues: createAssetSnapshot_(
+      transition.managementNumber,
+      transition.afterRecord,
+      null,
+      emptyCategoryCounts_()
+    ),
+  });
 }
 
 function normalizeMovementPayload_(request) {
@@ -7911,16 +8434,13 @@ function ensureMovementSystem_() {
     }
   }
   if (ledger.getLastRow() === 0) {
+    ensureMovementLedgerColumnCapacity_(ledger);
     ledger.getRange(1, 1, 1, MOVEMENT.columnCount)
-      .setValues([[
-        '기록ID', '자산시트', '관리번호', '품목',
-        '반출자', '부서', '반출목적', '반출장소',
-        '신청·반출시각', '반입예정일', '반입시각', '상태',
-        '신청·반출처리자', '반입처리자', '반입상태', '비고',
-      ]]);
+      .setValues([MOVEMENT_HEADERS]);
     styleManagedHeader_(ledger, MOVEMENT.columnCount, '#DCE8C4');
     protectSheetForHumans_(ledger, '물품 반출입 프로그램 전용 기록');
   }
+  ensureMovementLedgerSchema_(ledger);
   ledger.getRange(1, 9).setValue('신청·반출시각');
   ledger.getRange(1, 13).setValue('신청·반출처리자');
 
@@ -7943,6 +8463,63 @@ function ensureMovementSystem_() {
   };
 }
 
+function ensureMovementLedgerColumnCapacity_(ledger) {
+  const currentColumns = Number(ledger.getMaxColumns()) || 0;
+  if (currentColumns < MOVEMENT.columnCount) {
+    ledger.insertColumnsAfter(
+      Math.max(currentColumns, 1),
+      MOVEMENT.columnCount - currentColumns
+    );
+  }
+}
+
+// 기존 16열 반출입 대장에만 열을 덧붙인다. 사용자가 이미 17~18열에
+// 별도 정보를 입력한 경우에는 조용히 덮어쓰지 않고 중단한다.
+function ensureMovementLedgerSchema_(ledger) {
+  ensureMovementLedgerColumnCapacity_(ledger);
+  const headers = ledger.getRange(
+    1, 1, 1, MOVEMENT.columnCount
+  ).getDisplayValues()[0].map(function (value) {
+    return String(value || '').trim();
+  });
+  const extensionHeaders = MOVEMENT_HEADERS.slice(
+    MOVEMENT.legacyColumnCount
+  );
+  extensionHeaders.forEach(function (expected, index) {
+    const column = MOVEMENT.legacyColumnCount + index + 1;
+    const actual = headers[column - 1];
+    if (actual && actual !== expected) {
+      throw new Error(
+        '물품 반출입 대장 ' + column + '열 헤더를 확인하세요. '
+      );
+    }
+  });
+  if (headers[MOVEMENT.legacyColumnCount] === extensionHeaders[0] &&
+      headers[MOVEMENT.legacyColumnCount + 1] === extensionHeaders[1]) {
+    return;
+  }
+  // 기존 헤더 스타일을 복사한 뒤, 새 열의 제목만 기록한다.
+  const headerFormatSource = ledger.getRange(
+    1, MOVEMENT.legacyColumnCount, 1, 1
+  );
+  headerFormatSource.copyTo(
+    ledger.getRange(1, MOVEMENT.legacyColumnCount + 1, 1, 1),
+    SpreadsheetApp.CopyPasteType.PASTE_FORMAT,
+    false
+  );
+  headerFormatSource.copyTo(
+    ledger.getRange(1, MOVEMENT.sourceRecordColumn, 1, 1),
+    SpreadsheetApp.CopyPasteType.PASTE_FORMAT,
+    false
+  );
+  ledger.getRange(
+    1,
+    MOVEMENT.legacyColumnCount + 1,
+    1,
+    MOVEMENT.columnCount - MOVEMENT.legacyColumnCount
+  ).setValues([extensionHeaders]);
+}
+
 function listOpenMovementRecords_(sheet) {
   return listMovementRecordsByStatus_(sheet, ['반출중']);
 }
@@ -7963,7 +8540,9 @@ function listMovementRecordsByStatus_(sheet, statuses) {
 function listMovementPendingForApprover_(sheet, session) {
   return readMovementRows_(sheet)
     .filter(function (entry) {
-      return String(entry.values[11] || '') === '승인 대기' &&
+      return ['승인 대기', '보관 승인 대기'].indexOf(
+        String(entry.values[11] || '')
+      ) !== -1 &&
         isSiteManagerFor_(session, String(entry.values[5] || ''));
     })
     .slice(-MOVEMENT.maxOpenRecords)
@@ -8003,6 +8582,10 @@ function movementRowToRecord_(row) {
     returnedBy: String(row[13] || ''),
     returnCondition: String(row[14] || ''),
     remarks: String(row[15] || ''),
+    movementType: getMovementRecordType_(row),
+    sourceRecordId: String(
+      row[MOVEMENT.sourceRecordColumn - 1] || ''
+    ),
   };
 }
 
@@ -8077,7 +8660,7 @@ function formatMovementRow_(sheet, row, isNew) {
   sheet.getRange(row, 9).setNumberFormat('yyyy-mm-dd hh:mm:ss');
   finalizeLedgerRows_(sheet, row, 1, MOVEMENT.columnCount, {
     headerRow: 1,
-    widthColumns: [3, 4, 5, 6, 7, 10, 13, 14, 15, 16],
+    widthColumns: [3, 4, 5, 6, 7, 10, 13, 14, 15, 16, 17, 18],
   });
 }
 
@@ -9304,7 +9887,8 @@ function appendManagedLog_(sheet, event) {
   const details = event.details || {};
   const business = eventType.indexOf('정보자산') !== -1
     ? '정보자산'
-    : eventType.indexOf('반출') !== -1 || eventType.indexOf('반입') !== -1
+    : eventType.indexOf('반출') !== -1 || eventType.indexOf('반입') !== -1 ||
+        eventType.indexOf('보관') !== -1
       ? '물품 반출입'
       : '업무 관리';
   const result = eventType.indexOf('반려') !== -1

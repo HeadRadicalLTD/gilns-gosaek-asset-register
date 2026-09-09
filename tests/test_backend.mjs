@@ -14,6 +14,13 @@ const manifest = JSON.parse(fs.readFileSync(
   "utf8",
 ));
 
+function getFunctionBlock(name) {
+  const start = source.indexOf(`function ${name}(`);
+  assert.notEqual(start, -1, `${name} is missing`);
+  const next = source.indexOf("\nfunction ", start + 1);
+  return source.slice(start, next === -1 ? source.length : next);
+}
+
 assert.match(source, /Drive\.Files\.create/);
 assert.match(source, /function doPost\(event\)/);
 assert.match(source, /gilns-mobile-upload/);
@@ -53,7 +60,7 @@ assert.match(
   /Drive\.Files\.create\([\s\S]*?parents: \[targetFolder\.getId\(\)\]/,
 );
 assert.doesNotMatch(
-  source.match(/function uploadCapturedPhoto[\s\S]*?\n}\n/)[0],
+  source.match(/function uploadCapturedPhoto[\s\S]*?\r?\n}\r?\n/)[0],
   /return getCaptureSessionStatus\(/,
 );
 assert.match(
@@ -154,6 +161,9 @@ vm.runInContext(
     cleanAdminToken_,
     constantTimeEquals_,
     normalizeMovementPayload_,
+    transitionPhysicalAssetStatusForMovement_,
+    getMovementRecordType_,
+    movementRowToRecord_,
     getNextInfoAssetId_,
     pad2_,
   };`,
@@ -161,6 +171,10 @@ vm.runInContext(
 );
 
 const api = context.__test;
+
+// 상태 전환의 대상은 셀 값 하나이며, 서식 보정은 Apps Script 런타임 전용이다.
+// 단위 테스트에서는 원장 값·롤백만 검증한다.
+context.finalizeLedgerRows_ = () => {};
 
 assert.equal(api.cleanAdminToken_('ab-cd_12'), 'abcd12');
 assert.equal(api.constantTimeEquals_('same', 'same'), true);
@@ -186,6 +200,261 @@ assert.throws(
   /필수항목/,
 );
 
+function makeMovementAssetRow(managementNumber, status, itemName) {
+  return [
+    managementNumber,
+    '케이블/어댑터',
+    '실물자산 (H)',
+    itemName || 'HDMI/DVI Cable',
+    '모델명',
+    'S/N',
+    '공급사',
+    '1EA',
+    '이은범',
+    '이장명',
+    '고색연구소',
+    'L',
+    '고색연구소',
+    status,
+    '하',
+    '2026-09-09',
+    5.5,
+    '기존 비고',
+  ];
+}
+
+function makeMovementAssetSheet(rows) {
+  const values = rows.map((row) => row.slice());
+  const writeLog = [];
+  const toDisplayValue = (value) => value instanceof Date
+    ? `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`
+    : String(value == null ? '' : value);
+
+  return {
+    values,
+    writeLog,
+    getLastRow() {
+      return 8 + values.length;
+    },
+    getRange(row, column, rowCount = 1, columnCount = 1) {
+      const rowIndex = row - 9;
+      const columnIndex = column - 1;
+      const read = () => values.slice(rowIndex, rowIndex + rowCount)
+        .map((entry) => entry.slice(columnIndex, columnIndex + columnCount));
+      const write = (nextValues) => {
+        nextValues.forEach((entry, offset) => {
+          entry.forEach((value, cellOffset) => {
+            values[rowIndex + offset][columnIndex + cellOffset] = value;
+            writeLog.push({
+              row: row + offset,
+              column: column + cellOffset,
+              value,
+            });
+          });
+        });
+      };
+      return {
+        getValues() {
+          return read().map((entry) => entry.slice());
+        },
+        getDisplayValues() {
+          return read().map((entry) => entry.map(toDisplayValue));
+        },
+        getValue() {
+          return read()[0][0];
+        },
+        getDisplayValue() {
+          return toDisplayValue(read()[0][0]);
+        },
+        setValue(value) {
+          write([[value]]);
+          return this;
+        },
+        setValues(nextValues) {
+          write(nextValues);
+          return this;
+        },
+      };
+    },
+  };
+}
+
+// 승인된 반출만 보관중 자산을 사용중으로 바꾼다. 다른 열은 그대로여야 한다.
+const checkoutAssetSheet = makeMovementAssetSheet([
+  makeMovementAssetRow('GNS-H-L-045', '보관중'),
+]);
+const checkoutBefore = JSON.parse(JSON.stringify(checkoutAssetSheet.values));
+const checkoutTransition = api.transitionPhysicalAssetStatusForMovement_(
+  checkoutAssetSheet,
+  'GNS-H-L-045',
+  '보관중',
+  '사용중',
+);
+assert.equal(checkoutAssetSheet.values[0][13], '사용중');
+assert.deepEqual(
+  checkoutAssetSheet.values[0].filter((_value, index) => index !== 13),
+  checkoutBefore[0].filter((_value, index) => index !== 13),
+);
+assert.deepEqual(
+  checkoutAssetSheet.writeLog,
+  [{ row: 9, column: 14, value: '사용중' }],
+);
+assert.equal(checkoutTransition.beforeStatus, '보관중');
+assert.equal(checkoutTransition.afterStatus, '사용중');
+
+// 보관 승인에서는 반대로 사용중 자산만 보관중으로 되돌릴 수 있다.
+const storageAssetSheet = makeMovementAssetSheet([
+  makeMovementAssetRow('GNS-H-L-046', '사용중'),
+]);
+const storageTransition = api.transitionPhysicalAssetStatusForMovement_(
+  storageAssetSheet,
+  'GNS-H-L-046',
+  '사용중',
+  '보관중',
+);
+assert.equal(storageAssetSheet.values[0][13], '보관중');
+assert.equal(storageTransition.beforeStatus, '사용중');
+assert.equal(storageTransition.afterStatus, '보관중');
+
+// 이미 다른 상태라면 어떤 셀도 바꾸지 않아야 한다.
+const invalidStatusAssetSheet = makeMovementAssetSheet([
+  makeMovementAssetRow('GNS-H-L-047', '수리대기'),
+]);
+const invalidStatusBefore = JSON.parse(JSON.stringify(
+  invalidStatusAssetSheet.values,
+));
+assert.throws(
+  () => api.transitionPhysicalAssetStatusForMovement_(
+    invalidStatusAssetSheet,
+    'GNS-H-L-047',
+    '보관중',
+    '사용중',
+  ),
+  /현재.*상태|상태.*확인/,
+);
+assert.deepEqual(invalidStatusAssetSheet.values, invalidStatusBefore);
+assert.deepEqual(invalidStatusAssetSheet.writeLog, []);
+
+// 원장 상태를 쓴 뒤 통합(H) 시트 동기화가 실패해도 원래 행 전체를 복구한다.
+const rollbackAssetSheet = makeMovementAssetSheet([
+  makeMovementAssetRow('GNS-H-L-049', '보관중'),
+]);
+const rollbackBefore = JSON.parse(JSON.stringify(rollbackAssetSheet.values));
+rollbackAssetSheet.getParent = () => ({});
+context.syncPhysicalIntegratedAssetRow_ = () => {
+  throw new Error('후속 동기화 실패');
+};
+const originalConsoleError = context.console.error;
+context.console.error = () => {};
+assert.throws(
+  () => api.transitionPhysicalAssetStatusForMovement_(
+    rollbackAssetSheet,
+    'GNS-H-L-049',
+    '보관중',
+    '사용중',
+  ),
+  /후속 동기화 실패/,
+);
+assert.deepEqual(rollbackAssetSheet.values, rollbackBefore);
+context.syncPhysicalIntegratedAssetRow_ = () => {};
+context.console.error = originalConsoleError;
+
+// 같은 관리번호가 중복되면 잘못된 한 행을 임의로 전환하면 안 된다.
+const duplicateMovementAssetSheet = makeMovementAssetSheet([
+  makeMovementAssetRow('GNS-H-L-048', '보관중', '첫 번째'),
+  makeMovementAssetRow('GNS-H-L-048', '보관중', '두 번째'),
+]);
+const duplicateBefore = JSON.parse(JSON.stringify(
+  duplicateMovementAssetSheet.values,
+));
+assert.throws(
+  () => api.transitionPhysicalAssetStatusForMovement_(
+    duplicateMovementAssetSheet,
+    'GNS-H-L-048',
+    '보관중',
+    '사용중',
+  ),
+  /같은 관리번호/,
+);
+assert.deepEqual(duplicateMovementAssetSheet.values, duplicateBefore);
+assert.deepEqual(duplicateMovementAssetSheet.writeLog, []);
+
+// 기존 16열 반출 이력은 계속 반출(checkout)으로 읽고, 새 보관 행만 연결 정보를 가진다.
+const legacyMovementRow = Array(16).fill('');
+legacyMovementRow[0] = 'M-20260909-LEGACY';
+legacyMovementRow[11] = '반입완료';
+assert.equal(api.getMovementRecordType_(legacyMovementRow), 'checkout');
+assert.equal(
+  api.movementRowToRecord_(legacyMovementRow).sourceRecordId,
+  '',
+);
+const storageMovementRow = Array(18).fill('');
+storageMovementRow[0] = 'M-S-20260909-STORAGE';
+storageMovementRow[11] = '보관 승인 대기';
+storageMovementRow[16] = 'storage';
+storageMovementRow[17] = 'M-20260909-LEGACY';
+const storageMovementRecord = api.movementRowToRecord_(storageMovementRow);
+assert.equal(storageMovementRecord.movementType, 'storage');
+assert.equal(storageMovementRecord.sourceRecordId, 'M-20260909-LEGACY');
+
+// 반출·보관 승인 API는 같은 상태 전환 helper를 통해서만 원장을 바꾼다.
+assert.match(
+  source,
+  /const MOVEMENT = Object\.freeze\(\{[\s\S]*?columnCount:\s*18/,
+);
+assert.match(source, /function registerAssetStorage\(/);
+assert.match(source, /function processAssetStorageDecision\(/);
+assert.match(source, /function transitionPhysicalAssetStatusForMovement_\(/);
+const checkoutRegistrationBlock = getFunctionBlock('registerAssetCheckout');
+const storageRegistrationBlock = getFunctionBlock('registerAssetStorage');
+const checkoutDecisionBlock = getFunctionBlock('processAssetCheckoutDecision');
+const storageDecisionBlock = getFunctionBlock('processAssetStorageDecision');
+const returnMovementBlock = getFunctionBlock('returnCheckedOutAsset');
+// 신청 단계는 실제 자산 상태를 바꾸지 않고, 가능한 현재 상태만 검증한다.
+assert.match(checkoutRegistrationBlock, /asset\.assetStatus !== '보관중'/);
+assert.match(storageRegistrationBlock, /asset\.assetStatus !== '사용중'/);
+assert.doesNotMatch(
+  checkoutRegistrationBlock,
+  /transitionPhysicalAssetStatusForMovement_/,
+);
+assert.doesNotMatch(
+  storageRegistrationBlock,
+  /transitionPhysicalAssetStatusForMovement_/,
+);
+assert.match(
+  checkoutDecisionBlock,
+  /transitionPhysicalAssetStatusForMovement_\([\s\S]*?'보관중'[\s\S]*?'사용중'/,
+);
+assert.match(
+  storageDecisionBlock,
+  /transitionPhysicalAssetStatusForMovement_\([\s\S]*?'사용중'[\s\S]*?'보관중'/,
+);
+assert.match(storageDecisionBlock, /'반입완료'/);
+// 기존 반입 버튼은 즉시 보관 처리하지 않고, 보관 승인 대기 기록을 만드는 호환 경로다.
+assert.match(returnMovementBlock, /registerAssetStorage\(/);
+assert.doesNotMatch(returnMovementBlock, /'사용중'[\s\S]*?'보관중'/);
+
+// 감사에는 자산 상태 전후와 서로 연결된 반출·보관 기록을 보존해야 한다.
+[checkoutDecisionBlock, storageDecisionBlock].forEach((block) => {
+  assert.match(block, /beforeStatus\s*:/);
+  assert.match(block, /afterStatus\s*:/);
+  assert.match(block, /recordId\s*:/);
+});
+assert.match(storageDecisionBlock, /relatedCheckoutRecordId\s*:/);
+assert.match(storageDecisionBlock, /storageRecordId\s*:/);
+
+// 후속 기록 저장/로그 기록에서 실패해도 원장 상태는 승인 전 상태로 되돌려야 한다.
+[checkoutDecisionBlock, storageDecisionBlock].forEach((block) => {
+  assert.match(
+    block,
+    /catch \(error\)[\s\S]*?rollbackPhysicalAssetStatusForMovement_\(assetTransition\)/,
+  );
+});
+assert.match(
+  getFunctionBlock('rollbackPhysicalAssetStatusForMovement_'),
+  /transitionPhysicalAssetStatusForMovement_\([\s\S]*?afterStatus[\s\S]*?beforeStatus/,
+);
+
 const infoIdSheet = {
   getLastRow() { return 11; },
   getRange() {
@@ -202,9 +471,9 @@ assert.equal(
 );
 
 const rosterRows = [
-  ['E001', '홍길동', '개발팀', '사용'],
-  ['E002', '김길동', '영업팀', '미사용'],
-  ['', '', '', ''],
+  ['E001', '홍길동', 'TM', '개발팀', '사용', '본사'],
+  ['E002', '김길동', 'RB', '영업팀', '미사용', '본사'],
+  ['', '', '', '', '', ''],
 ];
 const rosterSheet = {
   getLastRow() {
@@ -222,6 +491,7 @@ const employees = api.listEmployeeRoster_(rosterSheet);
 assert.equal(employees.length, 1);
 assert.equal(employees[0].employeeNumber, 'E001');
 assert.equal(employees[0].name, '홍길동');
+assert.equal(employees[0].rank, 'TM');
 assert.equal(
   api.findEmployeeFromRoster_(rosterSheet, '홍길동').department,
   '개발팀',
@@ -319,7 +589,8 @@ assert.match(source, /function updateAsset\(/);
 assert.match(source, /function finalizeReadOnlyAccess_\(/);
 assert.match(source, /assetSheetUrl:/);
 assert.match(source, /context\.sheet\.getSheetId\(\)/);
-assert.match(source, /spreadsheetName: '출입관리 대장'/);
+assert.match(source, /visitorSpreadsheetName: '방문객 출입관리 대장'/);
+assert.match(source, /employeeSpreadsheetName: '사원 출입관리 대장'/);
 assert.match(source, /visitorLogSpreadsheetName: '외부 방문 로그'/);
 assert.match(source, /departmentLogSpreadsheetName: '부서 출입 로그'/);
 assert.match(source, /function registerAccessEntry\(/);
