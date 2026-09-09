@@ -1,1 +1,31 @@
+# Apps Script deployment identifiers (local only)
+/.clasp.json
 google_apps_script/.clasp.json
+
+# Local analysis, downloaded attachments, and deployment snapshots
+/.codex-analysis/
+/.codex-remote-attachments/
+/tmp/
+/artifacts/
+/backups/
+/outputs/
+/work/
+/_downloads/
+
+# Local tools and unrelated installer or calibration materials
+/_tools/
+/7F2R_Base_ROM_Studio_v2.0.0_메일전송용/
+/7F2R_Base_ROM_Studio_v2.0.0_메일전송용.zip
+/Python_3.13.14_64bit_설치파일.zip
+
+# Generated local evidence, kept outside the source repository
+/local_archive/
+/HMC_정보보안_실사_스크린샷_20260805/
+/manuals/
+
+# Local-only operational records and live checks
+/AGENTS.md
+/docs/STATUS.md
+/tests/live/
+/업무일지/
+/통합업무기록/
