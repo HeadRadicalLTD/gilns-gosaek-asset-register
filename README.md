@@ -1,8 +1,15 @@
-# 길앤에스 고색 자산관리 웹앱
+<p align="center">
+  <img src="docs/assets/asset-operations-hero.svg" alt="길앤에스 고색 자산관리" width="100%">
+</p>
 
-> Google Apps Script 기반의 자산 등록·조회·승인 관리 도구입니다.
-
-[웹앱 열기](https://script.google.com/macros/s/AKfycbxubcW2BW4tKQjFl5PJ0cbtTf7niLVlfr54hcwAx3ozkUQ8bEo3_SU7jlhfyOXV4ZXS/exec) · [운영 절차](docs/운영_절차서.md) · [등록 체크시트](docs/등록_체크시트.md)
+<p align="center">
+  Google Apps Script 기반의 자산 등록·조회·승인 관리 도구입니다.<br>
+  <a href="https://script.google.com/macros/s/AKfycbxubcW2BW4tKQjFl5PJ0cbtTf7niLVlfr54hcwAx3ozkUQ8bEo3_SU7jlhfyOXV4ZXS/exec"><strong>웹앱 열기</strong></a>
+  &nbsp;·&nbsp;
+  <a href="docs/운영_절차서.md">운영 절차</a>
+  &nbsp;·&nbsp;
+  <a href="docs/등록_체크시트.md">등록 체크시트</a>
+</p>
 
 ## 무엇을 하나요
 

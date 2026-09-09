@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+  <title id="title">GIL&amp;S Asset Operations</title>
+  <desc id="desc">길앤에스 고색 자산관리 웹앱의 자산 운영 대시보드 스타일 표지</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1832"/>
+      <stop offset="0.58" stop-color="#143b67"/>
+      <stop offset="1" stop-color="#087f79"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6ee7d8"/>
+      <stop offset="1" stop-color="#a7f3d0"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#04152d" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="420" rx="28" fill="url(#bg)"/>
+  <circle cx="1110" cy="-10" r="250" fill="#63e6be" opacity="0.08"/>
+  <circle cx="1020" cy="390" r="225" fill="#38bdf8" opacity="0.10"/>
+  <path d="M0 333C188 276 282 418 512 338S856 198 1200 315V420H0Z" fill="#06152e" opacity="0.2"/>
+  <g fill="none" stroke="#a5f3fc" stroke-opacity="0.14">
+    <path d="M75 92H520M75 135H447M75 178H392"/>
+    <path d="M71 253H206M225 253H360M379 253H514"/>
+  </g>
+  <text x="76" y="79" fill="#a5f3fc" font-family="Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="3">GIL&amp;S / ASSET OPERATIONS</text>
+  <text x="76" y="151" fill="#ffffff" font-family="Arial, sans-serif" font-size="48" font-weight="800">고색 자산관리</text>
+  <text x="76" y="203" fill="#dbeafe" font-family="Arial, sans-serif" font-size="22">등록부터 승인·이력까지, 한 곳에서 관리합니다.</text>
+  <g transform="translate(76 280)">
+    <rect width="126" height="42" rx="21" fill="url(#accent)"/>
+    <text x="63" y="27" text-anchor="middle" fill="#073344" font-family="Arial, sans-serif" font-size="15" font-weight="700">실물자산</text>
+    <rect x="138" width="126" height="42" rx="21" fill="#ffffff" fill-opacity="0.13" stroke="#ffffff" stroke-opacity="0.22"/>
+    <text x="201" y="27" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="15" font-weight="700">정보자산</text>
+    <rect x="276" width="126" height="42" rx="21" fill="#ffffff" fill-opacity="0.13" stroke="#ffffff" stroke-opacity="0.22"/>
+    <text x="339" y="27" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="15" font-weight="700">반출·보관</text>
+  </g>
+  <g transform="translate(760 70)" filter="url(#shadow)">
+    <rect width="345" height="274" rx="21" fill="#f8fafc"/>
+    <rect width="345" height="55" rx="21" fill="#eef6ff"/>
+    <path d="M0 39h345v16H0z" fill="#eef6ff"/>
+    <circle cx="29" cy="28" r="7" fill="#5eead4"/>
+    <text x="48" y="33" fill="#1e3a5f" font-family="Arial, sans-serif" font-size="16" font-weight="700">자산 운영 현황</text>
+    <text x="28" y="96" fill="#64748b" font-family="Arial, sans-serif" font-size="13">등록 현황</text>
+    <text x="28" y="132" fill="#102a43" font-family="Arial, sans-serif" font-size="28" font-weight="800">관리번호 · 증빙 · 이력</text>
+    <rect x="28" y="160" width="289" height="11" rx="5.5" fill="#dbeafe"/>
+    <rect x="28" y="160" width="212" height="11" rx="5.5" fill="#38bdf8"/>
+    <rect x="28" y="199" width="136" height="48" rx="12" fill="#ecfdf5"/>
+    <text x="43" y="219" fill="#047857" font-family="Arial, sans-serif" font-size="12" font-weight="700">승인 요청</text>
+    <text x="43" y="239" fill="#064e3b" font-family="Arial, sans-serif" font-size="17" font-weight="800">워크플로우</text>
+    <rect x="181" y="199" width="136" height="48" rx="12" fill="#eff6ff"/>
+    <text x="196" y="219" fill="#1d4ed8" font-family="Arial, sans-serif" font-size="12" font-weight="700">변경 이력</text>
+    <text x="196" y="239" fill="#1e3a8a" font-family="Arial, sans-serif" font-size="17" font-weight="800">감사 추적</text>
+  </g>
+</svg>
